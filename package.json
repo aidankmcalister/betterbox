@@ -15,7 +15,8 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
-    "@fontsource-variable/geist": "^5.2.9",
+    "@fontsource-variable/jetbrains-mono": "^5.2.8",
+    "@fontsource-variable/roboto": "^5.2.10",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "@tailwindcss/vite": "^4.3.0",
@@ -24,6 +25,7 @@
     "better-auth": "^1.6.15",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "cmdk": "^1.1.1",
     "dotenv": "^17.2.3",
     "lucide-react": "^1.17.0",
     "react": "^19.2.0",

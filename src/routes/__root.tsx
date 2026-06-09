@@ -1,5 +1,6 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router";
+import { SidebarProvider } from "@/components/ui/sidebar";
 
 import { ThemeProvider } from "@/components/theme-provider";
 import appCss from "../styles.css?url";
@@ -40,11 +41,14 @@ function RootDocument({ children }: { children: ReactNode }) {
       </head>
       <body>
         <ThemeProvider defaultTheme="system" storageKey="theme">
-          {children}
+          <SidebarProvider
+            style={{ "--sidebar-width": "18rem" } as CSSProperties}
+          >
+            {children}
+          </SidebarProvider>
         </ThemeProvider>
         <Scripts />
       </body>
     </html>
   );
 }
-

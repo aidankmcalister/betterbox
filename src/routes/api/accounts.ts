@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { getEmailAddress } from "@/lib/gmail/api.server";
+import { getEmailAddress, getInboxUnread } from "@/lib/gmail/api.server";
 import { getGoogleToken, listGoogleAccounts } from "@/lib/gmail/accounts.server";
 import { json } from "@/lib/json-response";
 import { createFileRoute } from "@tanstack/react-router";
@@ -19,10 +19,14 @@ export const Route = createFileRoute("/api/accounts")({
               session.user.id,
               account.accountId,
             );
-            return {
-              accountId: account.accountId,
-              email: token ? await getEmailAddress(token) : "",
-            };
+            if (!token) {
+              return { accountId: account.accountId, email: "", unread: 0 };
+            }
+            const [email, unread] = await Promise.all([
+              getEmailAddress(token),
+              getInboxUnread(token),
+            ]);
+            return { accountId: account.accountId, email, unread };
           }),
         );
 

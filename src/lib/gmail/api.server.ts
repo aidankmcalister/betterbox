@@ -7,6 +7,7 @@ export type Email = {
   subject: string;
   date: string;
   snippet?: string;
+  unread?: boolean;
 };
 
 /** The Gmail address this token belongs to (handy for labeling accounts). */
@@ -15,6 +16,14 @@ export async function getEmailAddress(accessToken: string): Promise<string> {
   if (!res.ok) return "";
   const { emailAddress } = (await res.json()) as { emailAddress?: string };
   return emailAddress ?? "";
+}
+
+/** Number of unread messages in this account's inbox. */
+export async function getInboxUnread(accessToken: string): Promise<number> {
+  const res = await gmailFetch(accessToken, "/labels/INBOX");
+  if (!res.ok) return 0;
+  const { messagesUnread } = (await res.json()) as { messagesUnread?: number };
+  return messagesUnread ?? 0;
 }
 
 /** Most recent `max` messages with their subject/from/date metadata. */
@@ -46,6 +55,7 @@ async function fetchEmail(accessToken: string, id: string): Promise<Email> {
   );
   const message = (await res.json()) as {
     snippet?: string;
+    labelIds?: string[];
     payload?: { headers?: { name: string; value: string }[] };
   };
   const header = (name: string) =>
@@ -57,6 +67,7 @@ async function fetchEmail(accessToken: string, id: string): Promise<Email> {
     subject: header("Subject"),
     date: header("Date"),
     snippet: message.snippet,
+    unread: message.labelIds?.includes("UNREAD") ?? false,
   };
 }
 

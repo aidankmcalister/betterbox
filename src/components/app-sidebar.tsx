@@ -1,0 +1,172 @@
+import {
+  BarChart3,
+  FileText,
+  Inbox,
+  PenLine,
+  Search,
+  Send,
+  SquareTerminal,
+  Webhook,
+} from "lucide-react";
+
+import { linkGoogle } from "@/lib/auth-client";
+import { formatCount } from "@/lib/format";
+import { NavUser } from "@/components/nav-user";
+import { ViewCard, type ScopeAccount } from "@/components/view-card";
+import { Button } from "@/components/ui/button";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuBadge,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from "@/components/ui/sidebar";
+
+const mailbox = [
+  { title: "Sent", icon: Send },
+  { title: "Drafts", icon: FileText },
+];
+
+const developer = [
+  { title: "Webhooks", icon: Webhook },
+  { title: "Analytics", icon: BarChart3 },
+  { title: "API log", icon: SquareTerminal },
+];
+
+const groupLabel =
+  "px-1.5 pt-2 pb-[5px] font-mono text-[10.5px] font-medium tracking-[0.5px] uppercase text-muted-foreground/70";
+const navButton = "h-7 gap-[9px] px-2 text-[13px]";
+/* soon items: dimmed harder than the stock disabled 50% */
+const soonButton = `${navButton} disabled:opacity-35 aria-disabled:opacity-35`;
+/* rows are h-7 (not the stock h-8), so re-center the absolute badge: (28-20)/2 */
+const badgePos = "peer-data-[size=default]/menu-button:top-1";
+const countBadge = `${badgePos} min-w-[18px] rounded-full bg-accent px-1.5 text-center font-mono text-[10.5px] text-muted-foreground`;
+const soonBadge = `${badgePos} font-mono text-[10px] font-medium tracking-wide text-muted-foreground/70 uppercase`;
+
+export function AppSidebar({
+  accounts,
+  scopeIds,
+  allOn,
+  onToggleScope,
+  onOpenCommand,
+}: {
+  accounts: ScopeAccount[];
+  scopeIds: string[];
+  allOn: boolean;
+  onToggleScope: (id: string | "all") => void;
+  onOpenCommand: () => void;
+}) {
+  const scopedUnread = accounts
+    .filter((account) => scopeIds.includes(account.accountId))
+    .reduce((sum, account) => sum + account.unread, 0);
+
+  return (
+    <Sidebar collapsible="none" className="sticky top-0 h-svh w-64 border-r">
+      <SidebarHeader className="gap-1.5 p-2.5">
+        <div className="flex items-center gap-2 px-1.5 pt-1 pb-2">
+          <div className="flex size-[22px] items-center justify-center rounded-md bg-primary text-[13px] font-bold tracking-[-1px] text-on-primary">
+            B
+          </div>
+          <span className="font-mono text-[13px] font-semibold">
+            Better Mail
+          </span>
+        </div>
+
+        <Button className="w-full">
+          <PenLine />
+          Compose
+        </Button>
+
+        <button
+          type="button"
+          onClick={onOpenCommand}
+          className="flex h-8 w-full items-center gap-2 rounded-[7px] border bg-card px-[9px] text-[12.5px] text-muted-foreground transition-colors hover:bg-muted"
+        >
+          <Search className="size-[13px]" />
+          Search
+          <kbd className="ml-auto font-mono text-[10.5px] text-muted-foreground/70">
+            ⌘K
+          </kbd>
+        </button>
+      </SidebarHeader>
+
+      <SidebarContent className="px-2.5">
+        <SidebarGroup className="p-0">
+          <SidebarGroupLabel className={groupLabel}>Mailbox</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu className="gap-px">
+              <SidebarMenuItem>
+                <SidebarMenuButton isActive className={navButton}>
+                  <Inbox />
+                  <span>Inbox</span>
+                </SidebarMenuButton>
+                {scopedUnread > 0 ? (
+                  <SidebarMenuBadge className={countBadge}>
+                    {formatCount(scopedUnread)}
+                  </SidebarMenuBadge>
+                ) : null}
+              </SidebarMenuItem>
+              {mailbox.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton disabled className={soonButton}>
+                    <item.icon />
+                    <span>{item.title}</span>
+                  </SidebarMenuButton>
+                  <SidebarMenuBadge className={soonBadge}>
+                    Soon
+                  </SidebarMenuBadge>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup className="p-0">
+          <SidebarGroupLabel className={groupLabel}>
+            Developer
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu className="gap-px">
+              {developer.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton disabled className={soonButton}>
+                    <item.icon />
+                    <span>{item.title}</span>
+                  </SidebarMenuButton>
+                  <SidebarMenuBadge className={soonBadge}>
+                    Soon
+                  </SidebarMenuBadge>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup className="p-0">
+          <SidebarGroupLabel className={groupLabel}>View</SidebarGroupLabel>
+          <SidebarGroupContent>
+            {accounts.length > 0 ? (
+              <ViewCard
+                accounts={accounts}
+                scopeIds={scopeIds}
+                allOn={allOn}
+                onToggle={onToggleScope}
+                onAddAccount={() => linkGoogle()}
+              />
+            ) : null}
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+
+      <SidebarFooter>
+        <NavUser />
+      </SidebarFooter>
+    </Sidebar>
+  );
+}

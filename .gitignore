@@ -8,3 +8,5 @@ src/generated
 .tanstack
 
 .env
+
+/dist
