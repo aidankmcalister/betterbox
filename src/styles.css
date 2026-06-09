@@ -182,3 +182,11 @@
     cursor: pointer;
   }
 }
+
+/* Inbox tiles: while a pane header is being dragged, suppress text selection
+   and keep the grabbing cursor everywhere. */
+body.bm-dragging {
+  cursor: grabbing;
+  user-select: none;
+  -webkit-user-select: none;
+}

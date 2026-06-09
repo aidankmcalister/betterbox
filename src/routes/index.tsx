@@ -1,18 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { CheckIcon } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAccountScope } from "@/hooks/use-account-scope";
-import { linkGoogle, signIn, useSession } from "../lib/auth-client";
-import { AccountDot } from "@/components/account-dot";
+import { signIn, useSession } from "../lib/auth-client";
 import { AppSidebar } from "@/components/app-sidebar";
 import { CommandMenu } from "@/components/command-menu";
+import { InboxTiles } from "@/components/inbox-tiles";
 import { ModeToggle } from "@/components/mode-toggle";
-import { ThreadRow } from "@/components/thread-row";
-import {
-  EmptyState,
-  ErrorState,
-  SkeletonRows,
-} from "@/components/thread-list-states";
 import { Button } from "@/components/ui/button";
 import { SidebarInset } from "@/components/ui/sidebar";
 import {
@@ -22,108 +15,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 export const Route = createFileRoute("/")({
   component: Home,
 });
 
-type Email = {
-  id: string;
-  from: string;
-  subject: string;
-  date: string;
-  snippet?: string;
-  unread?: boolean;
-};
 type Account = { accountId: string; email: string; unread: number };
-
-function Inbox({ account, dotIndex }: { account: Account; dotIndex: number }) {
-  const [emails, setEmails] = useState<Email[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(() => {
-    setEmails(null);
-    setError(null);
-    fetch(`/api/emails?accountId=${account.accountId}&max=50`)
-      .then(async (res) => {
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
-        setEmails(data.emails ?? []);
-      })
-      .catch((err: Error) => setError(err.message));
-  }, [account.accountId]);
-
-  useEffect(load, [load]);
-
-  const unread = emails?.filter((email) => email.unread).length ?? 0;
-
-  return (
-    <div className="flex min-w-0 flex-col overflow-hidden rounded-xl border bg-card">
-      <div className="flex h-[46px] shrink-0 items-center gap-2.5 border-b px-3.5">
-        <AccountDot colorIndex={dotIndex} />
-        <span className="truncate font-mono text-xs font-medium">
-          {account.email || account.accountId}
-        </span>
-        {emails && (
-          <span className="font-mono text-[11px] text-muted-foreground/70">
-            {emails.length}
-          </span>
-        )}
-        {unread > 0 && (
-          <span className="font-mono text-[11px] font-medium text-primary">
-            {unread} new
-          </span>
-        )}
-      </div>
-      <ScrollArea className="h-[70vh]">
-        {error ? (
-          <ErrorState
-            detail={`GET /api/emails · ${error}`}
-            onRetry={load}
-            onReconnect={() => linkGoogle()}
-          />
-        ) : !emails ? (
-          <SkeletonRows />
-        ) : emails.length === 0 ? (
-          <EmptyState />
-        ) : (
-          <>
-            {emails.map((email) => (
-              <ThreadRow key={email.id} email={email} dotIndex={dotIndex} />
-            ))}
-            <div className="flex items-center justify-center gap-2 p-3 font-mono text-[10.5px] text-muted-foreground/70">
-              <CheckIcon className="size-3" /> 50 most recent · fetched live
-              from Gmail
-            </div>
-          </>
-        )}
-      </ScrollArea>
-    </div>
-  );
-}
-
-function Inboxes({
-  accounts,
-  scopeIds,
-}: {
-  accounts: Account[] | null;
-  scopeIds: string[];
-}) {
-  if (!accounts) {
-    return <p className="text-sm text-muted-foreground">Loading accounts…</p>;
-  }
-
-  return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-      {accounts.map((account, index) =>
-        scopeIds.includes(account.accountId) ? (
-          <Inbox key={account.accountId} account={account} dotIndex={index} />
-        ) : null,
-      )}
-    </div>
-  );
-}
 
 function Home() {
   const { data: session, isPending } = useSession();
@@ -194,8 +91,18 @@ function Home() {
         onOpenCommand={() => setCmdOpen(true)}
       />
       <SidebarInset>
-        <div className="p-6">
-          <Inboxes accounts={accounts} scopeIds={scopeIds} />
+        <div className="h-svh min-h-0 overflow-hidden">
+          {accounts === null ? (
+            <p className="p-6 text-sm text-muted-foreground">
+              Loading accounts…
+            </p>
+          ) : (
+            <InboxTiles
+              accounts={accounts}
+              scopeIds={scopeIds}
+              onRemovePane={toggle}
+            />
+          )}
         </div>
       </SidebarInset>
     </>
