@@ -1,98 +1,82 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { createServerFn } from "@tanstack/react-start";
-import { prisma } from "../lib/prisma.server";
-
-function isBootstrapQueryError(error: unknown): error is { code?: string } {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    (error as { code?: string }).code === "P2021"
-  );
-}
-
-const listUsers = createServerFn({ method: "GET" }).handler(async () => {
-  try {
-    return await prisma.user.findMany({
-      take: 10,
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
-  } catch (error) {
-    if (isBootstrapQueryError(error)) {
-      return undefined;
-    }
-
-    throw error;
-  }
-});
+import { useEffect, useState } from "react";
+import { linkGoogle, signIn, signOut, useSession } from "../lib/auth-client";
 
 export const Route = createFileRoute("/")({
-  loader: async () => listUsers(),
   component: Home,
 });
 
-function Home() {
-  const formatter = new Intl.DateTimeFormat("en", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: "UTC",
-  });
-  const users = Route.useLoaderData();
+type Email = { id: string; from: string; subject: string; date: string };
+type Account = { accountId: string; email: string };
+
+function Inbox({ account }: { account: Account }) {
+  const [emails, setEmails] = useState<Email[] | null>(null);
+
+  useEffect(() => {
+    fetch(`/api/emails?accountId=${account.accountId}&max=50`)
+      .then((res) => res.json())
+      .then((data) => setEmails(data.emails ?? []));
+  }, [account.accountId]);
 
   return (
-    <main className="shell">
-      <div className="hero">
-        <p className="eyebrow">TanStack Start + Prisma 7</p>
-        <h1>Users from your database, loaded through a server function.</h1>
-        <p className="lede">
-          This route uses TanStack Start&apos;s server function API and the Prisma client in{" "}
-          <code>src/lib/prisma.server.ts</code>.
-        </p>
-      </div>
-
-      <section className="panel">
-        <div className="panelHeader">
-          <h2>Seeded users</h2>
-          <span>{users?.length ?? 0} total</span>
-        </div>
-
-        {!users ? (
-          <p className="empty">
-            Could not query users yet. Run <code>db:migrate</code>, then <code>db:seed</code>,
-            then refresh.
-          </p>
-        ) : users.length === 0 ? (
-          <p className="empty">No users yet. Run <code>db:seed</code> after your first migration.</p>
-        ) : (
-          <ul className="users">
-            {users.map((user) => (
-              <li key={user.id}>
-                <div>
-                  <strong>{user.name ?? "Unnamed user"}</strong>
-                  <p>{user.email}</p>
-                </div>
-                <time dateTime={user.createdAt.toISOString()}>
-                  {formatter.format(user.createdAt)}
-                </time>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <section className="panel">
-        <div className="panelHeader">
-          <h2>Next steps</h2>
-        </div>
-
-        <ul className="steps">
-          <li>Run <code>db:generate</code> after schema changes.</li>
-          <li>Use TanStack Start server functions for server-only logic.</li>
-          <li>Preview production output with <code>preview</code>.</li>
+    <section>
+      <h2>{account.email || account.accountId}</h2>
+      {!emails ? (
+        <p>Loading…</p>
+      ) : (
+        <ul>
+          {emails.map((email) => (
+            <li key={email.id}>
+              <strong>{email.subject || "(no subject)"}</strong> — {email.from}
+            </li>
+          ))}
         </ul>
-      </section>
+      )}
+    </section>
+  );
+}
+
+function Inboxes() {
+  const [accounts, setAccounts] = useState<Account[] | null>(null);
+
+  useEffect(() => {
+    fetch("/api/accounts")
+      .then((res) => res.json())
+      .then((data) => setAccounts(data.accounts ?? []));
+  }, []);
+
+  if (!accounts) return <p>Loading accounts…</p>;
+
+  return (
+    <>
+      {accounts.map((account) => (
+        <Inbox key={account.accountId} account={account} />
+      ))}
+    </>
+  );
+}
+
+function Home() {
+  const { data: session, isPending } = useSession();
+
+  if (isPending) {
+    return <main>Loading...</main>;
+  }
+
+  if (!session) {
+    return (
+      <main>
+        <button onClick={() => signIn()}>Sign in with Google</button>
+      </main>
+    );
+  }
+
+  return (
+    <main>
+      <h1>Signed in as {session.user.email}</h1>
+      <button onClick={() => linkGoogle()}>Link another Gmail</button>
+      <button onClick={() => signOut()}>Sign out</button>
+      <Inboxes />
     </main>
   );
 }
