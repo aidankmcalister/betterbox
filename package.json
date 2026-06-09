@@ -11,14 +11,14 @@
     "typecheck": "tsc --noEmit",
     "db:generate": "bun --env-file=.env ./node_modules/.bin/prisma generate",
     "db:push": "bun --env-file=.env ./node_modules/.bin/prisma db push",
-    "db:migrate": "bun --env-file=.env ./node_modules/.bin/prisma migrate dev",
-    "db:seed": "bun --env-file=.env ./node_modules/.bin/prisma db seed"
+    "db:migrate": "bun --env-file=.env ./node_modules/.bin/prisma migrate dev"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "@tanstack/react-router": "^1.132.0",
     "@tanstack/react-start": "^1.132.0",
+    "better-auth": "^1.6.15",
     "dotenv": "^17.2.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
