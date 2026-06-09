@@ -20,7 +20,9 @@ function Inbox({ account }: { account: Account }) {
 
   return (
     <section>
-      <h2>{account.email || account.accountId}</h2>
+      <h2 className="font-bold underline">
+        {account.email || account.accountId}
+      </h2>
       {!emails ? (
         <p>Loading…</p>
       ) : (
