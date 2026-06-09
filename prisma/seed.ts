@@ -1,0 +1,34 @@
+import prisma from "../src/lib/prisma.server";
+
+async function main() {
+  const users = await Promise.all([
+    prisma.user.upsert({
+      where: { email: "alice@prisma.io" },
+      update: { name: "Alice" },
+      create: {
+        email: "alice@prisma.io",
+        name: "Alice",
+      },
+    }),
+    prisma.user.upsert({
+      where: { email: "bob@prisma.io" },
+      update: { name: "Bob" },
+      create: {
+        email: "bob@prisma.io",
+        name: "Bob",
+      },
+    }),
+  ]);
+
+  console.log(`Seeded ${users.length} users.`);
+}
+
+main()
+  .then(async () => {
+    await prisma.$disconnect();
+  })
+  .catch(async (error: unknown) => {
+    console.error(error);
+    await prisma.$disconnect();
+    process.exit(1);
+  });
