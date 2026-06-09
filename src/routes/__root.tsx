@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { HeadContent, Link, Scripts, createRootRoute } from "@tanstack/react-router";
+import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router";
 
 import appCss from "../styles.css?url";
 
@@ -38,31 +38,7 @@ function RootDocument({ children }: { children: ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        <div className="shell">
-          <header className="topbar">
-            <div>
-              <p className="eyebrow">create-prisma</p>
-              <h1>TanStack Start + Prisma</h1>
-            </div>
-
-            <nav className="nav">
-              <Link to="/" className="navLink">
-                Home
-              </Link>
-              <a
-                className="navLink"
-                href="https://tanstack.com/start/latest/docs/framework/react/overview"
-                rel="noreferrer"
-                target="_blank"
-              >
-                Docs
-              </a>
-            </nav>
-          </header>
-
-          {children}
-        </div>
-
+        {children}
         <Scripts />
       </body>
     </html>
