@@ -28,7 +28,7 @@ threads, no send, and no developer-platform features.
 
 - [ ] Message viewer (full body / thread view)
 - [ ] Thread grouping (`threads.get`) instead of flat messages
-- [ ] Pagination / load-more (lift the 50-message cap)
+- [x] Pagination / load-more (lift the 50-message cap)
 - [ ] Compose, reply, forward (threading via `References` / `In-Reply-To`)
 - [ ] Labels, star, archive, trash (mark-as-read shipped)
 - [ ] Search and filtering
