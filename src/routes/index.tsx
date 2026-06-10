@@ -1,9 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAccountScope } from "@/hooks/use-account-scope";
 import type { Account } from "@/lib/account";
 import { useApplyAccent } from "@/hooks/use-settings";
+import {
+  accountsQueryKey,
+  emailsQueryKey,
+  markEmailsRead,
+  useAccountsQuery,
+} from "@/lib/mail-queries";
 import { makeTestAccount } from "@/lib/test-account";
+import type { ThreadRowEmail } from "@/components/thread-row";
 import { signIn, useSession } from "../lib/auth-client";
 import { AppSidebar } from "@/components/app-sidebar";
 import { CommandMenu } from "@/components/command-menu";
@@ -27,23 +35,17 @@ export const Route = createFileRoute("/")({
 function Home() {
   useApplyAccent();
   const { data: session, isPending } = useSession();
+  const queryClient = useQueryClient();
   const [cmdOpen, setCmdOpen] = useState(false);
-  const [accounts, setAccounts] = useState<Account[] | null>(null);
+  const { data: accounts } = useAccountsQuery(!!session);
   const [testAccounts, setTestAccounts] = useState<Account[]>([]);
-
-  useEffect(() => {
-    if (!session) return;
-    fetch("/api/accounts")
-      .then((res) => res.json())
-      .then((data) => setAccounts(data.accounts ?? []));
-  }, [session]);
 
   const addTestAccount = useCallback(() => {
     setTestAccounts((current) => [...current, makeTestAccount(current.length + 1)]);
   }, []);
 
   const allAccounts = useMemo(
-    () => (accounts === null ? null : [...accounts, ...testAccounts]),
+    () => (accounts === undefined ? null : [...accounts, ...testAccounts]),
     [accounts, testAccounts],
   );
   const accountIds = useMemo(
@@ -52,6 +54,27 @@ function Home() {
   );
   const { scopeIds, allOn, toggle, only } = useAccountScope(accountIds);
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  /* Mark every fetched unread message in the scoped panes as read, flip the
+     cached rows optimistically, then refresh the sidebar unread counts. */
+  const markAllRead = useCallback(async () => {
+    await Promise.allSettled(
+      scopeIds.map(async (accountId) => {
+        const emails = queryClient.getQueryData<ThreadRowEmail[]>(
+          emailsQueryKey(accountId),
+        );
+        const unreadIds =
+          emails?.filter((e) => e.unread).map((e) => e.id) ?? [];
+        if (unreadIds.length === 0) return;
+        await markEmailsRead(accountId, unreadIds);
+        queryClient.setQueryData<ThreadRowEmail[]>(
+          emailsQueryKey(accountId),
+          (current) => current?.map((e) => ({ ...e, unread: false })),
+        );
+      }),
+    );
+    queryClient.invalidateQueries({ queryKey: accountsQueryKey });
+  }, [scopeIds, queryClient]);
 
   /* Keyboard: ⌘K palette · G then I → inbox (all accounts) · ⌥1–9 → switch
      account (⌘1–9 is browser-reserved for tab switching). */
@@ -124,6 +147,7 @@ function Home() {
         onOpenChange={setCmdOpen}
         onOpenSettings={() => setSettingsOpen(true)}
         onGoInbox={() => toggle("all")}
+        onMarkAllRead={markAllRead}
         onAddTestAccount={addTestAccount}
       />
       <SettingsDialog

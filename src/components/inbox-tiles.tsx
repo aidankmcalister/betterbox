@@ -23,7 +23,7 @@ import {
 import type { Account } from "@/lib/account";
 import { linkGoogle } from "@/lib/auth-client";
 import { formatCount } from "@/lib/format";
-import { isTestAccount, makeTestEmails } from "@/lib/test-account";
+import { useEmailsQuery } from "@/lib/mail-queries";
 import { useSettings } from "@/hooks/use-settings";
 import { cn } from "@/lib/utils";
 import { AccountDot } from "@/components/account-dot";
@@ -32,7 +32,7 @@ import {
   ErrorState,
   SkeletonRows,
 } from "@/components/thread-list-states";
-import { ThreadRow, type ThreadRowEmail } from "@/components/thread-row";
+import { ThreadRow } from "@/components/thread-row";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -411,33 +411,14 @@ function PaneBody({
   dotIndex: number;
 }) {
   const { density } = useSettings();
-  const [emails, setEmails] = useState<ThreadRowEmail[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(() => {
-    setEmails(null);
-    setError(null);
-    if (isTestAccount(account.accountId)) {
-      setEmails(makeTestEmails(account.accountId));
-      return;
-    }
-    fetch(`/api/emails?accountId=${account.accountId}&max=50`)
-      .then(async (res) => {
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
-        setEmails(data.emails ?? []);
-      })
-      .catch((err: Error) => setError(err.message));
-  }, [account.accountId]);
-
-  useEffect(load, [load]);
+  const { data: emails, error, refetch } = useEmailsQuery(account.accountId);
 
   return (
     <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
       {error ? (
         <ErrorState
-          detail={`GET /api/emails · ${error}`}
-          onRetry={load}
+          detail={`GET /api/emails · ${error.message}`}
+          onRetry={() => refetch()}
           onReconnect={() => linkGoogle()}
         />
       ) : !emails ? (

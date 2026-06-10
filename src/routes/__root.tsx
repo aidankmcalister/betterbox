@@ -1,5 +1,6 @@
-import type { CSSProperties, ReactNode } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SidebarProvider } from "@/components/ui/sidebar";
 
 import { ThemeProvider } from "@/components/theme-provider";
@@ -34,19 +35,31 @@ export const Route = createRootRoute({
 });
 
 function RootDocument({ children }: { children: ReactNode }) {
+  /* Per-instance client so SSR renders never share a cache between users. */
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: { staleTime: 60_000, retry: 1, refetchOnWindowFocus: false },
+        },
+      }),
+  );
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>
       <body>
-        <ThemeProvider defaultTheme="system" storageKey="theme">
-          <SidebarProvider
-            style={{ "--sidebar-width": "18rem" } as CSSProperties}
-          >
-            {children}
-          </SidebarProvider>
-        </ThemeProvider>
+        <QueryClientProvider client={queryClient}>
+          <ThemeProvider defaultTheme="system" storageKey="theme">
+            <SidebarProvider
+              style={{ "--sidebar-width": "18rem" } as CSSProperties}
+            >
+              {children}
+            </SidebarProvider>
+          </ThemeProvider>
+        </QueryClientProvider>
         <Scripts />
       </body>
     </html>
