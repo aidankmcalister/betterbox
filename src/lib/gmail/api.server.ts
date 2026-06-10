@@ -112,26 +112,23 @@ type MessagePart = {
   parts?: MessagePart[];
 };
 
-/** One full message: headers + plain-text and HTML bodies (format=full). */
-export async function getFullEmail(
-  accessToken: string,
-  id: string,
-): Promise<FullEmail> {
-  const res = await gmailFetch(accessToken, `/messages/${id}?format=full`);
-  if (!res.ok) throw new Error(`Gmail get failed (${res.status})`);
-  const message = (await res.json()) as {
-    snippet?: string;
-    labelIds?: string[];
-    threadId?: string;
-    payload?: MessagePart & { headers?: { name: string; value: string }[] };
-  };
+type RawMessage = {
+  id?: string;
+  snippet?: string;
+  labelIds?: string[];
+  threadId?: string;
+  payload?: MessagePart & { headers?: { name: string; value: string }[] };
+};
+
+/** Parse one Gmail message resource (format=full) into a FullEmail. */
+function parseMessage(message: RawMessage): FullEmail {
   const header = (name: string) =>
     message.payload?.headers?.find(
       (h) => h.name.toLowerCase() === name.toLowerCase(),
     )?.value ?? "";
 
   return {
-    id,
+    id: message.id ?? "",
     from: header("From"),
     to: header("To"),
     subject: header("Subject"),
@@ -144,6 +141,27 @@ export async function getFullEmail(
     unread: message.labelIds?.includes("UNREAD") ?? false,
     ...extractBody(message.payload),
   };
+}
+
+/** One full message: headers + plain-text and HTML bodies (format=full). */
+export async function getFullEmail(
+  accessToken: string,
+  id: string,
+): Promise<FullEmail> {
+  const res = await gmailFetch(accessToken, `/messages/${id}?format=full`);
+  if (!res.ok) throw new Error(`Gmail get failed (${res.status})`);
+  return parseMessage(await res.json());
+}
+
+/** Every message in a conversation, oldest first (threads.get?format=full). */
+export async function getThread(
+  accessToken: string,
+  threadId: string,
+): Promise<FullEmail[]> {
+  const res = await gmailFetch(accessToken, `/threads/${threadId}?format=full`);
+  if (!res.ok) throw new Error(`Gmail thread get failed (${res.status})`);
+  const data = (await res.json()) as { messages?: RawMessage[] };
+  return (data.messages ?? []).map(parseMessage);
 }
 
 /** Plain text (exports, fallback) plus the HTML part when one exists. */

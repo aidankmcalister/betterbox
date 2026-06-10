@@ -140,6 +140,26 @@ export function useFullEmailQuery(accountId: string, emailId: string | null) {
   });
 }
 
+/** Every message in the open conversation, oldest first (threads.get). */
+export function useThreadQuery(
+  accountId: string,
+  threadId: string | null | undefined,
+) {
+  return useQuery({
+    queryKey: ["thread", accountId, threadId],
+    enabled: !!threadId,
+    queryFn: async (): Promise<FullEmail[]> => {
+      if (isTestAccount(accountId)) {
+        return [makeTestFullEmail(accountId, threadId!)];
+      }
+      const data = await fetchJson<{ messages: FullEmail[] }>(
+        `/api/message?accountId=${accountId}&thread=${encodeURIComponent(threadId!)}`,
+      );
+      return data.messages ?? [];
+    },
+  });
+}
+
 /** Raw RFC 822 source for the reader's Raw toggle. */
 export function useRawEmailQuery(
   accountId: string,

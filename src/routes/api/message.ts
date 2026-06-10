@@ -3,6 +3,7 @@ import {
   actOnEmail,
   getFullEmail,
   getRawEmail,
+  getThread,
   type MessageAction,
 } from "@/lib/gmail/api.server";
 import { getGoogleToken } from "@/lib/gmail/accounts.server";
@@ -21,8 +22,9 @@ export const Route = createFileRoute("/api/message")({
 
         const url = new URL(request.url);
         const accountId = url.searchParams.get("accountId") ?? undefined;
+        const thread = url.searchParams.get("thread");
         const id = url.searchParams.get("id");
-        if (!id) return json({ error: "id is required" }, 400);
+        if (!thread && !id) return json({ error: "id is required" }, 400);
 
         const accessToken = await getGoogleToken(
           request.headers,
@@ -32,10 +34,13 @@ export const Route = createFileRoute("/api/message")({
         if (!accessToken) return json({ error: "No Google access token" }, 403);
 
         try {
-          if (url.searchParams.get("format") === "raw") {
-            return json({ raw: await getRawEmail(accessToken, id) });
+          if (thread) {
+            return json({ messages: await getThread(accessToken, thread) });
           }
-          return json({ email: await getFullEmail(accessToken, id) });
+          if (url.searchParams.get("format") === "raw") {
+            return json({ raw: await getRawEmail(accessToken, id!) });
+          }
+          return json({ email: await getFullEmail(accessToken, id!) });
         } catch (error) {
           return json({ error: String(error) }, 502);
         }

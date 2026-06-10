@@ -54,7 +54,9 @@ import {
   useEmailsQuery,
   useFullEmailQuery,
   useRawEmailQuery,
+  useThreadQuery,
   type EmailsData,
+  type FullEmail,
   type MessageAction,
 } from "@/lib/mail-queries";
 import { useSettings } from "@/hooks/use-settings";
@@ -506,6 +508,22 @@ function ReaderPane() {
   const accountColor = useAccountColor(Math.max(dotIndex, 0), accountId);
   const sender = email ? parseAddress(email.from) : null;
 
+  /* The whole conversation. Until it loads, show the opened message alone. */
+  const threadQuery = useThreadQuery(accountId, email?.threadId);
+  const thread = threadQuery.data;
+  const messages = thread && thread.length > 0 ? thread : email ? [email] : [];
+  const lastMessage = messages[messages.length - 1];
+  const replySender = lastMessage ? parseAddress(lastMessage.from) : sender;
+
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const toggleExpand = (id: string) =>
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
   useEffect(() => setStarred(email?.starred ?? false), [email?.id, email?.starred]);
   /* Reset the inline reply when the open message changes. */
   useEffect(() => {
@@ -513,6 +531,15 @@ function ReaderPane() {
     setReplyBody("");
     setReplySent(false);
   }, [email?.id]);
+  /* Default-expand the opened message + the latest; collapse the rest. */
+  useEffect(() => {
+    if (messages.length === 0) return;
+    const ids = new Set<string>();
+    if (emailId) ids.add(emailId);
+    ids.add(messages[messages.length - 1].id);
+    setExpandedIds(ids);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [email?.threadId, thread]);
 
   /* Reply happens inline at the foot of the message (it stays in the pane and
      threads under the original), not in the docked composer. */
@@ -526,25 +553,30 @@ function ReaderPane() {
   };
 
   const sendReply = async () => {
-    if (!email || !sender || replySending || !replyBody.trim()) return;
+    const target = lastMessage;
+    if (!target || !replySender || replySending || !replyBody.trim()) return;
     setReplySending(true);
     try {
       await sendNewEmail({
         accountId,
-        to: sender.address,
-        subject: /^re:/i.test(email.subject)
-          ? email.subject
-          : `Re: ${email.subject}`,
+        to: replySender.address,
+        subject: /^re:/i.test(target.subject)
+          ? target.subject
+          : `Re: ${target.subject}`,
         body: replyBody,
-        inReplyTo: email.messageId || undefined,
+        inReplyTo: target.messageId || undefined,
         references:
-          [email.references, email.messageId].filter(Boolean).join(" ") ||
+          [target.references, target.messageId].filter(Boolean).join(" ") ||
           undefined,
-        threadId: email.threadId || undefined,
+        threadId: target.threadId || undefined,
       });
       setReplyOpen(false);
       setReplyBody("");
       setReplySent(true);
+      // Pull the just-sent message into the visible conversation.
+      queryClient.invalidateQueries({
+        queryKey: ["thread", accountId, target.threadId],
+      });
     } finally {
       setReplySending(false);
     }
@@ -701,66 +733,23 @@ function ReaderPane() {
               {email.subject || "(no subject)"}
             </h2>
 
-            <div className="mt-4 flex items-start gap-3 border-b pb-[18px]">
-              <SenderAvatar
-                name={sender.name}
-                address={sender.address}
-                color={accountColor}
-              />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-baseline gap-2">
-                  <span className="shrink-0 text-sm font-semibold">
-                    {sender.name}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate font-mono text-[11.5px] text-muted-foreground">
-                    &lt;{sender.address}&gt;
-                  </span>
-                  <Hint label={isoDate(email.date)}>
-                    <span className="shrink-0 font-mono text-[11px] text-muted-foreground/70">
-                      {shortDate(email.date, clock === "12h")}
-                    </span>
-                  </Hint>
-                </div>
-                <div className="mt-1 flex min-w-0 items-center gap-[7px]">
-                  <span className="shrink-0 text-[11.5px] text-muted-foreground/70">
-                    to
-                  </span>
-                  <span className="inline-flex min-w-0 items-center gap-1.5 font-mono text-[11px] text-muted-foreground">
-                    <span
-                      className="size-1.5 shrink-0 rounded-full"
-                      style={{ background: accountColor }}
-                    />
-                    <span className="truncate">{email.to || "—"}</span>
-                  </span>
-                </div>
-                {showTechnicalMetadata && email.messageId && (
-                  <div className="mt-2 font-mono text-[10.5px] break-all text-muted-foreground/70">
-                    message-id:{" "}
-                    <span className="text-label-blue">{email.messageId}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="pt-[18px]">
-              {email.bodyHtml ? (
-                <HtmlBody html={email.bodyHtml} />
-              ) : (
-                (email.body || email.snippet || "(empty message)")
-                  .split("\n")
-                  .map((line, i) =>
-                    line.trim() === "" ? (
-                      <div key={i} className="h-3" />
-                    ) : (
-                      <p
-                        key={i}
-                        className="m-0 text-sm leading-[1.65] text-pretty text-foreground/85"
-                      >
-                        {line}
-                      </p>
-                    ),
-                  )
-              )}
+            {messages.length > 1 && (
+              <p className="mt-1 font-mono text-[11px] text-muted-foreground/70">
+                {messages.length} messages
+              </p>
+            )}
+            <div className="mt-3">
+              {messages.map((message) => (
+                <ThreadMessage
+                  key={message.id}
+                  message={message}
+                  expanded={expandedIds.has(message.id)}
+                  onToggle={() => toggleExpand(message.id)}
+                  accountColor={accountColor}
+                  hour12={clock === "12h"}
+                  showTechnicalMetadata={showTechnicalMetadata}
+                />
+              ))}
             </div>
 
             {/* Inline reply — stays in the pane and threads under this message. */}
@@ -771,10 +760,10 @@ function ReaderPane() {
                     <ReplyIcon className="size-3.5" />
                     Reply to{" "}
                     <span className="font-medium text-foreground">
-                      {sender.name}
+                      {(replySender ?? sender).name}
                     </span>
                     <span className="truncate font-mono text-[11px] text-muted-foreground/80">
-                      &lt;{sender.address}&gt;
+                      &lt;{(replySender ?? sender).address}&gt;
                     </span>
                   </div>
                   <textarea
@@ -904,6 +893,118 @@ function ReaderPane() {
         </div>
       )}
     </>
+  );
+}
+
+/** One message in the conversation — a collapsed one-liner or the full body. */
+function ThreadMessage({
+  message,
+  expanded,
+  onToggle,
+  accountColor,
+  hour12,
+  showTechnicalMetadata,
+}: {
+  message: FullEmail;
+  expanded: boolean;
+  onToggle: () => void;
+  accountColor: string;
+  hour12: boolean;
+  showTechnicalMetadata: boolean;
+}) {
+  const sender = parseAddress(message.from);
+
+  if (!expanded) {
+    return (
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center gap-3 border-b py-3 text-left hover:bg-muted/40"
+      >
+        <SenderAvatar
+          name={sender.name}
+          address={sender.address}
+          color={accountColor}
+          className="size-7"
+        />
+        <span className="shrink-0 text-[13px] font-medium">{sender.name}</span>
+        <span className="min-w-0 flex-1 truncate text-[12.5px] text-muted-foreground">
+          {message.snippet}
+        </span>
+        <span className="shrink-0 font-mono text-[11px] text-muted-foreground/70">
+          {shortDate(message.date, hour12)}
+        </span>
+      </button>
+    );
+  }
+
+  return (
+    <div className="border-b py-4 first:pt-0">
+      <div className="flex items-start gap-3">
+        <SenderAvatar
+          name={sender.name}
+          address={sender.address}
+          color={accountColor}
+        />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline gap-2">
+            <button
+              type="button"
+              onClick={onToggle}
+              className="shrink-0 cursor-pointer text-sm font-semibold hover:underline"
+            >
+              {sender.name}
+            </button>
+            <span className="min-w-0 flex-1 truncate font-mono text-[11.5px] text-muted-foreground">
+              &lt;{sender.address}&gt;
+            </span>
+            <Hint label={isoDate(message.date)}>
+              <span className="shrink-0 font-mono text-[11px] text-muted-foreground/70">
+                {shortDate(message.date, hour12)}
+              </span>
+            </Hint>
+          </div>
+          <div className="mt-1 flex min-w-0 items-center gap-[7px]">
+            <span className="shrink-0 text-[11.5px] text-muted-foreground/70">
+              to
+            </span>
+            <span className="inline-flex min-w-0 items-center gap-1.5 font-mono text-[11px] text-muted-foreground">
+              <span
+                className="size-1.5 shrink-0 rounded-full"
+                style={{ background: accountColor }}
+              />
+              <span className="truncate">{message.to || "—"}</span>
+            </span>
+          </div>
+          {showTechnicalMetadata && message.messageId && (
+            <div className="mt-2 font-mono text-[10.5px] break-all text-muted-foreground/70">
+              message-id:{" "}
+              <span className="text-label-blue">{message.messageId}</span>
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="pt-[18px]">
+        {message.bodyHtml ? (
+          <HtmlBody html={message.bodyHtml} />
+        ) : (
+          (message.body || message.snippet || "(empty message)")
+            .split("\n")
+            .map((line, i) =>
+              line.trim() === "" ? (
+                <div key={i} className="h-3" />
+              ) : (
+                <p
+                  key={i}
+                  className="m-0 text-sm leading-[1.65] text-pretty text-foreground/85"
+                >
+                  {line}
+                </p>
+              ),
+            )
+        )}
+      </div>
+    </div>
   );
 }
 
