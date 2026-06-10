@@ -84,7 +84,10 @@ export function CommandMenu({
     debounced,
   );
   const hits = hitsQuery.data ?? [];
-  const searching = debounced.trim().length >= 2;
+  // Show the Inbox section off the immediate input (so the skeleton appears at
+  // once), but run the query off the debounced value.
+  const showInbox = search.trim().length >= 2;
+  const debouncing = search.trim() !== debounced.trim();
 
   const setOpen = (next: boolean) => {
     onOpenChange(next);
@@ -187,11 +190,7 @@ export function CommandMenu({
           onValueChange={setSearch}
         />
         <CommandList>
-          <CommandEmpty>
-            {searching && hitsQuery.isFetching
-              ? "Searching mail…"
-              : "No results found."}
-          </CommandEmpty>
+          <CommandEmpty>No results found.</CommandEmpty>
 
           {/* Commands first (filtered by the query)… */}
           {visibleGroups.map((group, index) => (
@@ -223,7 +222,7 @@ export function CommandMenu({
           ))}
 
           {/* …then the mail search results below them (skeleton while loading). */}
-          {searching && (hits.length > 0 || hitsQuery.isFetching) && (
+          {showInbox && (
             <>
               {visibleGroups.length > 0 && <CommandSeparator />}
               <CommandGroup heading="Inbox">
@@ -251,17 +250,23 @@ export function CommandMenu({
                         )}
                       </CommandItem>
                     ))
-                  : Array.from({ length: 5 }).map((_, i) => (
-                      <div
-                        key={i}
-                        className="flex items-center gap-2 rounded-lg px-2 py-2"
-                        style={{ opacity: 1 - i * 0.16 }}
-                      >
-                        <Skeleton className="size-4 shrink-0 rounded bg-muted" />
-                        <Skeleton className="h-3 w-40 rounded bg-muted" />
-                        <Skeleton className="ml-auto h-3 w-20 shrink-0 rounded bg-muted" />
+                  : hitsQuery.isFetching || debouncing
+                    ? Array.from({ length: 5 }).map((_, i) => (
+                        <div
+                          key={i}
+                          className="flex items-center gap-2 rounded-lg px-2 py-2"
+                          style={{ opacity: 1 - i * 0.16 }}
+                        >
+                          <Skeleton className="size-4 shrink-0 rounded bg-muted" />
+                          <Skeleton className="h-3 w-40 rounded bg-muted" />
+                          <Skeleton className="ml-auto h-3 w-20 shrink-0 rounded bg-muted" />
+                        </div>
+                      ))
+                    : (
+                      <div className="px-2 py-2 text-[12.5px] text-muted-foreground">
+                        No matching messages
                       </div>
-                    ))}
+                    )}
               </CommandGroup>
             </>
           )}
