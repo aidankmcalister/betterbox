@@ -14,6 +14,7 @@ export const Route = createFileRoute("/api/emails")({
         const url = new URL(request.url);
         const accountId = url.searchParams.get("accountId") ?? undefined;
         const max = Number(url.searchParams.get("max")) || 50;
+        const pageToken = url.searchParams.get("pageToken") ?? undefined;
 
         const accessToken = await getGoogleToken(
           request.headers,
@@ -23,8 +24,17 @@ export const Route = createFileRoute("/api/emails")({
         if (!accessToken) return json({ error: "No Google access token" }, 403);
 
         try {
-          const emails = await listRecentEmails(accessToken, max);
-          return json({ accountId: accountId ?? null, count: emails.length, emails });
+          const { emails, nextPageToken } = await listRecentEmails(
+            accessToken,
+            max,
+            pageToken,
+          );
+          return json({
+            accountId: accountId ?? null,
+            count: emails.length,
+            emails,
+            nextPageToken: nextPageToken ?? null,
+          });
         } catch (error) {
           return json({ error: String(error) }, 502);
         }

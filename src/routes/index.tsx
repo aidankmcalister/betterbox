@@ -7,11 +7,12 @@ import { useApplyAccent } from "@/hooks/use-settings";
 import {
   accountsQueryKey,
   emailsQueryKey,
+  flattenEmails,
   markEmailsRead,
   useAccountsQuery,
+  type EmailsData,
 } from "@/lib/mail-queries";
 import { makeTestAccount } from "@/lib/test-account";
-import type { ThreadRowEmail } from "@/components/thread-row";
 import { signIn, useSession } from "../lib/auth-client";
 import { AppSidebar } from "@/components/app-sidebar";
 import { CommandMenu } from "@/components/command-menu";
@@ -60,16 +61,25 @@ function Home() {
   const markAllRead = useCallback(async () => {
     await Promise.allSettled(
       scopeIds.map(async (accountId) => {
-        const emails = queryClient.getQueryData<ThreadRowEmail[]>(
+        const data = queryClient.getQueryData<EmailsData>(
           emailsQueryKey(accountId),
         );
         const unreadIds =
-          emails?.filter((e) => e.unread).map((e) => e.id) ?? [];
+          flattenEmails(data)
+            ?.filter((e) => e.unread)
+            .map((e) => e.id) ?? [];
         if (unreadIds.length === 0) return;
         await markEmailsRead(accountId, unreadIds);
-        queryClient.setQueryData<ThreadRowEmail[]>(
+        queryClient.setQueryData<EmailsData>(
           emailsQueryKey(accountId),
-          (current) => current?.map((e) => ({ ...e, unread: false })),
+          (current) =>
+            current && {
+              ...current,
+              pages: current.pages.map((page) => ({
+                ...page,
+                emails: page.emails.map((e) => ({ ...e, unread: false })),
+              })),
+            },
         );
       }),
     );

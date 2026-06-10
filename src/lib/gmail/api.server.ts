@@ -26,25 +26,32 @@ export async function getInboxUnread(accessToken: string): Promise<number> {
   return messagesUnread ?? 0;
 }
 
-/** Most recent `max` messages with their subject/from/date metadata. */
+/** One page of recent messages with subject/from/date metadata. */
 export async function listRecentEmails(
   accessToken: string,
   max = 50,
-): Promise<Email[]> {
-  const ids = await listMessageIds(accessToken, max);
-  return Promise.all(ids.map((id) => fetchEmail(accessToken, id)));
+  pageToken?: string,
+): Promise<{ emails: Email[]; nextPageToken?: string }> {
+  const { ids, nextPageToken } = await listMessageIds(accessToken, max, pageToken);
+  const emails = await Promise.all(ids.map((id) => fetchEmail(accessToken, id)));
+  return { emails, nextPageToken };
 }
 
 async function listMessageIds(
   accessToken: string,
   max: number,
-): Promise<string[]> {
-  const res = await gmailFetch(accessToken, `/messages?maxResults=${max}`);
+  pageToken?: string,
+): Promise<{ ids: string[]; nextPageToken?: string }> {
+  const query =
+    `/messages?maxResults=${max}` +
+    (pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : "");
+  const res = await gmailFetch(accessToken, query);
   if (!res.ok) throw new Error(`Gmail list failed (${res.status})`);
-  const { messages = [] } = (await res.json()) as {
+  const { messages = [], nextPageToken } = (await res.json()) as {
     messages?: { id: string }[];
+    nextPageToken?: string;
   };
-  return messages.map((message) => message.id);
+  return { ids: messages.map((message) => message.id), nextPageToken };
 }
 
 async function fetchEmail(accessToken: string, id: string): Promise<Email> {

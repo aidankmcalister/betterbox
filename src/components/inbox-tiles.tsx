@@ -23,8 +23,9 @@ import {
 import type { Account } from "@/lib/account";
 import { linkGoogle } from "@/lib/auth-client";
 import { formatCount } from "@/lib/format";
-import { useEmailsQuery } from "@/lib/mail-queries";
+import { flattenEmails, useEmailsQuery } from "@/lib/mail-queries";
 import { useSettings } from "@/hooks/use-settings";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { AccountDot } from "@/components/account-dot";
 import {
@@ -411,7 +412,9 @@ function PaneBody({
   dotIndex: number;
 }) {
   const { density } = useSettings();
-  const { data: emails, error, refetch } = useEmailsQuery(account.accountId);
+  const query = useEmailsQuery(account.accountId);
+  const { error, refetch } = query;
+  const emails = flattenEmails(query.data);
 
   return (
     <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
@@ -436,12 +439,26 @@ function PaneBody({
               accountId={account.accountId}
             />
           ))}
-          <div className="flex items-center justify-center gap-2 p-3 font-mono text-[10.5px] text-muted-foreground/70">
-            <CheckIcon className="size-3 shrink-0" />
-            <span className="min-w-0 truncate">
-              50 most recent · fetched live from Gmail
-            </span>
-          </div>
+          {query.hasNextPage ? (
+            <div className="flex items-center justify-center p-2">
+              <Button
+                variant="ghost"
+                size="xs"
+                disabled={query.isFetchingNextPage}
+                onClick={() => query.fetchNextPage()}
+                className="font-mono text-[10.5px] text-muted-foreground"
+              >
+                {query.isFetchingNextPage ? "Loading…" : "Load 50 more"}
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center gap-2 p-3 font-mono text-[10.5px] text-muted-foreground/70">
+              <CheckIcon className="size-3 shrink-0" />
+              <span className="min-w-0 truncate">
+                {emails.length} loaded · fetched live from Gmail
+              </span>
+            </div>
+          )}
         </>
       )}
     </div>
