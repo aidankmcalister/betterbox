@@ -342,7 +342,7 @@ function DeveloperPage() {
   const settings = useSettings();
 
   return (
-    <Page title="Developer" description="Raw views, exports, and API logging">
+    <Page title="Developer" description="Raw views and exports">
       <PageSection title="Message view">
         <SettingRow
           label="Open messages in raw view"
@@ -363,7 +363,7 @@ function DeveloperPage() {
         </SettingRow>
       </PageSection>
 
-      <PageSection title="Export & logs">
+      <PageSection title="Export">
         <SettingRow label="Default export format">
           <SegmentedButtons
             mono
@@ -375,9 +375,6 @@ function DeveloperPage() {
             value={settings.exportFormat}
             onChange={(exportFormat) => updateSettings({ exportFormat })}
           />
-        </SettingRow>
-        <SettingRow label="API log retention">
-          <SoonControl label="7 days" />
         </SettingRow>
       </PageSection>
     </Page>
