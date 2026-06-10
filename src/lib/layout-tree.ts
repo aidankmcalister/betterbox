@@ -23,6 +23,11 @@ export const MIN_PANE_FRACTION = 0.15;
 /** Dispatch this on window to restore the default tile layout (⌘K action). */
 export const RESET_TILE_LAYOUT_EVENT = "bm:reset-tile-layout";
 
+/** The reader is an ordinary pane in the tree under this reserved id, so it
+ *  drags/swaps/splits like an inbox. It only survives validation while a
+ *  message is open (the caller includes it in the valid pane ids). */
+export const READER_PANE_ID = "__reader__";
+
 const newSplitId = () => crypto.randomUUID();
 
 function split(dir: SplitDir, children: LayoutNode[], sizes: number[]): SplitNode {

@@ -7,10 +7,16 @@ import {
   useRef,
   useState,
 } from "react";
-import { CheckIcon, GripVerticalIcon, XIcon } from "lucide-react";
+import {
+  CheckIcon,
+  GripVerticalIcon,
+  MailOpenIcon,
+  XIcon,
+} from "lucide-react";
 
 import {
   MIN_PANE_FRACTION,
+  READER_PANE_ID,
   RESET_TILE_LAYOUT_EVENT,
   defaultLayout,
   movePane,
@@ -23,7 +29,11 @@ import {
 import type { Account } from "@/lib/account";
 import { linkGoogle } from "@/lib/auth-client";
 import { formatCount } from "@/lib/format";
-import { flattenEmails, useEmailsQuery } from "@/lib/mail-queries";
+import {
+  flattenEmails,
+  useEmailsQuery,
+  useFullEmailQuery,
+} from "@/lib/mail-queries";
 import { useSettings } from "@/hooks/use-settings";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -52,6 +62,8 @@ type DragState = {
   target: { accountId: string; zone: DropZone } | null;
 };
 
+type Reading = { accountId: string; emailId: string };
+
 type TilesCtx = {
   accounts: Account[];
   removable: boolean;
@@ -59,6 +71,9 @@ type TilesCtx = {
   drag: DragState | null;
   beginHeaderDrag: (event: React.PointerEvent, accountId: string) => void;
   resizeSplit: (splitId: string, sizes: number[]) => void;
+  reading: Reading | null;
+  openEmail: (accountId: string, emailId: string) => void;
+  closeReader: () => void;
 };
 const TilesContext = createContext<TilesCtx | null>(null);
 
@@ -135,20 +150,31 @@ export function InboxTiles({
   const ids = scoped.map((a) => a.accountId);
   const idsKey = ids.join(",");
 
+  /* The open message. While set, the reader pane is part of the layout tree
+     (it docks right by default and drags/swaps like any inbox pane). */
+  const [reading, setReading] = useState<Reading | null>(null);
+  const paneIds = reading ? [...ids, READER_PANE_ID] : ids;
+  const paneIdsKey = paneIds.join(",");
+
+  useEffect(() => {
+    if (reading && !ids.includes(reading.accountId)) setReading(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idsKey]);
+
   const [tree, setTree] = useState<LayoutNode | null>(null);
   const hydratedRef = useRef(false);
 
-  /* Hydrate from storage once, then revalidate whenever the scope changes. */
+  /* Hydrate from storage once, then revalidate whenever panes change. */
   useEffect(() => {
     setTree((current) => {
       const base = hydratedRef.current ? current : loadStoredTree();
       hydratedRef.current = true;
-      const next = validateLayout(base, ids);
+      const next = validateLayout(base, paneIds);
       persistTree(next);
       return next;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [idsKey]);
+  }, [paneIdsKey]);
 
   const mutate = useCallback(
     (update: (tree: LayoutNode | null) => LayoutNode | null) => {
@@ -221,6 +247,12 @@ export function InboxTiles({
     [mutate],
   );
 
+  const openEmail = useCallback(
+    (accountId: string, emailId: string) => setReading({ accountId, emailId }),
+    [],
+  );
+  const closeReader = useCallback(() => setReading(null), []);
+
   const ctx: TilesCtx = {
     accounts,
     removable: scoped.length > 1,
@@ -228,6 +260,9 @@ export function InboxTiles({
     drag,
     beginHeaderDrag,
     resizeSplit,
+    reading,
+    openEmail,
+    closeReader,
   };
 
   /* Reset is triggered from the command palette (no tiles toolbar). */
@@ -255,16 +290,27 @@ export function InboxTiles({
           )}
         </div>
 
-        {drag && draggedAccount && (
+        {drag && (
           <div
             className="pointer-events-none fixed z-50 flex items-center gap-2 rounded-md border bg-popover px-2.5 py-1.5 shadow-lg"
             style={{ left: drag.x + 14, top: drag.y + 12 }}
           >
-            <AccountDot
-              colorIndex={accounts.indexOf(draggedAccount)}
-              accountId={draggedAccount.accountId}
-            />
-            <span className="font-mono text-xs">{draggedAccount.email}</span>
+            {draggedAccount ? (
+              <>
+                <AccountDot
+                  colorIndex={accounts.indexOf(draggedAccount)}
+                  accountId={draggedAccount.accountId}
+                />
+                <span className="font-mono text-xs">
+                  {draggedAccount.email}
+                </span>
+              </>
+            ) : (
+              <>
+                <MailOpenIcon className="size-3.5 text-muted-foreground" />
+                <span className="text-xs">Reading pane</span>
+              </>
+            )}
           </div>
         )}
       </div>
@@ -321,7 +367,44 @@ const DROP_ZONE_CLASS: Record<DropZone, string> = {
 };
 
 function TilePane({ accountId }: { accountId: string }) {
-  const { accounts, drag } = useTiles();
+  const { drag } = useTiles();
+  const dropZone =
+    drag?.target?.accountId === accountId ? drag.target.zone : null;
+
+  if (accountId === READER_PANE_ID) {
+    return (
+      <div
+        data-pane-id={READER_PANE_ID}
+        className="relative flex h-full min-w-0 flex-col bg-background"
+      >
+        <ReaderPane />
+        {dropZone && <DropOverlay zone={dropZone} />}
+      </div>
+    );
+  }
+
+  return <AccountPane accountId={accountId} dropZone={dropZone} />;
+}
+
+function DropOverlay({ zone }: { zone: DropZone }) {
+  return (
+    <div
+      className={cn(
+        "pointer-events-none absolute z-10 border-[1.5px] border-primary bg-primary/15",
+        DROP_ZONE_CLASS[zone],
+      )}
+    />
+  );
+}
+
+function AccountPane({
+  accountId,
+  dropZone,
+}: {
+  accountId: string;
+  dropZone: DropZone | null;
+}) {
+  const { accounts } = useTiles();
   const account = accounts.find((a) => a.accountId === accountId);
   const dotIndex = accounts.findIndex((a) => a.accountId === accountId);
 
@@ -338,7 +421,6 @@ function TilePane({ accountId }: { accountId: string }) {
   }, []);
 
   if (!account) return null;
-  const dropZone = drag?.target?.accountId === accountId ? drag.target.zone : null;
 
   return (
     <div
@@ -348,15 +430,104 @@ function TilePane({ accountId }: { accountId: string }) {
     >
       <PaneHeader account={account} dotIndex={dotIndex} width={width} />
       <PaneBody account={account} dotIndex={dotIndex} />
-      {dropZone && (
-        <div
-          className={cn(
-            "pointer-events-none absolute z-10 border-[1.5px] border-primary bg-primary/15",
-            DROP_ZONE_CLASS[dropZone],
-          )}
-        />
-      )}
+      {dropZone && <DropOverlay zone={dropZone} />}
     </div>
+  );
+}
+
+/** "Jane <jane@x.com>" → { name: "Jane", address: "jane@x.com" }. */
+function parseAddress(from: string): { name: string; address: string } {
+  const match = from.match(/^\s*"?([^"<]*)"?\s*<([^>]+)>/);
+  if (match) return { name: match[1].trim() || match[2], address: match[2] };
+  return { name: from, address: from };
+}
+
+/** The message viewer — an ordinary pane in the tree (drag it like an inbox). */
+function ReaderPane() {
+  const { reading, beginHeaderDrag, closeReader } = useTiles();
+  const { showTechnicalMetadata } = useSettings();
+  const query = useFullEmailQuery(
+    reading?.accountId ?? "",
+    reading?.emailId ?? null,
+  );
+  const email = query.data;
+  const sender = email ? parseAddress(email.from) : null;
+  const sentAt = email ? new Date(email.date) : null;
+
+  return (
+    <>
+      <div
+        onPointerDown={(event) => beginHeaderDrag(event, READER_PANE_ID)}
+        className="flex h-9 shrink-0 cursor-grab touch-none items-center gap-2 border-b px-2.5 select-none active:cursor-grabbing"
+      >
+        <GripVerticalIcon className="size-3.5 shrink-0 text-muted-foreground/70" />
+        <MailOpenIcon className="size-3.5 shrink-0 text-muted-foreground" />
+        <span className="min-w-0 truncate text-xs font-medium">
+          {email?.subject || "Reading"}
+        </span>
+        <button
+          type="button"
+          title="Close reader"
+          onClick={closeReader}
+          className="ml-auto inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground/70 hover:bg-muted hover:text-foreground"
+        >
+          <XIcon className="size-3.5" />
+        </button>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
+        {query.error ? (
+          <ErrorState
+            detail={`GET /api/message · ${query.error.message}`}
+            onRetry={() => query.refetch()}
+            onReconnect={() => linkGoogle()}
+          />
+        ) : !email ? (
+          <div className="flex flex-col gap-3 p-5">
+            <div className="h-5 w-2/3 rounded bg-accent" />
+            <div className="h-3 w-1/2 rounded bg-muted" />
+            <div className="mt-3 h-3 w-full rounded bg-muted" />
+            <div className="h-3 w-5/6 rounded bg-muted" />
+            <div className="h-3 w-4/6 rounded bg-muted" />
+          </div>
+        ) : (
+          <article className="px-5 py-4">
+            <h2 className="text-[21px] leading-snug font-semibold tracking-[-0.5px]">
+              {email.subject || "(no subject)"}
+            </h2>
+            <div className="mt-2.5 flex flex-col gap-1">
+              <div className="flex min-w-0 items-baseline gap-2">
+                <span className="shrink-0 text-[13px] font-semibold">
+                  {sender?.name}
+                </span>
+                <span className="truncate font-mono text-[11.5px] text-muted-foreground">
+                  &lt;{sender?.address}&gt;
+                </span>
+              </div>
+              <span className="font-mono text-[11px] text-muted-foreground/70">
+                {sentAt && !Number.isNaN(sentAt.getTime())
+                  ? sentAt.toISOString()
+                  : email.date}
+              </span>
+              {email.to && (
+                <span className="truncate font-mono text-[11px] text-muted-foreground/70">
+                  to {email.to}
+                </span>
+              )}
+              {showTechnicalMetadata && email.messageId && (
+                <span className="font-mono text-[11px] break-all text-muted-foreground/70">
+                  message-id: {email.messageId}
+                </span>
+              )}
+            </div>
+            <div className="my-4 border-t" />
+            <div className="text-sm leading-[1.65] whitespace-pre-wrap text-foreground/85">
+              {email.body || email.snippet || "(empty message)"}
+            </div>
+          </article>
+        )}
+      </div>
+    </>
   );
 }
 
@@ -411,6 +582,7 @@ function PaneBody({
   account: Account;
   dotIndex: number;
 }) {
+  const { reading, openEmail } = useTiles();
   const { density } = useSettings();
   const query = useEmailsQuery(account.accountId);
   const { error, refetch } = query;
@@ -437,6 +609,11 @@ function PaneBody({
               density={density}
               dotIndex={dotIndex}
               accountId={account.accountId}
+              selected={
+                reading?.accountId === account.accountId &&
+                reading.emailId === email.id
+              }
+              onClick={() => openEmail(account.accountId, email.id)}
             />
           ))}
           {query.hasNextPage ? (

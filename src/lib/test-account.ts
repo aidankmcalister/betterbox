@@ -32,6 +32,23 @@ const SENDERS = [
   ["Figma", "Comments on Better Mail", "2 new comments on Component Spec"],
 ] as const;
 
+/** Full message for the reader pane, synthesized from the row data. */
+export function makeTestFullEmail(accountId: string, emailId: string) {
+  const row = makeTestEmails(accountId).find((email) => email.id === emailId);
+  const index = Number(accountId.replace(TEST_ACCOUNT_PREFIX, "")) || 1;
+  return {
+    id: emailId,
+    from: row?.from ?? "Test <test@example.dev>",
+    to: `test${index}@example.dev`,
+    subject: row?.subject ?? "(no subject)",
+    date: row?.date ?? "",
+    messageId: `<${emailId}@example.dev>`,
+    snippet: row?.snippet,
+    unread: row?.unread ?? false,
+    body: `${row?.snippet ?? ""}\n\nThis is a generated message on a dev test account — there is no real mail behind it. Use it to exercise the reader pane: drag its header to dock it elsewhere, resize the seams, and toggle technical metadata in Settings → Developer.`,
+  };
+}
+
 export function makeTestEmails(accountId: string): ThreadRowEmail[] {
   const seed = Number(accountId.replace(TEST_ACCOUNT_PREFIX, "")) || 1;
   const now = Date.now();

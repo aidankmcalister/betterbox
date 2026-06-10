@@ -5,7 +5,17 @@ import {
 } from "@tanstack/react-query";
 import type { ThreadRowEmail } from "@/components/thread-row";
 import type { Account } from "@/lib/account";
-import { isTestAccount, makeTestEmails } from "@/lib/test-account";
+import {
+  isTestAccount,
+  makeTestEmails,
+  makeTestFullEmail,
+} from "@/lib/test-account";
+
+export type FullEmail = ThreadRowEmail & {
+  to: string;
+  messageId: string;
+  body: string;
+};
 
 /**
  * TanStack Query layer over the mail API. Caching means panes repaint
@@ -64,6 +74,38 @@ export function useEmailsQuery(accountId: string) {
         nextPageToken: data.nextPageToken ?? undefined,
       };
     },
+  });
+}
+
+/** One full message for the reader pane. */
+export function useFullEmailQuery(accountId: string, emailId: string | null) {
+  return useQuery({
+    queryKey: ["email", accountId, emailId],
+    enabled: emailId !== null,
+    queryFn: async (): Promise<FullEmail> => {
+      if (isTestAccount(accountId)) {
+        return makeTestFullEmail(accountId, emailId!);
+      }
+      const data = await fetchJson<{ email: FullEmail }>(
+        `/api/message?accountId=${accountId}&id=${encodeURIComponent(emailId!)}`,
+      );
+      return data.email;
+    },
+  });
+}
+
+/** Send a plain-text message (test accounts pretend-send). */
+export async function sendNewEmail(options: {
+  accountId: string;
+  to: string;
+  subject: string;
+  body: string;
+}) {
+  if (isTestAccount(options.accountId)) return;
+  await fetchJson("/api/send", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(options),
   });
 }
 
