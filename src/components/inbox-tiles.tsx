@@ -1143,7 +1143,7 @@ function PaneBody({
       ) : !emails ? (
         <SkeletonRows density={density} />
       ) : emails.length === 0 ? (
-        <EmptyState />
+        <EmptyState folder={folder} />
       ) : (
         <>
           {emails.map((email) => (

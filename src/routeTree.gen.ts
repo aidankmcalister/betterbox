@@ -17,7 +17,12 @@ import { Route as ApiMessageRouteImport } from './routes/api/message'
 import { Route as ApiImageProxyRouteImport } from './routes/api/image-proxy'
 import { Route as ApiEmailsRouteImport } from './routes/api/emails'
 import { Route as ApiAccountsRouteImport } from './routes/api/accounts'
+import { Route as AppTrashRouteImport } from './routes/_app/trash'
+import { Route as AppSpamRouteImport } from './routes/_app/spam'
 import { Route as AppSettingsRouteImport } from './routes/_app/settings'
+import { Route as AppSentRouteImport } from './routes/_app/sent'
+import { Route as AppDraftsRouteImport } from './routes/_app/drafts'
+import { Route as AppArchivedRouteImport } from './routes/_app/archived'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AppEmailIdRouteImport } from './routes/_app/email.$id'
 
@@ -60,9 +65,34 @@ const ApiAccountsRoute = ApiAccountsRouteImport.update({
   path: '/api/accounts',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppTrashRoute = AppTrashRouteImport.update({
+  id: '/trash',
+  path: '/trash',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSpamRoute = AppSpamRouteImport.update({
+  id: '/spam',
+  path: '/spam',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSettingsRoute = AppSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSentRoute = AppSentRouteImport.update({
+  id: '/sent',
+  path: '/sent',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDraftsRoute = AppDraftsRouteImport.update({
+  id: '/drafts',
+  path: '/drafts',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppArchivedRoute = AppArchivedRouteImport.update({
+  id: '/archived',
+  path: '/archived',
   getParentRoute: () => AppRoute,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
@@ -79,7 +109,12 @@ const AppEmailIdRoute = AppEmailIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/privacy': typeof PrivacyRoute
+  '/archived': typeof AppArchivedRoute
+  '/drafts': typeof AppDraftsRoute
+  '/sent': typeof AppSentRoute
   '/settings': typeof AppSettingsRoute
+  '/spam': typeof AppSpamRoute
+  '/trash': typeof AppTrashRoute
   '/api/accounts': typeof ApiAccountsRoute
   '/api/emails': typeof ApiEmailsRoute
   '/api/image-proxy': typeof ApiImageProxyRoute
@@ -90,7 +125,12 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
+  '/archived': typeof AppArchivedRoute
+  '/drafts': typeof AppDraftsRoute
+  '/sent': typeof AppSentRoute
   '/settings': typeof AppSettingsRoute
+  '/spam': typeof AppSpamRoute
+  '/trash': typeof AppTrashRoute
   '/api/accounts': typeof ApiAccountsRoute
   '/api/emails': typeof ApiEmailsRoute
   '/api/image-proxy': typeof ApiImageProxyRoute
@@ -104,7 +144,12 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
   '/privacy': typeof PrivacyRoute
+  '/_app/archived': typeof AppArchivedRoute
+  '/_app/drafts': typeof AppDraftsRoute
+  '/_app/sent': typeof AppSentRoute
   '/_app/settings': typeof AppSettingsRoute
+  '/_app/spam': typeof AppSpamRoute
+  '/_app/trash': typeof AppTrashRoute
   '/api/accounts': typeof ApiAccountsRoute
   '/api/emails': typeof ApiEmailsRoute
   '/api/image-proxy': typeof ApiImageProxyRoute
@@ -119,7 +164,12 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/privacy'
+    | '/archived'
+    | '/drafts'
+    | '/sent'
     | '/settings'
+    | '/spam'
+    | '/trash'
     | '/api/accounts'
     | '/api/emails'
     | '/api/image-proxy'
@@ -130,7 +180,12 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/privacy'
+    | '/archived'
+    | '/drafts'
+    | '/sent'
     | '/settings'
+    | '/spam'
+    | '/trash'
     | '/api/accounts'
     | '/api/emails'
     | '/api/image-proxy'
@@ -143,7 +198,12 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_app'
     | '/privacy'
+    | '/_app/archived'
+    | '/_app/drafts'
+    | '/_app/sent'
     | '/_app/settings'
+    | '/_app/spam'
+    | '/_app/trash'
     | '/api/accounts'
     | '/api/emails'
     | '/api/image-proxy'
@@ -223,11 +283,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAccountsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/trash': {
+      id: '/_app/trash'
+      path: '/trash'
+      fullPath: '/trash'
+      preLoaderRoute: typeof AppTrashRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/spam': {
+      id: '/_app/spam'
+      path: '/spam'
+      fullPath: '/spam'
+      preLoaderRoute: typeof AppSpamRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/settings': {
       id: '/_app/settings'
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/sent': {
+      id: '/_app/sent'
+      path: '/sent'
+      fullPath: '/sent'
+      preLoaderRoute: typeof AppSentRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/drafts': {
+      id: '/_app/drafts'
+      path: '/drafts'
+      fullPath: '/drafts'
+      preLoaderRoute: typeof AppDraftsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/archived': {
+      id: '/_app/archived'
+      path: '/archived'
+      fullPath: '/archived'
+      preLoaderRoute: typeof AppArchivedRouteImport
       parentRoute: typeof AppRoute
     }
     '/api/auth/$': {
@@ -248,13 +343,23 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppRouteChildren {
+  AppArchivedRoute: typeof AppArchivedRoute
+  AppDraftsRoute: typeof AppDraftsRoute
+  AppSentRoute: typeof AppSentRoute
   AppSettingsRoute: typeof AppSettingsRoute
+  AppSpamRoute: typeof AppSpamRoute
+  AppTrashRoute: typeof AppTrashRoute
   AppIndexRoute: typeof AppIndexRoute
   AppEmailIdRoute: typeof AppEmailIdRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppArchivedRoute: AppArchivedRoute,
+  AppDraftsRoute: AppDraftsRoute,
+  AppSentRoute: AppSentRoute,
   AppSettingsRoute: AppSettingsRoute,
+  AppSpamRoute: AppSpamRoute,
+  AppTrashRoute: AppTrashRoute,
   AppIndexRoute: AppIndexRoute,
   AppEmailIdRoute: AppEmailIdRoute,
 }

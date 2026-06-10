@@ -1,9 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-/** The base mailbox — all UI lives in the `_app` layout; `?folder=` selects it. */
+/** The inbox — all UI lives in the `_app` layout; folders are sibling paths. */
 export const Route = createFileRoute("/_app/")({
-  validateSearch: (search: Record<string, unknown>): { folder?: string } => ({
-    folder: typeof search.folder === "string" ? search.folder : undefined,
-  }),
   component: () => null,
 });

@@ -32,6 +32,25 @@ export const Route = createFileRoute("/_app")({
   component: AppShell,
 });
 
+/** Folders are sibling paths under the shell layout. */
+const FOLDER_PATH = {
+  inbox: "/",
+  sent: "/sent",
+  drafts: "/drafts",
+  archived: "/archived",
+  spam: "/spam",
+  trash: "/trash",
+} as const satisfies Record<Folder, string>;
+
+const PATH_FOLDER: Record<string, Folder> = {
+  "/": "inbox",
+  "/sent": "sent",
+  "/drafts": "drafts",
+  "/archived": "archived",
+  "/spam": "spam",
+  "/trash": "trash",
+};
+
 function AppShell() {
   useApplyAccent();
   const { data: session, isPending } = useSession();
@@ -70,14 +89,17 @@ function AppShell() {
      /settings opens the settings dialog over the shell. */
   const emailMatch = matchRoute({ to: "/email/$id" });
   const search = location.search as { account?: string; folder?: string };
-  const folder = toFolder(search.folder);
   const reading: Reading | null =
     emailMatch && search.account
       ? { accountId: search.account, emailId: emailMatch.id }
       : null;
   const settingsOpen = Boolean(matchRoute({ to: "/settings" }));
 
-  // Folder rides along in the URL so it survives opening/closing the reader.
+  /* Folders are real paths (/trash, /sent, …). When the reader is open it
+     carries the folder in its search so the panes behind keep their folder. */
+  const folder: Folder = emailMatch
+    ? toFolder(search.folder)
+    : (PATH_FOLDER[location.pathname] ?? "inbox");
   const folderSearch = folder === "inbox" ? {} : { folder };
 
   const openEmail = useCallback(
@@ -91,13 +113,12 @@ function AppShell() {
     [navigate, folder],
   );
   const closeReader = useCallback(
-    () => navigate({ to: "/", search: folderSearch }),
+    () => navigate({ to: FOLDER_PATH[folder] }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [navigate, folder],
   );
   const openFolder = useCallback(
-    (next: Folder) =>
-      navigate({ to: "/", search: next === "inbox" ? {} : { folder: next } }),
+    (next: Folder) => navigate({ to: FOLDER_PATH[next] }),
     [navigate],
   );
   const openSettings = useCallback(
