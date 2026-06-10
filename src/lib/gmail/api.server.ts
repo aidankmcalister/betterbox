@@ -71,8 +71,26 @@ async function fetchEmail(accessToken: string, id: string): Promise<Email> {
   };
 }
 
-function gmailFetch(accessToken: string, path: string) {
+/** Remove the UNREAD label from up to 1000 messages (batchModify). */
+export async function markEmailsRead(
+  accessToken: string,
+  ids: string[],
+): Promise<void> {
+  if (ids.length === 0) return;
+  const res = await gmailFetch(accessToken, "/messages/batchModify", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ ids: ids.slice(0, 1000), removeLabelIds: ["UNREAD"] }),
+  });
+  if (!res.ok) throw new Error(`Gmail batchModify failed (${res.status})`);
+}
+
+function gmailFetch(accessToken: string, path: string, init?: RequestInit) {
   return fetch(`${GMAIL}${path}`, {
-    headers: { authorization: `Bearer ${accessToken}` },
+    ...init,
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      ...init?.headers,
+    },
   });
 }

@@ -32,12 +32,14 @@ export function CommandMenu({
   onOpenChange,
   onOpenSettings,
   onGoInbox,
+  onMarkAllRead,
   onAddTestAccount,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onOpenSettings: () => void;
   onGoInbox: () => void;
+  onMarkAllRead: () => void;
   onAddTestAccount?: () => void;
 }) {
   const { setTheme } = useTheme();
@@ -60,7 +62,7 @@ export function CommandMenu({
               <PenLine />
               <span>Compose</span>
             </CommandItem>
-            <CommandItem onSelect={run(() => {})}>
+            <CommandItem onSelect={run(onMarkAllRead)}>
               <MailCheck />
               <span>Mark all as read</span>
             </CommandItem>

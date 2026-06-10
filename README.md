@@ -8,12 +8,21 @@ A web-based Gmail client for developers — a faster, denser UI on top of the Gm
 
 - Sign in with Google (OAuth via Better Auth).
 - Link multiple Gmail accounts to one user; all inboxes are usable at once.
-- View the 50 most recent messages (subject + sender) per account, side by side.
-- Light/dark/system theme.
+- Tiling inbox: each account is a pane you arrange like a tiling window
+  manager (drag headers to swap/split, drag seams to resize; layout persists).
+- Dense thread list with unread weighting, snippets, account-colored dots,
+  and the 50 most recent messages per account.
+- Mark all as read (Gmail `batchModify`) from the command palette.
+- ⌘K command palette and keyboard shortcuts (`G I`, `⌥1–9`).
+- Settings: theme, accent color, per-account colors, row density, snippets.
+- Client-side caching via TanStack Query (panes repaint instantly on
+  rearrange instead of refetching).
 
 ## What it doesn't do yet
 
-Messages are fetched live from Gmail on each load — nothing is stored or synced. There is no message viewer, no threads, no send, and no developer-platform features.
+Messages are fetched live from Gmail (cached in-memory on the client only) —
+nothing is stored or synced server-side. There is no message viewer, no
+threads, no send, and no developer-platform features.
 
 ## Roadmap
 
@@ -21,15 +30,15 @@ Messages are fetched live from Gmail on each load — nothing is stored or synce
 - [ ] Thread grouping (`threads.get`) instead of flat messages
 - [ ] Pagination / load-more (lift the 50-message cap)
 - [ ] Compose, reply, forward (threading via `References` / `In-Reply-To`)
-- [ ] Labels, read/unread, star, archive, trash
+- [ ] Labels, star, archive, trash (mark-as-read shipped)
 - [ ] Search and filtering
 - [ ] Incremental sync (History API) and push (`users.watch` + Pub/Sub)
-- [ ] Local caching / data layer (TanStack Query)
-- [ ] Keyboard shortcuts + command palette
+- [x] Local caching / data layer (TanStack Query)
+- [x] Keyboard shortcuts + command palette
 - [ ] Export (Markdown / JSON / plain text)
 - [ ] Developer surface: outbound webhooks, analytics, API request log
 - [ ] Gmail API quota tracking, rate limiting, backoff
-- [ ] Error / empty / loading states
+- [x] Error / empty / loading states
 
 ## Tech stack
 
