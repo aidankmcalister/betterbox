@@ -1,25 +1,19 @@
-import {
-  CheckIcon,
-  FlaskConicalIcon,
-  PlusIcon,
-  RotateCcwIcon,
-  XIcon,
-} from "lucide-react";
+import { CheckIcon, FlaskConicalIcon, PlusIcon } from "lucide-react";
 import { resolveAccountColor } from "@/components/account-dot";
 import { useSettings } from "@/hooks/use-settings";
 import type { Account } from "@/lib/account";
 import { formatCount } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-/** "alex@gmail.com" → "alex" — short labels for the composed-view header. */
+/** "alex@gmail.com" → "alex" — short labels for the account rows. */
 function shortName(email: string): string {
   return email.split("@")[0] || email;
 }
 
 /**
- * The view builder: a single card. Header shows the composed view (stacked
- * dots + label + unread total); rows beneath are the accounts, checked in or
- * out of the view. Clicking the header resets to all accounts.
+ * The sidebar View section (design: status header + mono caps summary bar +
+ * real checkboxes). The bar reports the composed view; each row's checkbox —
+ * filled with the account's color — toggles it in or out of the scope.
  */
 export function ViewCard({
   accounts,
@@ -38,59 +32,24 @@ export function ViewCard({
 }) {
   const { accountColors } = useSettings();
   const inView = accounts.filter((a) => scopeIds.includes(a.accountId));
-  const label = allOn
-    ? "All accounts"
-    : inView.map((a) => shortName(a.email)).join(" + ");
   const totalUnread = inView.reduce((sum, a) => sum + a.unread, 0);
 
   return (
-    <div className="overflow-hidden rounded-lg border bg-card">
-      <button
-        type="button"
-        onClick={() => onToggle("all")}
-        title={allOn ? "Viewing all accounts" : "Reset to all accounts"}
-        className={cn(
-          "group/head flex w-full items-center gap-[9px] border-b px-2.5 py-2 text-left",
-          allOn ? "cursor-default" : "hover:bg-muted",
-        )}
-      >
-        <span className="inline-flex shrink-0">
-          {inView.map((account, i) => (
-            <span
-              key={account.accountId}
-              className="size-[11px] rounded-full border-2 border-card"
-              style={{
-                background: resolveAccountColor(
-                  accounts.findIndex((a) => a.accountId === account.accountId),
-                  account.accountId,
-                  accountColors,
-                ),
-                marginLeft: i ? -4 : 0,
-                position: "relative",
-                zIndex: inView.length - i,
-              }}
-            />
-          ))}
+    <div>
+      <div className="flex h-7 items-center gap-[7px] border-b px-2.5">
+        <span className="font-mono text-[10px] tracking-[0.5px] text-muted-foreground uppercase">
+          {allOn
+            ? "Viewing all"
+            : `Viewing ${inView.length} of ${accounts.length}`}
         </span>
-        <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground">
-          {label}
-        </span>
-        {!allOn && (
-          <RotateCcwIcon className="hidden size-3 shrink-0 text-muted-foreground group-hover/head:inline-flex" />
-        )}
         {totalUnread > 0 && (
-          <span
-            className={cn(
-              "shrink-0 font-mono text-[10.5px] text-muted-foreground",
-              !allOn && "group-hover/head:hidden",
-            )}
-          >
+          <span className="ml-auto font-mono text-[10px] font-medium text-primary">
             {formatCount(totalUnread)} new
           </span>
         )}
-      </button>
+      </div>
 
-      <div className="flex flex-col p-1">
+      <div className="flex flex-col pt-1">
         {accounts.map((account, index) => {
           const on = scopeIds.includes(account.accountId);
           const locked = on && scopeIds.length === 1;
@@ -103,6 +62,8 @@ export function ViewCard({
             <button
               key={account.accountId}
               type="button"
+              role="checkbox"
+              aria-checked={on}
               onClick={() => onToggle(account.accountId)}
               title={
                 on
@@ -112,28 +73,29 @@ export function ViewCard({
                   : `Add ${shortName(account.email)} to view`
               }
               className={cn(
-                "group/row flex w-full items-center gap-2 rounded-[5px] px-[7px] py-[5px] text-left",
+                "flex w-full items-center gap-[9px] rounded-[5px] px-[7px] py-[5px] text-left",
                 locked ? "cursor-default" : "hover:bg-muted",
               )}
             >
               <span
-                className="size-[7px] shrink-0 rounded-full transition-opacity"
+                className="flex size-3.5 shrink-0 items-center justify-center rounded-[4px]"
                 style={
                   on
                     ? { background: color }
-                    : {
-                        background: "transparent",
-                        boxShadow: `inset 0 0 0 1.5px ${color}`,
-                        opacity: 0.45,
-                      }
+                    : { boxShadow: `inset 0 0 0 1.5px ${color}`, opacity: 0.45 }
                 }
-              />
+              >
+                {on && (
+                  <CheckIcon
+                    className="size-2.5 text-term"
+                    strokeWidth={3}
+                  />
+                )}
+              </span>
               <span
                 className={cn(
-                  "min-w-0 flex-1 truncate text-xs",
-                  on
-                    ? "font-medium text-foreground"
-                    : "text-muted-foreground/70",
+                  "min-w-0 flex-1 truncate text-[12.5px]",
+                  on ? "font-medium text-foreground" : "text-muted-foreground",
                 )}
                 title={account.email}
               >
@@ -141,42 +103,26 @@ export function ViewCard({
               </span>
               <span
                 className={cn(
-                  "shrink-0 font-mono text-[10px]",
+                  "shrink-0 font-mono text-[10.5px]",
                   on ? "text-muted-foreground" : "text-muted-foreground/70",
                 )}
               >
                 {formatCount(account.unread)}
               </span>
-              <span className="inline-flex w-[13px] shrink-0 justify-center">
-                {on ? (
-                  <>
-                    <CheckIcon
-                      className={cn(
-                        "size-3 text-muted-foreground",
-                        !locked && "group-hover/row:hidden",
-                      )}
-                    />
-                    {!locked && (
-                      <XIcon className="hidden size-3 text-muted-foreground group-hover/row:inline-flex" />
-                    )}
-                  </>
-                ) : (
-                  <PlusIcon className="hidden size-3 text-foreground group-hover/row:inline-flex" />
-                )}
-              </span>
             </button>
           );
         })}
+
         {onAddAccount && (
           <button
             type="button"
             onClick={onAddAccount}
-            className="group/add flex w-full items-center gap-2 rounded-[5px] px-[7px] py-[5px] text-left hover:bg-muted"
+            className="group/add flex w-full items-center gap-[9px] rounded-[5px] px-[7px] py-[5px] text-left hover:bg-muted"
           >
-            <span className="inline-flex w-[7px] shrink-0 items-center justify-center">
+            <span className="inline-flex size-3.5 shrink-0 items-center justify-center">
               <PlusIcon className="size-3 shrink-0 text-muted-foreground/70 group-hover/add:text-foreground" />
             </span>
-            <span className="text-xs text-muted-foreground/70 group-hover/add:text-foreground">
+            <span className="text-[12.5px] text-muted-foreground/70 group-hover/add:text-foreground">
               Add account
             </span>
           </button>
@@ -186,12 +132,12 @@ export function ViewCard({
             type="button"
             onClick={onAddTestAccount}
             title="Dev only: add a dummy account with generated mail"
-            className="group/dev flex w-full items-center gap-2 rounded-[5px] px-[7px] py-[5px] text-left hover:bg-muted"
+            className="group/dev flex w-full items-center gap-[9px] rounded-[5px] px-[7px] py-[5px] text-left hover:bg-muted"
           >
-            <span className="inline-flex w-[7px] shrink-0 items-center justify-center">
+            <span className="inline-flex size-3.5 shrink-0 items-center justify-center">
               <FlaskConicalIcon className="size-3 shrink-0 text-muted-foreground/70 group-hover/dev:text-foreground" />
             </span>
-            <span className="text-xs text-muted-foreground/70 group-hover/dev:text-foreground">
+            <span className="text-[12.5px] text-muted-foreground/70 group-hover/dev:text-foreground">
               Add test account
             </span>
             <span className="ml-auto font-mono text-[10px] font-medium tracking-wide text-accent-2 uppercase">
