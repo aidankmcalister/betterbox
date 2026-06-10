@@ -11,7 +11,7 @@ import {
   ArchiveIcon,
   BracesIcon,
   CheckIcon,
-  ChevronDownIcon,
+  ChevronUpIcon,
   ClipboardIcon,
   CodeXmlIcon,
   DownloadIcon,
@@ -498,7 +498,6 @@ function ReaderPane() {
   const rawQuery = useRawEmailQuery(accountId, emailId, raw);
 
   const email = fullQuery.data;
-  const account = accounts.find((a) => a.accountId === accountId);
   const dotIndex = accounts.findIndex((a) => a.accountId === accountId);
   const accountColor = useAccountColor(Math.max(dotIndex, 0), accountId);
   const sender = email ? parseAddress(email.from) : null;
@@ -508,101 +507,62 @@ function ReaderPane() {
     onReply({ accountId, to: sender.address, subject: email.subject });
   };
 
+  /* Reader-scoped keys: Esc closes · ⌥R toggles Raw · R replies. */
+  useEffect(() => {
+    const typing = (target: EventTarget | null) =>
+      target instanceof HTMLElement &&
+      target.closest("input, textarea, [contenteditable='true']") !== null;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") return closeReader();
+      if (typing(event.target) || event.metaKey || event.ctrlKey) return;
+      if (event.key.toLowerCase() !== "r") return;
+      event.preventDefault();
+      if (event.altKey) setRaw((current) => !current);
+      else reply();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [closeReader, email, sender]);
+
   return (
     <>
+      {/* Title strip — context + quiet management, draggable like any pane.
+          The action buttons live in the floating bar, not up here. */}
       <div
         onPointerDown={(event) => beginHeaderDrag(event, READER_PANE_ID)}
-        className="flex h-9 shrink-0 cursor-grab touch-none items-center gap-2 border-b px-2.5 select-none active:cursor-grabbing"
+        className="flex h-10 shrink-0 cursor-grab touch-none items-center gap-[9px] border-b px-3 select-none active:cursor-grabbing"
       >
         <GripVerticalIcon className="size-3.5 shrink-0 text-muted-foreground/70" />
-        <MailOpenIcon className="size-3.5 shrink-0 text-muted-foreground" />
-        <span className="min-w-0 truncate text-xs font-medium">
+        <MailOpenIcon className="size-3.5 shrink-0 text-ink-tertiary" />
+        <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold">
           {email?.subject || "Reading"}
         </span>
         <button
           type="button"
-          title="Close reader"
-          onClick={closeReader}
-          className="ml-auto inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground/70 hover:bg-muted hover:text-foreground"
+          disabled
+          title="Archive — soon"
+          className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-ink-subtle hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:hover:bg-transparent"
         >
-          <XIcon className="size-3.5" />
+          <ArchiveIcon className="size-[15px]" />
         </button>
-      </div>
-
-      {/* Dev toolbar (design): Reply · reply-all/forward · archive/trash —
-          right side: the teal Raw toggle and a working Export menu. */}
-      <div className="flex h-10 shrink-0 items-center gap-1 overflow-x-clip border-b px-3">
-        <Button variant="outline" size="sm" disabled={!email} onClick={reply}>
-          <ReplyIcon data-icon="inline-start" /> Reply
-        </Button>
-        <Button variant="ghost" size="icon-sm" disabled title="Reply all — soon">
-          <ReplyAllIcon />
-        </Button>
-        <Button variant="ghost" size="icon-sm" disabled title="Forward — soon">
-          <ForwardIcon />
-        </Button>
-        <span className="mx-1 h-5 w-px shrink-0 bg-border" />
-        <Button variant="ghost" size="icon-sm" disabled title="Archive — soon">
-          <ArchiveIcon />
-        </Button>
-        <Button variant="ghost" size="icon-sm" disabled title="Trash — soon">
-          <Trash2Icon />
-        </Button>
-        <span className="ml-auto inline-flex items-center gap-1">
-          <Button
-            variant="dev"
-            size="sm"
-            aria-pressed={raw}
-            onClick={() => setRaw((current) => !current)}
-          >
-            <CodeXmlIcon data-icon="inline-start" /> Raw
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              disabled={!email}
-              render={<Button variant="outline" size="sm" />}
-            >
-              <DownloadIcon data-icon="inline-start" /> Export
-              <ChevronDownIcon className="size-3 text-muted-foreground/70" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52">
-              <DropdownMenuGroup>
-                <DropdownMenuItem onClick={() => email && exportEmail(email, "md")}>
-                  <HashIcon />
-                  Markdown
-                  <span className="ml-auto font-mono text-[10.5px] text-muted-foreground/70">
-                    .md
-                  </span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => email && exportEmail(email, "json")}>
-                  <BracesIcon className="text-accent-2-hover" />
-                  <span className="font-mono text-xs">JSON</span>
-                  <span className="ml-auto font-mono text-[10.5px] text-muted-foreground/70">
-                    .json
-                  </span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => email && exportEmail(email, "txt")}>
-                  <FileTextIcon />
-                  Plain text
-                  <span className="ml-auto font-mono text-[10.5px] text-muted-foreground/70">
-                    .txt
-                  </span>
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-              <DropdownMenuSeparator />
-              <DropdownMenuGroup>
-                <DropdownMenuItem
-                  onClick={() =>
-                    email && navigator.clipboard.writeText(email.messageId)
-                  }
-                >
-                  <ClipboardIcon className="text-accent-2-hover" />
-                  <span className="font-mono text-xs">Copy message-ID</span>
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </span>
+        <button
+          type="button"
+          disabled
+          title="Trash — soon"
+          className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-ink-subtle hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:hover:bg-transparent"
+        >
+          <Trash2Icon className="size-[15px]" />
+        </button>
+        <span className="h-[18px] w-px shrink-0 bg-border" />
+        <button
+          type="button"
+          title="Close (Esc)"
+          onClick={closeReader}
+          className="inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-ink-subtle hover:bg-muted hover:text-foreground"
+        >
+          <XIcon className="size-[15px]" />
+        </button>
       </div>
 
       <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
@@ -635,7 +595,7 @@ function ReaderPane() {
             <div className="h-3 w-4/6 rounded bg-muted" />
           </div>
         ) : (
-          <article className="mx-auto max-w-[720px] px-8 pt-[22px] pb-14">
+          <article className="mx-auto max-w-[720px] px-[34px] pt-[22px] pb-24">
             <h2 className="text-[21px] leading-[1.3] font-semibold tracking-[-0.5px]">
               {email.subject || "(no subject)"}
             </h2>
@@ -655,26 +615,24 @@ function ReaderPane() {
                   <span className="truncate font-mono text-[11.5px] text-muted-foreground">
                     &lt;{sender.address}&gt;
                   </span>
-                  <span className="ml-auto font-mono text-[11px] text-muted-foreground/70">
-                    {isoDate(email.date)}
+                  <span
+                    title={isoDate(email.date)}
+                    className="ml-auto font-mono text-[11px] text-muted-foreground/70"
+                  >
+                    {shortDate(email.date)}
                   </span>
                 </div>
                 <div className="mt-1 flex min-w-0 items-center gap-[7px]">
                   <span className="shrink-0 text-[11.5px] text-muted-foreground/70">
                     to
                   </span>
-                  <span className="truncate font-mono text-[11px] text-muted-foreground">
-                    {email.to || "—"}
+                  <span className="inline-flex min-w-0 items-center gap-1.5 font-mono text-[11px] text-muted-foreground">
+                    <span
+                      className="size-1.5 shrink-0 rounded-full"
+                      style={{ background: accountColor }}
+                    />
+                    <span className="truncate">{email.to || "—"}</span>
                   </span>
-                  {account && (
-                    <span className="ml-1 inline-flex shrink-0 items-center gap-[5px] text-[11px] text-muted-foreground/70">
-                      <span
-                        className="size-1.5 rounded-full"
-                        style={{ background: accountColor }}
-                      />
-                      via {account.email.split("@")[0]}
-                    </span>
-                  )}
                 </div>
                 {showTechnicalMetadata && email.messageId && (
                   <div className="mt-2 font-mono text-[10.5px] break-all text-muted-foreground/70">
@@ -704,17 +662,104 @@ function ReaderPane() {
                     ),
                   )
               )}
-              <Button variant="outline" className="mt-6" onClick={reply}>
-                <ReplyIcon data-icon="inline-start" /> Reply to{" "}
-                {sender.name.split(" ")[0]}
-              </Button>
             </div>
           </article>
         )}
       </div>
+
+      {/* Floating action bar — over both views, only when a message is open. */}
+      {email && (
+        <div className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-[3px] rounded-[10px] border border-hairline-strong bg-surface-3 p-1 shadow-2xl">
+          <button type="button" onClick={reply} className={FBTN_PRIMARY}>
+            <ReplyIcon /> Reply
+          </button>
+          <button
+            type="button"
+            disabled
+            title="Reply all — soon"
+            className={FBTN_ICON}
+          >
+            <ReplyAllIcon />
+          </button>
+          <button
+            type="button"
+            disabled
+            title="Forward — soon"
+            className={FBTN_ICON}
+          >
+            <ForwardIcon />
+          </button>
+          <span className="mx-1 h-5 w-px shrink-0 bg-hairline-strong" />
+          <button
+            type="button"
+            aria-pressed={raw}
+            onClick={() => setRaw((current) => !current)}
+            title="Toggle raw MIME source (⌥R)"
+            className={cn(FBTN_MONO, raw && FBTN_MONO_ON)}
+          >
+            <CodeXmlIcon /> Raw
+          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={<button type="button" className={FBTN_MONO} />}
+            >
+              <DownloadIcon /> Export
+              <ChevronUpIcon className="size-3 text-muted-foreground/70" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="top" align="end" sideOffset={8} className="w-52">
+              <DropdownMenuGroup>
+                <DropdownMenuItem onClick={() => exportEmail(email, "md")}>
+                  <HashIcon />
+                  Markdown
+                  <span className="ml-auto font-mono text-[10.5px] text-muted-foreground/70">
+                    .md
+                  </span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => exportEmail(email, "json")}>
+                  <BracesIcon className="text-accent-2-hover" />
+                  <span className="font-mono text-xs">JSON</span>
+                  <span className="ml-auto font-mono text-[10.5px] text-muted-foreground/70">
+                    .json
+                  </span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => exportEmail(email, "txt")}>
+                  <FileTextIcon />
+                  Plain text
+                  <span className="ml-auto font-mono text-[10.5px] text-muted-foreground/70">
+                    .txt
+                  </span>
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+                <DropdownMenuItem
+                  onClick={() => navigator.clipboard.writeText(email.messageId)}
+                >
+                  <ClipboardIcon className="text-accent-2-hover" />
+                  <span className="font-mono text-xs">Copy message-ID</span>
+                  <span className="ml-auto font-mono text-[10.5px] text-muted-foreground/70">
+                    ⌘⇧C
+                  </span>
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
     </>
   );
 }
+
+/* Floating-bar button recipes (local compositions — the pill's transparent,
+   mono, teal-when-active styling doesn't map onto a stock Button variant). */
+const FBTN_PRIMARY =
+  "inline-flex h-[30px] cursor-pointer items-center gap-[7px] rounded-[7px] bg-primary px-[13px] text-[12.5px] font-medium text-on-primary transition-colors hover:bg-primary-hover [&_svg]:size-3.5";
+const FBTN_ICON =
+  "inline-flex size-[30px] cursor-pointer items-center justify-center rounded-[7px] text-ink-subtle transition-colors hover:bg-surface-4 hover:text-ink [&_svg]:size-3.5 disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-ink-subtle";
+const FBTN_MONO =
+  "inline-flex h-[30px] cursor-pointer items-center gap-[7px] rounded-[7px] border border-transparent px-2 font-mono text-[11.5px] font-medium text-ink-subtle transition-colors hover:bg-surface-4 hover:text-ink [&_svg]:size-3.5";
+const FBTN_MONO_ON =
+  "border-accent-2-focus bg-accent-2/15 text-accent-2-hover hover:bg-accent-2/15 hover:text-accent-2-hover";
 
 const initials = (name: string) =>
   name
@@ -728,6 +773,17 @@ const initials = (name: string) =>
 const isoDate = (raw: string) => {
   const date = new Date(raw);
   return Number.isNaN(date.getTime()) ? raw : date.toISOString();
+};
+
+/** Reader timestamp: "YYYY-MM-DD · HH:MM" in local time (full ISO is the title). */
+const shortDate = (raw: string) => {
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return raw;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return (
+    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
+    ` · ${pad(date.getHours())}:${pad(date.getMinutes())}`
+  );
 };
 
 function PaneHeader({
