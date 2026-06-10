@@ -22,6 +22,7 @@ import {
   MailOpenIcon,
   ReplyAllIcon,
   ReplyIcon,
+  SendIcon,
   StarIcon,
   Trash2Icon,
   XIcon,
@@ -49,6 +50,7 @@ import {
   actOnEmail,
   emailsQueryKey,
   flattenEmails,
+  sendNewEmail,
   useEmailsQuery,
   useFullEmailQuery,
   useRawEmailQuery,
@@ -482,13 +484,17 @@ function parseAddress(from: string): { name: string; address: string } {
 
 /** The message viewer — an ordinary pane in the tree (drag it like an inbox). */
 function ReaderPane() {
-  const { reading, accounts, beginHeaderDrag, closeReader, onReply } =
-    useTiles();
+  const { reading, accounts, beginHeaderDrag, closeReader } = useTiles();
   const { showTechnicalMetadata, clock } = useSettings();
   const queryClient = useQueryClient();
   const [raw, setRaw] = useState(false);
   const [busy, setBusy] = useState(false);
   const [starred, setStarred] = useState(false);
+  const [replyOpen, setReplyOpen] = useState(false);
+  const [replyBody, setReplyBody] = useState("");
+  const [replySending, setReplySending] = useState(false);
+  const [replySent, setReplySent] = useState(false);
+  const replyRef = useRef<HTMLDivElement>(null);
 
   const accountId = reading?.accountId ?? "";
   const emailId = reading?.emailId ?? null;
@@ -501,19 +507,47 @@ function ReaderPane() {
   const sender = email ? parseAddress(email.from) : null;
 
   useEffect(() => setStarred(email?.starred ?? false), [email?.id, email?.starred]);
+  /* Reset the inline reply when the open message changes. */
+  useEffect(() => {
+    setReplyOpen(false);
+    setReplyBody("");
+    setReplySent(false);
+  }, [email?.id]);
 
-  const reply = () => {
-    if (!email || !sender) return;
-    onReply({
-      accountId,
-      to: sender.address,
-      subject: email.subject,
-      inReplyTo: email.messageId || undefined,
-      references:
-        [email.references, email.messageId].filter(Boolean).join(" ") ||
-        undefined,
-      threadId: email.threadId || undefined,
-    });
+  /* Reply happens inline at the foot of the message (it stays in the pane and
+     threads under the original), not in the docked composer. */
+  const startReply = () => {
+    if (!email) return;
+    setReplySent(false);
+    setReplyOpen(true);
+    requestAnimationFrame(() =>
+      replyRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }),
+    );
+  };
+
+  const sendReply = async () => {
+    if (!email || !sender || replySending || !replyBody.trim()) return;
+    setReplySending(true);
+    try {
+      await sendNewEmail({
+        accountId,
+        to: sender.address,
+        subject: /^re:/i.test(email.subject)
+          ? email.subject
+          : `Re: ${email.subject}`,
+        body: replyBody,
+        inReplyTo: email.messageId || undefined,
+        references:
+          [email.references, email.messageId].filter(Boolean).join(" ") ||
+          undefined,
+        threadId: email.threadId || undefined,
+      });
+      setReplyOpen(false);
+      setReplyBody("");
+      setReplySent(true);
+    } finally {
+      setReplySending(false);
+    }
   };
 
   /* archive/trash drop the message from the inbox and close the reader; star
@@ -552,17 +586,21 @@ function ReaderPane() {
       target instanceof HTMLElement &&
       target.closest("input, textarea, [contenteditable='true']") !== null;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") return closeReader();
+      if (event.key === "Escape") {
+        if (replyOpen) setReplyOpen(false);
+        else closeReader();
+        return;
+      }
       if (typing(event.target) || event.metaKey || event.ctrlKey) return;
       if (event.key.toLowerCase() !== "r") return;
       event.preventDefault();
       if (event.altKey) setRaw((current) => !current);
-      else reply();
+      else startReply();
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [closeReader, email, sender]);
+  }, [closeReader, email, sender, replyOpen]);
 
   return (
     <>
@@ -724,6 +762,69 @@ function ReaderPane() {
                   )
               )}
             </div>
+
+            {/* Inline reply — stays in the pane and threads under this message. */}
+            <div ref={replyRef}>
+              {replyOpen ? (
+                <div className="mt-6 rounded-lg border bg-secondary p-3">
+                  <div className="mb-2 flex flex-wrap items-center gap-1.5 text-[12.5px] text-muted-foreground">
+                    <ReplyIcon className="size-3.5" />
+                    Reply to{" "}
+                    <span className="font-medium text-foreground">
+                      {sender.name}
+                    </span>
+                    <span className="truncate font-mono text-[11px] text-muted-foreground/80">
+                      &lt;{sender.address}&gt;
+                    </span>
+                  </div>
+                  <textarea
+                    autoFocus
+                    value={replyBody}
+                    onChange={(event) => setReplyBody(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (
+                        event.key === "Enter" &&
+                        (event.metaKey || event.ctrlKey)
+                      ) {
+                        event.preventDefault();
+                        void sendReply();
+                      }
+                    }}
+                    placeholder="Write your reply…"
+                    className="h-32 w-full resize-none rounded-md bg-background/50 p-2.5 text-sm leading-[1.6] outline-none placeholder:text-muted-foreground/60"
+                  />
+                  <div className="mt-2 flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      disabled={replySending || !replyBody.trim()}
+                      onClick={() => void sendReply()}
+                    >
+                      <SendIcon data-icon="inline-start" />
+                      {replySending ? "Sending…" : "Send reply"}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setReplyOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <span className="ml-auto font-mono text-[10.5px] text-muted-foreground/70">
+                      ⌘↵
+                    </span>
+                  </div>
+                </div>
+              ) : replySent ? (
+                <button
+                  type="button"
+                  onClick={startReply}
+                  className="mt-6 flex w-full items-center gap-2 rounded-lg border border-accent-2-focus/40 bg-accent-2/10 px-3 py-2 text-left text-[12.5px] text-accent-2-hover hover:bg-accent-2/15"
+                >
+                  <CheckIcon className="size-3.5" />
+                  Reply sent — it&rsquo;ll appear in this thread. Reply again?
+                </button>
+              ) : null}
+            </div>
           </article>
         )}
       </div>
@@ -731,7 +832,7 @@ function ReaderPane() {
       {/* Floating action bar — over both views, only when a message is open. */}
       {email && (
         <div className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-[3px] rounded-[10px] border border-hairline-strong bg-surface-3 p-1 shadow-2xl">
-          <button type="button" onClick={reply} className={FBTN_PRIMARY}>
+          <button type="button" onClick={startReply} className={FBTN_PRIMARY}>
             <ReplyIcon /> Reply
           </button>
           <Hint label="Reply all — soon">
