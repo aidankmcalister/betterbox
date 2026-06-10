@@ -11,6 +11,7 @@ import {
 import type { ComponentType, ReactNode } from "react";
 
 import { linkGoogle, useSession } from "@/lib/auth-client";
+import type { Account } from "@/lib/account";
 import {
   ACCENTS,
   setAccountColor,
@@ -30,12 +31,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
-
-export type SettingsAccount = {
-  accountId: string;
-  email: string;
-  unread: number;
-};
 
 type PageId = "accounts" | "appearance" | "inbox" | "developer" | "keyboard";
 
@@ -62,7 +57,7 @@ export function SettingsDialog({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  accounts: SettingsAccount[];
+  accounts: Account[];
 }) {
   const [page, setPage] = useState<PageId>("accounts");
 
@@ -120,7 +115,7 @@ export function SettingsDialog({
 
 // ── Pages ────────────────────────────────────────────────────────────────────
 
-function AccountsPage({ accounts }: { accounts: SettingsAccount[] }) {
+function AccountsPage({ accounts }: { accounts: Account[] }) {
   const { data: session } = useSession();
   const { accountColors } = useSettings();
   const primaryEmail = session?.user.email;

@@ -12,7 +12,8 @@ import {
 import { linkGoogle } from "@/lib/auth-client";
 import { formatCount } from "@/lib/format";
 import { NavUser } from "@/components/nav-user";
-import { ViewCard, type ScopeAccount } from "@/components/view-card";
+import { ViewCard } from "@/components/view-card";
+import type { Account } from "@/lib/account";
 import { Button } from "@/components/ui/button";
 import {
   Sidebar,
@@ -58,7 +59,7 @@ export function AppSidebar({
   onOpenSettings,
   onAddTestAccount,
 }: {
-  accounts: ScopeAccount[];
+  accounts: Account[];
   scopeIds: string[];
   allOn: boolean;
   onToggleScope: (id: string | "all") => void;

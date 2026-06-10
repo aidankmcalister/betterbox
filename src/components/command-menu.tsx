@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 
 import { linkGoogle, signOut } from "@/lib/auth-client";
-import { RESET_TILE_LAYOUT_EVENT } from "@/components/inbox-tiles";
+import { RESET_TILE_LAYOUT_EVENT } from "@/lib/layout-tree";
 import { useTheme } from "@/components/theme-provider";
 import {
   Command,

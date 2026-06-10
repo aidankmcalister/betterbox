@@ -7,10 +7,9 @@ import {
 } from "lucide-react";
 import { resolveAccountColor } from "@/components/account-dot";
 import { useSettings } from "@/hooks/use-settings";
+import type { Account } from "@/lib/account";
 import { formatCount } from "@/lib/format";
 import { cn } from "@/lib/utils";
-
-export type ScopeAccount = { accountId: string; email: string; unread: number };
 
 /** "alex@gmail.com" → "alex" — short labels for the composed-view header. */
 function shortName(email: string): string {
@@ -30,7 +29,7 @@ export function ViewCard({
   onAddAccount,
   onAddTestAccount,
 }: {
-  accounts: ScopeAccount[];
+  accounts: Account[];
   scopeIds: string[];
   allOn: boolean;
   onToggle: (id: string | "all") => void;

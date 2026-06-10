@@ -20,6 +20,9 @@ export type LayoutNode = PaneNode | SplitNode;
 
 export const MIN_PANE_FRACTION = 0.15;
 
+/** Dispatch this on window to restore the default tile layout (⌘K action). */
+export const RESET_TILE_LAYOUT_EVENT = "bm:reset-tile-layout";
+
 const newSplitId = () => crypto.randomUUID();
 
 function split(dir: SplitDir, children: LayoutNode[], sizes: number[]): SplitNode {
@@ -30,7 +33,7 @@ function pane(accountId: string): PaneNode {
   return { type: "pane", accountId };
 }
 
-export function paneAccountIds(node: LayoutNode): string[] {
+function paneAccountIds(node: LayoutNode): string[] {
   if (node.type === "pane") return [node.accountId];
   return node.children.flatMap(paneAccountIds);
 }
@@ -53,7 +56,7 @@ function evenSizes(count: number): number[] {
 }
 
 /** Remove a pane; collapse single-child splits and renormalize sizes. */
-export function removePane(
+function removePane(
   node: LayoutNode,
   accountId: string,
 ): LayoutNode | null {
@@ -77,7 +80,7 @@ export function removePane(
 }
 
 /** Replace the target pane with a 50/50 split holding it and the new pane. */
-export function splitPane(
+function splitPane(
   node: LayoutNode,
   targetAccountId: string,
   newAccountId: string,
@@ -99,7 +102,7 @@ export function splitPane(
   };
 }
 
-export function swapPanes(
+function swapPanes(
   node: LayoutNode,
   accountA: string,
   accountB: string,
@@ -135,7 +138,7 @@ export function movePane(
 }
 
 /** New accounts dock as a right-side pane (spec: existing 0.66 / new 0.34). */
-export function appendPaneRight(
+function appendPaneRight(
   tree: LayoutNode | null,
   accountId: string,
 ): LayoutNode {

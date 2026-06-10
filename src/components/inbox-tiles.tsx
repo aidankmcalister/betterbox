@@ -11,6 +11,7 @@ import { CheckIcon, GripVerticalIcon, XIcon } from "lucide-react";
 
 import {
   MIN_PANE_FRACTION,
+  RESET_TILE_LAYOUT_EVENT,
   defaultLayout,
   movePane,
   parseStoredTree,
@@ -19,6 +20,7 @@ import {
   type DropZone,
   type LayoutNode,
 } from "@/lib/layout-tree";
+import type { Account } from "@/lib/account";
 import { linkGoogle } from "@/lib/auth-client";
 import { formatCount } from "@/lib/format";
 import { isTestAccount, makeTestEmails } from "@/lib/test-account";
@@ -30,26 +32,14 @@ import {
   ErrorState,
   SkeletonRows,
 } from "@/components/thread-list-states";
-import { ThreadRow } from "@/components/thread-row";
+import { ThreadRow, type ThreadRowEmail } from "@/components/thread-row";
 import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 
-type Email = {
-  id: string;
-  from: string;
-  subject: string;
-  date: string;
-  snippet?: string;
-  unread?: boolean;
-};
-export type TileAccount = { accountId: string; email: string; unread: number };
-
 const STORAGE_KEY = "bm.tiles-layout";
-/** Dispatch this on window to restore the default tile layout (⌘K action). */
-export const RESET_TILE_LAYOUT_EVENT = "bm:reset-tile-layout";
 const DRAG_THRESHOLD_PX = 6;
 /** Below this pane width the header shows the short handle, not the email. */
 const FULL_EMAIL_MIN_WIDTH = 330;
@@ -62,7 +52,7 @@ type DragState = {
 };
 
 type TilesCtx = {
-  accounts: TileAccount[];
+  accounts: Account[];
   removable: boolean;
   onRemovePane: (accountId: string) => void;
   drag: DragState | null;
@@ -136,7 +126,7 @@ export function InboxTiles({
   scopeIds,
   onRemovePane,
 }: {
-  accounts: TileAccount[];
+  accounts: Account[];
   scopeIds: string[];
   onRemovePane: (accountId: string) => void;
 }) {
@@ -374,7 +364,7 @@ function PaneHeader({
   dotIndex,
   width,
 }: {
-  account: TileAccount;
+  account: Account;
   dotIndex: number;
   width: number;
 }) {
@@ -417,11 +407,11 @@ function PaneBody({
   account,
   dotIndex,
 }: {
-  account: TileAccount;
+  account: Account;
   dotIndex: number;
 }) {
   const { density } = useSettings();
-  const [emails, setEmails] = useState<Email[] | null>(null);
+  const [emails, setEmails] = useState<ThreadRowEmail[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(() => {

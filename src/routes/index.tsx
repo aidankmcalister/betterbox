@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAccountScope } from "@/hooks/use-account-scope";
+import type { Account } from "@/lib/account";
 import { useApplyAccent } from "@/hooks/use-settings";
 import { makeTestAccount } from "@/lib/test-account";
 import { signIn, useSession } from "../lib/auth-client";
@@ -22,8 +23,6 @@ import {
 export const Route = createFileRoute("/")({
   component: Home,
 });
-
-type Account = { accountId: string; email: string; unread: number };
 
 function Home() {
   useApplyAccent();
