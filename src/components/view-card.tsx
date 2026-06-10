@@ -132,15 +132,11 @@ export function ViewCard({
             type="button"
             onClick={onAddTestAccount}
             title="Dev only: add a dummy account with generated mail"
-            className="group/dev flex w-full items-center gap-[9px] rounded-[5px] px-1 py-[5px] text-left hover:bg-muted"
+            className="mt-1 flex w-full items-center gap-[9px] rounded-[5px] border border-dashed border-accent-2/40 bg-accent-2/[0.06] px-1.5 py-[5px] text-left text-accent-2-hover hover:border-accent-2/70 hover:bg-accent-2/10"
           >
-            <span className="inline-flex size-3.5 shrink-0 items-center justify-center">
-              <FlaskConicalIcon className="size-3 shrink-0 text-muted-foreground/70 group-hover/dev:text-foreground" />
-            </span>
-            <span className="text-[12.5px] text-muted-foreground/70 group-hover/dev:text-foreground">
-              Add test account
-            </span>
-            <span className="ml-auto font-mono text-[10px] font-medium tracking-wide text-accent-2 uppercase">
+            <FlaskConicalIcon className="size-3 shrink-0" />
+            <span className="flex-1 text-[12.5px]">Add test account</span>
+            <span className="rounded-[3px] border border-dashed border-accent-2/40 px-1 font-mono text-[9px] font-medium tracking-wide uppercase">
               Dev
             </span>
           </button>

@@ -18,6 +18,9 @@ export const Route = createFileRoute("/api/send")({
           to?: string;
           subject?: string;
           body?: string;
+          inReplyTo?: string;
+          references?: string;
+          threadId?: string;
         } | null;
         if (!body?.accountId || !body.to?.trim()) {
           return json({ error: "accountId and to are required" }, 400);
@@ -35,6 +38,9 @@ export const Route = createFileRoute("/api/send")({
             to: body.to.trim(),
             subject: body.subject ?? "",
             body: body.body ?? "",
+            inReplyTo: body.inReplyTo,
+            references: body.references,
+            threadId: body.threadId,
           });
           return json({ ok: true });
         } catch (error) {

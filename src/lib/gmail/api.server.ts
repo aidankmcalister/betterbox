@@ -98,6 +98,10 @@ async function fetchEmail(accessToken: string, id: string): Promise<Email> {
 export type FullEmail = Email & {
   to: string;
   messageId: string;
+  /** Gmail thread id + References chain — used to thread replies. */
+  threadId: string;
+  references: string;
+  starred: boolean;
   body: string;
   bodyHtml?: string;
 };
@@ -118,6 +122,7 @@ export async function getFullEmail(
   const message = (await res.json()) as {
     snippet?: string;
     labelIds?: string[];
+    threadId?: string;
     payload?: MessagePart & { headers?: { name: string; value: string }[] };
   };
   const header = (name: string) =>
@@ -132,6 +137,9 @@ export async function getFullEmail(
     subject: header("Subject"),
     date: header("Date"),
     messageId: header("Message-ID"),
+    threadId: message.threadId ?? "",
+    references: header("References"),
+    starred: message.labelIds?.includes("STARRED") ?? false,
     snippet: message.snippet,
     unread: message.labelIds?.includes("UNREAD") ?? false,
     ...extractBody(message.payload),
@@ -201,30 +209,78 @@ export async function getRawEmail(
   return Buffer.from(raw, "base64url").toString("utf8");
 }
 
-/** Send a plain-text message from the token's own address (messages.send). */
+/** Send a plain-text message from the token's own address (messages.send).
+ *  Pass inReplyTo/references/threadId to thread it as a real reply. */
 export async function sendEmail(
   accessToken: string,
-  options: { to: string; subject: string; body: string },
+  options: {
+    to: string;
+    subject: string;
+    body: string;
+    inReplyTo?: string;
+    references?: string;
+    threadId?: string;
+  },
 ): Promise<void> {
   const from = await getEmailAddress(accessToken);
   if (!from) throw new Error("Could not resolve sender address");
 
-  const mime = [
+  const headerLines = [
     `From: ${from}`,
     `To: ${options.to}`,
     `Subject: ${encodeSubject(options.subject)}`,
     "MIME-Version: 1.0",
     'Content-Type: text/plain; charset="UTF-8"',
-    "",
-    options.body,
-  ].join("\r\n");
+  ];
+  // Threading headers make Gmail (and every other client) nest the reply
+  // under the original conversation instead of starting a new one.
+  if (options.inReplyTo) headerLines.push(`In-Reply-To: ${options.inReplyTo}`);
+  if (options.references) headerLines.push(`References: ${options.references}`);
+
+  const mime = [...headerLines, "", options.body].join("\r\n");
+  const payload: { raw: string; threadId?: string } = {
+    raw: Buffer.from(mime).toString("base64url"),
+  };
+  if (options.threadId) payload.threadId = options.threadId;
 
   const res = await gmailFetch(accessToken, "/messages/send", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ raw: Buffer.from(mime).toString("base64url") }),
+    body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error(`Gmail send failed (${res.status})`);
+}
+
+/** A single-message action: archive (un-inbox), trash, or toggle star. */
+export type MessageAction = "archive" | "trash" | "star" | "unstar";
+
+/** Apply a message action via messages.modify / messages.trash. */
+export async function actOnEmail(
+  accessToken: string,
+  id: string,
+  action: MessageAction,
+): Promise<void> {
+  const path =
+    action === "trash"
+      ? `/messages/${id}/trash`
+      : `/messages/${id}/modify`;
+  const body =
+    action === "trash"
+      ? undefined
+      : JSON.stringify(
+          action === "archive"
+            ? { removeLabelIds: ["INBOX"] }
+            : action === "star"
+              ? { addLabelIds: ["STARRED"] }
+              : { removeLabelIds: ["STARRED"] },
+        );
+
+  const res = await gmailFetch(accessToken, path, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body,
+  });
+  if (!res.ok) throw new Error(`Gmail ${action} failed (${res.status})`);
 }
 
 /** RFC 2047 encoded-word for non-ASCII subjects. */

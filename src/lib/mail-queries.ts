@@ -16,9 +16,14 @@ import {
 export type FullEmail = ThreadRowEmail & {
   to: string;
   messageId: string;
+  threadId: string;
+  references: string;
+  starred: boolean;
   body: string;
   bodyHtml?: string;
 };
+
+export type MessageAction = "archive" | "trash" | "star" | "unstar";
 
 /**
  * TanStack Query layer over the mail API. Caching means panes repaint
@@ -156,18 +161,36 @@ export function useRawEmailQuery(
   });
 }
 
-/** Send a plain-text message (test accounts pretend-send). */
+/** Send a plain-text message (test accounts pretend-send). Pass the threading
+ *  fields to nest it under the original conversation as a real reply. */
 export async function sendNewEmail(options: {
   accountId: string;
   to: string;
   subject: string;
   body: string;
+  inReplyTo?: string;
+  references?: string;
+  threadId?: string;
 }) {
   if (isTestAccount(options.accountId)) return;
   await fetchJson("/api/send", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(options),
+  });
+}
+
+/** Archive / trash / star a single message (no-op for test accounts). */
+export async function actOnEmail(
+  accountId: string,
+  id: string,
+  action: MessageAction,
+) {
+  if (isTestAccount(accountId)) return;
+  await fetchJson("/api/message", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ accountId, id, action }),
   });
 }
 

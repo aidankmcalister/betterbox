@@ -22,6 +22,7 @@ import {
   MailOpenIcon,
   ReplyAllIcon,
   ReplyIcon,
+  StarIcon,
   Trash2Icon,
   XIcon,
 } from "lucide-react";
@@ -42,11 +43,17 @@ import type { Account } from "@/lib/account";
 import { linkGoogle } from "@/lib/auth-client";
 import { formatCount } from "@/lib/format";
 import { exportEmail } from "@/lib/export-email";
+import { useQueryClient } from "@tanstack/react-query";
 import {
+  accountsQueryKey,
+  actOnEmail,
+  emailsQueryKey,
   flattenEmails,
   useEmailsQuery,
   useFullEmailQuery,
   useRawEmailQuery,
+  type EmailsData,
+  type MessageAction,
 } from "@/lib/mail-queries";
 import { useSettings } from "@/hooks/use-settings";
 import { Button } from "@/components/ui/button";
@@ -491,7 +498,10 @@ function ReaderPane() {
   const { reading, accounts, beginHeaderDrag, closeReader, onReply } =
     useTiles();
   const { showTechnicalMetadata, clock } = useSettings();
+  const queryClient = useQueryClient();
   const [raw, setRaw] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [starred, setStarred] = useState(false);
 
   const accountId = reading?.accountId ?? "";
   const emailId = reading?.emailId ?? null;
@@ -503,9 +513,50 @@ function ReaderPane() {
   const accountColor = useAccountColor(Math.max(dotIndex, 0), accountId);
   const sender = email ? parseAddress(email.from) : null;
 
+  useEffect(() => setStarred(email?.starred ?? false), [email?.id, email?.starred]);
+
   const reply = () => {
     if (!email || !sender) return;
-    onReply({ accountId, to: sender.address, subject: email.subject });
+    onReply({
+      accountId,
+      to: sender.address,
+      subject: email.subject,
+      inReplyTo: email.messageId || undefined,
+      references:
+        [email.references, email.messageId].filter(Boolean).join(" ") ||
+        undefined,
+      threadId: email.threadId || undefined,
+    });
+  };
+
+  /* archive/trash drop the message from the inbox and close the reader; star
+     just toggles. Optimistic — Gmail confirms in the background. */
+  const runAction = async (action: MessageAction) => {
+    if (!email || busy) return;
+    setBusy(true);
+    try {
+      await actOnEmail(accountId, email.id, action);
+      if (action === "star" || action === "unstar") {
+        setStarred(action === "star");
+        setBusy(false);
+        return;
+      }
+      queryClient.setQueryData<EmailsData>(
+        emailsQueryKey(accountId),
+        (current) =>
+          current && {
+            ...current,
+            pages: current.pages.map((page) => ({
+              ...page,
+              emails: page.emails.filter((e) => e.id !== email.id),
+            })),
+          },
+      );
+      queryClient.invalidateQueries({ queryKey: accountsQueryKey });
+      closeReader();
+    } catch {
+      setBusy(false);
+    }
   };
 
   /* Reader-scoped keys: Esc closes · ⌥R toggles Raw · R replies. */
@@ -541,16 +592,36 @@ function ReaderPane() {
         </span>
         <button
           type="button"
-          disabled
-          title="Archive — soon"
+          disabled={!email || busy}
+          aria-pressed={starred}
+          title={starred ? "Unstar" : "Star"}
+          onClick={() => runAction(starred ? "unstar" : "star")}
+          className={cn(
+            "inline-flex size-7 shrink-0 items-center justify-center rounded-md hover:bg-muted disabled:opacity-40 disabled:hover:bg-transparent",
+            starred
+              ? "text-label-yellow hover:text-label-yellow"
+              : "text-ink-subtle hover:text-foreground",
+          )}
+        >
+          <StarIcon
+            className="size-[15px]"
+            fill={starred ? "currentColor" : "none"}
+          />
+        </button>
+        <button
+          type="button"
+          disabled={!email || busy}
+          title="Archive"
+          onClick={() => runAction("archive")}
           className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-ink-subtle hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:hover:bg-transparent"
         >
           <ArchiveIcon className="size-[15px]" />
         </button>
         <button
           type="button"
-          disabled
-          title="Trash — soon"
+          disabled={!email || busy}
+          title="Trash"
+          onClick={() => runAction("trash")}
           className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-ink-subtle hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:hover:bg-transparent"
         >
           <Trash2Icon className="size-[15px]" />

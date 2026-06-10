@@ -24,7 +24,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-export type ComposeReply = { accountId: string; to: string; subject: string };
+export type ComposeReply = {
+  accountId: string;
+  to: string;
+  subject: string;
+  /** Threading: set so the reply nests under the original conversation. */
+  inReplyTo?: string;
+  references?: string;
+  threadId?: string;
+};
 
 const shortName = (email: string) => email.split("@")[0] || email;
 
@@ -94,6 +102,10 @@ export function Composer({
         to: to.trim(),
         subject,
         body,
+        // Only thread when replying from the same account that received it.
+        inReplyTo: reply?.accountId === from.accountId ? reply?.inReplyTo : undefined,
+        references: reply?.accountId === from.accountId ? reply?.references : undefined,
+        threadId: reply?.accountId === from.accountId ? reply?.threadId : undefined,
       });
       discard();
     } catch (err) {
