@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiSendRouteImport } from './routes/api/send'
 import { Route as ApiMessageRouteImport } from './routes/api/message'
@@ -17,6 +18,11 @@ import { Route as ApiEmailsRouteImport } from './routes/api/emails'
 import { Route as ApiAccountsRouteImport } from './routes/api/accounts'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -55,6 +61,7 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/privacy': typeof PrivacyRoute
   '/api/accounts': typeof ApiAccountsRoute
   '/api/emails': typeof ApiEmailsRoute
   '/api/image-proxy': typeof ApiImageProxyRoute
@@ -64,6 +71,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/privacy': typeof PrivacyRoute
   '/api/accounts': typeof ApiAccountsRoute
   '/api/emails': typeof ApiEmailsRoute
   '/api/image-proxy': typeof ApiImageProxyRoute
@@ -74,6 +82,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/privacy': typeof PrivacyRoute
   '/api/accounts': typeof ApiAccountsRoute
   '/api/emails': typeof ApiEmailsRoute
   '/api/image-proxy': typeof ApiImageProxyRoute
@@ -85,6 +94,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/privacy'
     | '/api/accounts'
     | '/api/emails'
     | '/api/image-proxy'
@@ -94,6 +104,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/privacy'
     | '/api/accounts'
     | '/api/emails'
     | '/api/image-proxy'
@@ -103,6 +114,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/privacy'
     | '/api/accounts'
     | '/api/emails'
     | '/api/image-proxy'
@@ -113,6 +125,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  PrivacyRoute: typeof PrivacyRoute
   ApiAccountsRoute: typeof ApiAccountsRoute
   ApiEmailsRoute: typeof ApiEmailsRoute
   ApiImageProxyRoute: typeof ApiImageProxyRoute
@@ -123,6 +136,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -177,6 +197,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  PrivacyRoute: PrivacyRoute,
   ApiAccountsRoute: ApiAccountsRoute,
   ApiEmailsRoute: ApiEmailsRoute,
   ApiImageProxyRoute: ApiImageProxyRoute,

@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAccountScope } from "@/hooks/use-account-scope";
@@ -13,22 +13,15 @@ import {
   type EmailsData,
 } from "@/lib/mail-queries";
 import { makeTestAccount } from "@/lib/test-account";
+import { VoicemailIcon } from "lucide-react";
 import { signIn, useSession } from "../lib/auth-client";
 import { AppSidebar } from "@/components/app-sidebar";
 import { CommandMenu } from "@/components/command-menu";
 import { Composer, type ComposeReply } from "@/components/composer";
 import { InboxTiles } from "@/components/inbox-tiles";
-import { ModeToggle } from "@/components/mode-toggle";
 import { SettingsDialog } from "@/components/settings-dialog";
 import { Button } from "@/components/ui/button";
 import { SidebarInset } from "@/components/ui/sidebar";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 
 export const Route = createFileRoute("/")({
   component: Home,
@@ -43,7 +36,10 @@ function Home() {
   const [testAccounts, setTestAccounts] = useState<Account[]>([]);
 
   const addTestAccount = useCallback(() => {
-    setTestAccounts((current) => [...current, makeTestAccount(current.length + 1)]);
+    setTestAccounts((current) => [
+      ...current,
+      makeTestAccount(current.length + 1),
+    ]);
   }, []);
 
   const allAccounts = useMemo(
@@ -152,21 +148,38 @@ function Home() {
 
   if (!session) {
     return (
-      <main className="relative grid min-h-screen place-items-center p-6">
-        <div className="absolute top-4 right-4">
-          <ModeToggle />
+      <main className="grid min-h-svh w-full place-items-center bg-canvas p-6 text-ink">
+        <div className="flex max-w-[400px] flex-col items-center px-6 text-center">
+          <span className="inline-flex size-12 items-center justify-center rounded-[10px] bg-primary text-on-primary">
+            <VoicemailIcon className="size-8" />
+          </span>
+          <span className="mt-3.5 font-mono text-[15px] font-semibold text-ink">
+            Better Mail
+          </span>
+
+          <h1 className="mt-7 text-[30px] leading-[1.15] font-semibold tracking-[-1px] text-balance">
+            Gmail, at developer speed.
+          </h1>
+          <p className="mt-3 text-sm leading-relaxed text-pretty text-ink-subtle">
+            A faster, denser client for all your Google inboxes. Built on the
+            Gmail API — not a new email service.
+          </p>
+
+          <Button
+            className="mt-7 h-10 gap-2.5 rounded-lg px-5 text-sm"
+            onClick={() => signIn()}
+          >
+            <GoogleIcon /> Continue with Google
+          </Button>
         </div>
-        <Card className="w-full max-w-sm">
-          <CardHeader>
-            <CardTitle>Better Mail</CardTitle>
-            <CardDescription>Sign in to view your inboxes.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button className="w-full" onClick={() => signIn()}>
-              Sign in with Google
-            </Button>
-          </CardContent>
-        </Card>
+
+        <footer className="fixed inset-x-0 bottom-[18px] text-center font-mono text-[10.5px] text-ink-tertiary">
+          in development
+          <span className="px-1.5">·</span>
+          <Link to="/privacy" className="transition-colors hover:text-ink-subtle">
+            Privacy
+          </Link>
+        </footer>
       </main>
     );
   }
@@ -221,5 +234,17 @@ function Home() {
         </div>
       </SidebarInset>
     </>
+  );
+}
+
+/** Monochrome Google "G", tinted by the button's text color. */
+function GoogleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-4" aria-hidden="true">
+      <path
+        fill="currentColor"
+        d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"
+      />
+    </svg>
   );
 }

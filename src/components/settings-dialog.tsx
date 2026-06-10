@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import {
   AtSign,
   ChevronDownIcon,
@@ -6,6 +7,7 @@ import {
   Inbox,
   Palette,
   PlusIcon,
+  ShieldCheck,
   SquareTerminal,
 } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
@@ -60,6 +62,12 @@ export function SettingsDialog({
   accounts: Account[];
 }) {
   const [page, setPage] = useState<PageId>("accounts");
+  const navigate = useNavigate();
+
+  const openPrivacy = () => {
+    onOpenChange(false);
+    navigate({ to: "/privacy" });
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -99,6 +107,14 @@ export function SettingsDialog({
               ))}
             </div>
           ))}
+          <button
+            type="button"
+            onClick={openPrivacy}
+            className="mt-auto flex items-center gap-2 rounded-md px-2 py-[5px] text-left text-[13px] text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+          >
+            <ShieldCheck className="size-4 shrink-0" />
+            Privacy policy
+          </button>
         </nav>
 
         <div className="min-w-0 flex-1 overflow-y-auto p-6">
