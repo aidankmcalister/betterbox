@@ -78,11 +78,11 @@ Next — **sync & reliability:**
 
 Next — **developer platform:**
 
-- [ ] Outbound webhooks, analytics, API request log
+- [ ] Outbound webhooks, analytics with [Bklit UI](https://bklit.com/), API request log
 - [ ] Public API + API keys
 - [ ] Per-plan rate limiting (throttling BetterBox's own users)
 
-Next — **business:**
+Next — **business:** (i dont want to go broke)
 
 - [ ] Pricing & billing (plans, Stripe)
 - [ ] Accounts/usage limits per plan
