@@ -53,14 +53,24 @@ export function HtmlBody({ html }: { html: string }) {
     idoc.head.prepend(base);
     // HTML emails assume a light canvas regardless of the app theme.
     idoc.documentElement.style.colorScheme = "light";
-    // Stop oversized images forcing a horizontal scrollbar inside the body —
-    // the most common cause of the email box scrolling sideways.
+    // Force the root to auto height so the email's height:100% / min-height
+    // chains don't feed back off the iframe height we set (the cause of the
+    // box growing forever), and keep wide images from scrolling sideways.
     const style = idoc.createElement("style");
-    style.textContent = "img{max-width:100%;height:auto}";
+    style.textContent =
+      "html,body{height:auto!important;min-height:0!important;margin:0}" +
+      "img{max-width:100%;height:auto}";
     idoc.head.appendChild(style);
 
+    // Fit to the body's content height, guarded so identical measurements
+    // don't churn the observer into a resize loop.
+    let last = 0;
     const fit = () => {
-      iframe.style.height = `${idoc.documentElement.scrollHeight}px`;
+      const height = idoc.body.scrollHeight;
+      if (height && height !== last) {
+        last = height;
+        iframe.style.height = `${height}px`;
+      }
     };
     observerRef.current?.disconnect();
     observerRef.current = new ResizeObserver(fit);
