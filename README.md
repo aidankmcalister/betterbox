@@ -63,15 +63,29 @@ Done:
 - [x] Error / empty / loading states
 - [x] Privacy policy + Google OAuth verification prep
 
-Next:
+Next — **mail features:**
 
 - [ ] True reply threading (`In-Reply-To` / `References`) — currently sends a new `Re:` message
 - [ ] Forward
 - [ ] Thread grouping (`threads.get`) instead of flat messages
 - [ ] Labels, star, archive, trash
+- [ ] Attachments (view + download)
+
+Next — **sync & reliability:**
+
 - [ ] Incremental sync (History API) and push (`users.watch` + Pub/Sub)
-- [ ] Developer surface: outbound webhooks, analytics, API request log
-- [ ] Gmail API quota tracking, rate limiting, backoff
+- [ ] Gmail API quota tracking + backoff (our calls to Google)
+
+Next — **developer platform:**
+
+- [ ] Outbound webhooks, analytics, API request log
+- [ ] Public API + API keys
+- [ ] Per-plan rate limiting (throttling BetterBox's own users)
+
+Next — **business:**
+
+- [ ] Pricing & billing (plans, Stripe)
+- [ ] Accounts/usage limits per plan
 
 ## Tech stack
 
