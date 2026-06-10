@@ -63,6 +63,7 @@ import type { ComposeReply } from "@/components/composer";
 import { HtmlBody } from "@/components/html-body";
 import { RawView } from "@/components/raw-view";
 import { SenderAvatar } from "@/components/sender-avatar";
+import { Hint } from "@/components/ui/tooltip";
 import {
   EmptyState,
   ErrorState,
@@ -590,51 +591,55 @@ function ReaderPane() {
         <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold">
           {email?.subject || "Reading"}
         </span>
-        <button
-          type="button"
-          disabled={!email || busy}
-          aria-pressed={starred}
-          title={starred ? "Unstar" : "Star"}
-          onClick={() => runAction(starred ? "unstar" : "star")}
-          className={cn(
-            "inline-flex size-7 shrink-0 items-center justify-center rounded-md hover:bg-muted disabled:opacity-40 disabled:hover:bg-transparent",
-            starred
-              ? "text-label-yellow hover:text-label-yellow"
-              : "text-ink-subtle hover:text-foreground",
-          )}
-        >
-          <StarIcon
-            className="size-[15px]"
-            fill={starred ? "currentColor" : "none"}
-          />
-        </button>
-        <button
-          type="button"
-          disabled={!email || busy}
-          title="Archive"
-          onClick={() => runAction("archive")}
-          className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-ink-subtle hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:hover:bg-transparent"
-        >
-          <ArchiveIcon className="size-[15px]" />
-        </button>
-        <button
-          type="button"
-          disabled={!email || busy}
-          title="Trash"
-          onClick={() => runAction("trash")}
-          className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-ink-subtle hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:hover:bg-transparent"
-        >
-          <Trash2Icon className="size-[15px]" />
-        </button>
+        <Hint label={starred ? "Unstar" : "Star"}>
+          <button
+            type="button"
+            disabled={!email || busy}
+            aria-pressed={starred}
+            onClick={() => runAction(starred ? "unstar" : "star")}
+            className={cn(
+              "inline-flex size-7 shrink-0 items-center justify-center rounded-md hover:bg-muted disabled:opacity-40 disabled:hover:bg-transparent",
+              starred
+                ? "text-label-yellow hover:text-label-yellow"
+                : "text-ink-subtle hover:text-foreground",
+            )}
+          >
+            <StarIcon
+              className="size-[15px]"
+              fill={starred ? "currentColor" : "none"}
+            />
+          </button>
+        </Hint>
+        <Hint label="Archive">
+          <button
+            type="button"
+            disabled={!email || busy}
+            onClick={() => runAction("archive")}
+            className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-ink-subtle hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:hover:bg-transparent"
+          >
+            <ArchiveIcon className="size-[15px]" />
+          </button>
+        </Hint>
+        <Hint label="Trash">
+          <button
+            type="button"
+            disabled={!email || busy}
+            onClick={() => runAction("trash")}
+            className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-ink-subtle hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:hover:bg-transparent"
+          >
+            <Trash2Icon className="size-[15px]" />
+          </button>
+        </Hint>
         <span className="h-[18px] w-px shrink-0 bg-border" />
-        <button
-          type="button"
-          title="Close (Esc)"
-          onClick={closeReader}
-          className="inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-ink-subtle hover:bg-muted hover:text-foreground"
-        >
-          <XIcon className="size-[15px]" />
-        </button>
+        <Hint label="Close (Esc)">
+          <button
+            type="button"
+            onClick={closeReader}
+            className="inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-ink-subtle hover:bg-muted hover:text-foreground"
+          >
+            <XIcon className="size-[15px]" />
+          </button>
+        </Hint>
       </div>
 
       <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
@@ -744,32 +749,27 @@ function ReaderPane() {
           <button type="button" onClick={reply} className={FBTN_PRIMARY}>
             <ReplyIcon /> Reply
           </button>
-          <button
-            type="button"
-            disabled
-            title="Reply all — soon"
-            className={FBTN_ICON}
-          >
-            <ReplyAllIcon />
-          </button>
-          <button
-            type="button"
-            disabled
-            title="Forward — soon"
-            className={FBTN_ICON}
-          >
-            <ForwardIcon />
-          </button>
+          <Hint label="Reply all — soon">
+            <button type="button" disabled className={FBTN_ICON}>
+              <ReplyAllIcon />
+            </button>
+          </Hint>
+          <Hint label="Forward — soon">
+            <button type="button" disabled className={FBTN_ICON}>
+              <ForwardIcon />
+            </button>
+          </Hint>
           <span className="mx-1 h-5 w-px shrink-0 bg-hairline-strong" />
-          <button
-            type="button"
-            aria-pressed={raw}
-            onClick={() => setRaw((current) => !current)}
-            title="Toggle raw MIME source (⌥R)"
-            className={cn(FBTN_MONO, raw && FBTN_MONO_ON)}
-          >
-            <CodeXmlIcon /> Raw
-          </button>
+          <Hint label="Toggle raw MIME source (⌥R)">
+            <button
+              type="button"
+              aria-pressed={raw}
+              onClick={() => setRaw((current) => !current)}
+              className={cn(FBTN_MONO, raw && FBTN_MONO_ON)}
+            >
+              <CodeXmlIcon /> Raw
+            </button>
+          </Hint>
           <DropdownMenu>
             <DropdownMenuTrigger
               render={<button type="button" className={FBTN_MONO} />}

@@ -1,5 +1,6 @@
 "use client"
 
+import type { ReactElement, ReactNode } from "react"
 import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip"
 
 import { cn } from "@/lib/utils"
@@ -63,4 +64,24 @@ function TooltipContent({
   )
 }
 
-export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider }
+/** Convenience wrapper: <Hint label="Archive"><button …/></Hint>. Replaces
+ *  native `title` tooltips with the styled popup. */
+function Hint({
+  label,
+  side = "top",
+  children,
+}: {
+  label: ReactNode
+  side?: "top" | "bottom" | "left" | "right"
+  children: ReactElement
+}) {
+  if (!label) return children
+  return (
+    <Tooltip>
+      <TooltipTrigger render={children} />
+      <TooltipContent side={side}>{label}</TooltipContent>
+    </Tooltip>
+  )
+}
+
+export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider, Hint }

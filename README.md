@@ -62,14 +62,17 @@ Done:
 - [x] Keyboard shortcuts + command palette
 - [x] Error / empty / loading states
 - [x] Privacy policy + Google OAuth verification prep
+- [x] Reply threading (`In-Reply-To` / `References` + Gmail `threadId`)
+- [x] Star, archive, trash (`messages.modify` / `messages.trash`)
 
 Next — **mail features:**
 
-- [ ] True reply threading (`In-Reply-To` / `References`) — currently sends a new `Re:` message
 - [ ] Forward
-- [ ] Thread grouping (`threads.get`) instead of flat messages
-- [ ] Labels, star, archive, trash
+- [ ] Thread grouping (`threads.get`) + inline reply in the reader (Gmail-style conversation)
+- [ ] Right-click context menu on rows (mark read, reply, trash, hide, copy message-ID, …)
+- [ ] Labels
 - [ ] Attachments (view + download)
+- [ ] URL-addressable state (`/email/:id`, `/settings`, …)
 - [ ] Mobile / responsive layout (the tiling pane UI is desktop-only today)
 
 Next — **sync & reliability:**

@@ -2,6 +2,7 @@ import { useState, type CSSProperties, type ReactNode } from "react";
 import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SidebarProvider } from "@/components/ui/sidebar";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 import { ThemeProvider } from "@/components/theme-provider";
 import appCss from "../styles.css?url";
@@ -58,11 +59,13 @@ function RootDocument({ children }: { children: ReactNode }) {
       <body>
         <QueryClientProvider client={queryClient}>
           <ThemeProvider defaultTheme="system" storageKey="theme">
-            <SidebarProvider
-              style={{ "--sidebar-width": "18rem" } as CSSProperties}
-            >
-              {children}
-            </SidebarProvider>
+            <TooltipProvider delay={400}>
+              <SidebarProvider
+                style={{ "--sidebar-width": "18rem" } as CSSProperties}
+              >
+                {children}
+              </SidebarProvider>
+            </TooltipProvider>
           </ThemeProvider>
         </QueryClientProvider>
         <Scripts />

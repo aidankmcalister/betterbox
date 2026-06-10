@@ -61,6 +61,19 @@ export function HtmlBody({ html }: { html: string }) {
     observerRef.current = new ResizeObserver(fit);
     observerRef.current.observe(idoc.body);
     fit();
+
+    // The iframe is sized to its full content height (no inner vertical
+    // scroll), but it still swallows wheel events — so scrolling over the
+    // email body wouldn't move the reader. Forward vertical wheel to the
+    // reader's scroll container.
+    idoc.addEventListener(
+      "wheel",
+      (event) => {
+        const scroller = scrollParent(iframe);
+        if (scroller) scroller.scrollTop += event.deltaY;
+      },
+      { passive: true },
+    );
   };
 
   return (
@@ -70,7 +83,23 @@ export function HtmlBody({ html }: { html: string }) {
       sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
       srcDoc={doc}
       onLoad={onLoad}
-      className="block w-full rounded-lg border bg-white"
+      className="block w-full overflow-x-auto rounded-lg border bg-white"
     />
   );
+}
+
+/** Nearest vertically-scrollable ancestor of the iframe (the reader pane). */
+function scrollParent(el: HTMLElement): HTMLElement | null {
+  let node = el.parentElement;
+  while (node) {
+    const overflowY = getComputedStyle(node).overflowY;
+    if (
+      (overflowY === "auto" || overflowY === "scroll") &&
+      node.scrollHeight > node.clientHeight
+    ) {
+      return node;
+    }
+    node = node.parentElement;
+  }
+  return null;
 }
