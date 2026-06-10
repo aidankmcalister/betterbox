@@ -8,9 +8,21 @@ import {
   useState,
 } from "react";
 import {
+  ArchiveIcon,
+  BracesIcon,
   CheckIcon,
+  ChevronDownIcon,
+  ClipboardIcon,
+  CodeXmlIcon,
+  DownloadIcon,
+  FileTextIcon,
+  ForwardIcon,
   GripVerticalIcon,
+  HashIcon,
   MailOpenIcon,
+  ReplyAllIcon,
+  ReplyIcon,
+  Trash2Icon,
   XIcon,
 } from "lucide-react";
 
@@ -29,21 +41,33 @@ import {
 import type { Account } from "@/lib/account";
 import { linkGoogle } from "@/lib/auth-client";
 import { formatCount } from "@/lib/format";
+import { exportEmail } from "@/lib/export-email";
 import {
   flattenEmails,
   useEmailsQuery,
   useFullEmailQuery,
+  useRawEmailQuery,
 } from "@/lib/mail-queries";
 import { useSettings } from "@/hooks/use-settings";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { AccountDot } from "@/components/account-dot";
+import { AccountDot, useAccountColor } from "@/components/account-dot";
+import type { ComposeReply } from "@/components/composer";
+import { RawView } from "@/components/raw-view";
 import {
   EmptyState,
   ErrorState,
   SkeletonRows,
 } from "@/components/thread-list-states";
 import { ThreadRow } from "@/components/thread-row";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -74,6 +98,7 @@ type TilesCtx = {
   reading: Reading | null;
   openEmail: (accountId: string, emailId: string) => void;
   closeReader: () => void;
+  onReply: (reply: ComposeReply) => void;
 };
 const TilesContext = createContext<TilesCtx | null>(null);
 
@@ -141,10 +166,12 @@ export function InboxTiles({
   accounts,
   scopeIds,
   onRemovePane,
+  onReply,
 }: {
   accounts: Account[];
   scopeIds: string[];
   onRemovePane: (accountId: string) => void;
+  onReply: (reply: ComposeReply) => void;
 }) {
   const scoped = accounts.filter((a) => scopeIds.includes(a.accountId));
   const ids = scoped.map((a) => a.accountId);
@@ -263,6 +290,7 @@ export function InboxTiles({
     reading,
     openEmail,
     closeReader,
+    onReply,
   };
 
   /* Reset is triggered from the command palette (no tiles toolbar). */
@@ -444,15 +472,26 @@ function parseAddress(from: string): { name: string; address: string } {
 
 /** The message viewer — an ordinary pane in the tree (drag it like an inbox). */
 function ReaderPane() {
-  const { reading, beginHeaderDrag, closeReader } = useTiles();
+  const { reading, accounts, beginHeaderDrag, closeReader, onReply } =
+    useTiles();
   const { showTechnicalMetadata } = useSettings();
-  const query = useFullEmailQuery(
-    reading?.accountId ?? "",
-    reading?.emailId ?? null,
-  );
-  const email = query.data;
+  const [raw, setRaw] = useState(false);
+
+  const accountId = reading?.accountId ?? "";
+  const emailId = reading?.emailId ?? null;
+  const fullQuery = useFullEmailQuery(accountId, emailId);
+  const rawQuery = useRawEmailQuery(accountId, emailId, raw);
+
+  const email = fullQuery.data;
+  const account = accounts.find((a) => a.accountId === accountId);
+  const dotIndex = accounts.findIndex((a) => a.accountId === accountId);
+  const accountColor = useAccountColor(Math.max(dotIndex, 0), accountId);
   const sender = email ? parseAddress(email.from) : null;
-  const sentAt = email ? new Date(email.date) : null;
+
+  const reply = () => {
+    if (!email || !sender) return;
+    onReply({ accountId, to: sender.address, subject: email.subject });
+  };
 
   return (
     <>
@@ -475,15 +514,105 @@ function ReaderPane() {
         </button>
       </div>
 
+      {/* Dev toolbar (design): Reply · reply-all/forward · archive/trash —
+          right side: the teal Raw toggle and a working Export menu. */}
+      <div className="flex h-10 shrink-0 items-center gap-1 overflow-x-clip border-b px-3">
+        <Button variant="outline" size="sm" disabled={!email} onClick={reply}>
+          <ReplyIcon data-icon="inline-start" /> Reply
+        </Button>
+        <Button variant="ghost" size="icon-sm" disabled title="Reply all — soon">
+          <ReplyAllIcon />
+        </Button>
+        <Button variant="ghost" size="icon-sm" disabled title="Forward — soon">
+          <ForwardIcon />
+        </Button>
+        <span className="mx-1 h-5 w-px shrink-0 bg-border" />
+        <Button variant="ghost" size="icon-sm" disabled title="Archive — soon">
+          <ArchiveIcon />
+        </Button>
+        <Button variant="ghost" size="icon-sm" disabled title="Trash — soon">
+          <Trash2Icon />
+        </Button>
+        <span className="ml-auto inline-flex items-center gap-1">
+          <Button
+            variant="dev"
+            size="sm"
+            aria-pressed={raw}
+            onClick={() => setRaw((current) => !current)}
+          >
+            <CodeXmlIcon data-icon="inline-start" /> Raw
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              disabled={!email}
+              render={<Button variant="outline" size="sm" />}
+            >
+              <DownloadIcon data-icon="inline-start" /> Export
+              <ChevronDownIcon className="size-3 text-muted-foreground/70" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuGroup>
+                <DropdownMenuItem onClick={() => email && exportEmail(email, "md")}>
+                  <HashIcon />
+                  Markdown
+                  <span className="ml-auto font-mono text-[10.5px] text-muted-foreground/70">
+                    .md
+                  </span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => email && exportEmail(email, "json")}>
+                  <BracesIcon className="text-accent-2-hover" />
+                  <span className="font-mono text-xs">JSON</span>
+                  <span className="ml-auto font-mono text-[10.5px] text-muted-foreground/70">
+                    .json
+                  </span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => email && exportEmail(email, "txt")}>
+                  <FileTextIcon />
+                  Plain text
+                  <span className="ml-auto font-mono text-[10.5px] text-muted-foreground/70">
+                    .txt
+                  </span>
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+                <DropdownMenuItem
+                  onClick={() =>
+                    email && navigator.clipboard.writeText(email.messageId)
+                  }
+                >
+                  <ClipboardIcon className="text-accent-2-hover" />
+                  <span className="font-mono text-xs">Copy message-ID</span>
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </span>
+      </div>
+
       <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
-        {query.error ? (
+        {raw ? (
+          rawQuery.error ? (
+            <ErrorState
+              detail={`GET /api/message?format=raw · ${rawQuery.error.message}`}
+              onRetry={() => rawQuery.refetch()}
+              onReconnect={() => linkGoogle()}
+            />
+          ) : rawQuery.data === undefined ? (
+            <div className="flex h-full items-center justify-center bg-term font-mono text-[11.5px] text-ink-subtle">
+              messages.get · format=raw
+            </div>
+          ) : (
+            <RawView mime={rawQuery.data} />
+          )
+        ) : fullQuery.error ? (
           <ErrorState
-            detail={`GET /api/message · ${query.error.message}`}
-            onRetry={() => query.refetch()}
+            detail={`GET /api/message · ${fullQuery.error.message}`}
+            onRetry={() => fullQuery.refetch()}
             onReconnect={() => linkGoogle()}
           />
-        ) : !email ? (
-          <div className="flex flex-col gap-3 p-5">
+        ) : !email || !sender ? (
+          <div className="mx-auto flex max-w-[720px] flex-col gap-3 px-8 py-6">
             <div className="h-5 w-2/3 rounded bg-accent" />
             <div className="h-3 w-1/2 rounded bg-muted" />
             <div className="mt-3 h-3 w-full rounded bg-muted" />
@@ -491,38 +620,75 @@ function ReaderPane() {
             <div className="h-3 w-4/6 rounded bg-muted" />
           </div>
         ) : (
-          <article className="px-5 py-4">
-            <h2 className="text-[21px] leading-snug font-semibold tracking-[-0.5px]">
+          <article className="mx-auto max-w-[720px] px-8 pt-[22px] pb-14">
+            <h2 className="text-[21px] leading-[1.3] font-semibold tracking-[-0.5px]">
               {email.subject || "(no subject)"}
             </h2>
-            <div className="mt-2.5 flex flex-col gap-1">
-              <div className="flex min-w-0 items-baseline gap-2">
-                <span className="shrink-0 text-[13px] font-semibold">
-                  {sender?.name}
-                </span>
-                <span className="truncate font-mono text-[11.5px] text-muted-foreground">
-                  &lt;{sender?.address}&gt;
-                </span>
-              </div>
-              <span className="font-mono text-[11px] text-muted-foreground/70">
-                {sentAt && !Number.isNaN(sentAt.getTime())
-                  ? sentAt.toISOString()
-                  : email.date}
+
+            <div className="mt-4 flex items-start gap-3 border-b pb-[18px]">
+              <span
+                className="inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-input text-[13px] font-semibold"
+                style={{
+                  background: `color-mix(in srgb, ${accountColor} 22%, var(--color-surface-2))`,
+                }}
+              >
+                {initials(sender.name)}
               </span>
-              {email.to && (
-                <span className="truncate font-mono text-[11px] text-muted-foreground/70">
-                  to {email.to}
-                </span>
-              )}
-              {showTechnicalMetadata && email.messageId && (
-                <span className="font-mono text-[11px] break-all text-muted-foreground/70">
-                  message-id: {email.messageId}
-                </span>
-              )}
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-baseline gap-2">
+                  <span className="text-sm font-semibold">{sender.name}</span>
+                  <span className="truncate font-mono text-[11.5px] text-muted-foreground">
+                    &lt;{sender.address}&gt;
+                  </span>
+                  <span className="ml-auto font-mono text-[11px] text-muted-foreground/70">
+                    {isoDate(email.date)}
+                  </span>
+                </div>
+                <div className="mt-1 flex min-w-0 items-center gap-[7px]">
+                  <span className="shrink-0 text-[11.5px] text-muted-foreground/70">
+                    to
+                  </span>
+                  <span className="truncate font-mono text-[11px] text-muted-foreground">
+                    {email.to || "—"}
+                  </span>
+                  {account && (
+                    <span className="ml-1 inline-flex shrink-0 items-center gap-[5px] text-[11px] text-muted-foreground/70">
+                      <span
+                        className="size-1.5 rounded-full"
+                        style={{ background: accountColor }}
+                      />
+                      via {account.email.split("@")[0]}
+                    </span>
+                  )}
+                </div>
+                {showTechnicalMetadata && email.messageId && (
+                  <div className="mt-2 font-mono text-[10.5px] break-all text-muted-foreground/70">
+                    message-id:{" "}
+                    <span className="text-label-blue">{email.messageId}</span>
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="my-4 border-t" />
-            <div className="text-sm leading-[1.65] whitespace-pre-wrap text-foreground/85">
-              {email.body || email.snippet || "(empty message)"}
+
+            <div className="pt-[18px]">
+              {(email.body || email.snippet || "(empty message)")
+                .split("\n")
+                .map((line, i) =>
+                  line.trim() === "" ? (
+                    <div key={i} className="h-3" />
+                  ) : (
+                    <p
+                      key={i}
+                      className="m-0 text-sm leading-[1.65] text-pretty text-foreground/85"
+                    >
+                      {line}
+                    </p>
+                  ),
+                )}
+              <Button variant="outline" className="mt-6" onClick={reply}>
+                <ReplyIcon data-icon="inline-start" /> Reply to{" "}
+                {sender.name.split(" ")[0]}
+              </Button>
             </div>
           </article>
         )}
@@ -530,6 +696,20 @@ function ReaderPane() {
     </>
   );
 }
+
+const initials = (name: string) =>
+  name
+    .split(" ")
+    .map((word) => word[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
+const isoDate = (raw: string) => {
+  const date = new Date(raw);
+  return Number.isNaN(date.getTime()) ? raw : date.toISOString();
+};
 
 function PaneHeader({
   account,

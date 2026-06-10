@@ -159,6 +159,17 @@ function stripHtml(html: string): string {
     .trim();
 }
 
+/** Full RFC 822 source of one message (format=raw, decoded). */
+export async function getRawEmail(
+  accessToken: string,
+  id: string,
+): Promise<string> {
+  const res = await gmailFetch(accessToken, `/messages/${id}?format=raw`);
+  if (!res.ok) throw new Error(`Gmail get failed (${res.status})`);
+  const { raw = "" } = (await res.json()) as { raw?: string };
+  return Buffer.from(raw, "base64url").toString("utf8");
+}
+
 /** Send a plain-text message from the token's own address (messages.send). */
 export async function sendEmail(
   accessToken: string,

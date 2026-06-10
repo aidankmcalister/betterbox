@@ -1,5 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDownIcon, SendIcon, XIcon } from "lucide-react";
+import {
+  CheckIcon,
+  ChevronDownIcon,
+  CodeIcon,
+  LinkIcon,
+  PaperclipIcon,
+  PencilIcon,
+  SendIcon,
+  Trash2Icon,
+  XIcon,
+} from "lucide-react";
 
 import { useSession } from "@/lib/auth-client";
 import type { Account } from "@/lib/account";
@@ -13,22 +23,24 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 
-const FIELD_INPUT =
-  "h-10 flex-1 rounded-none border-0 bg-transparent px-0 shadow-none focus-visible:border-transparent focus-visible:ring-0";
+export type ComposeReply = { accountId: string; to: string; subject: string };
+
+const shortName = (email: string) => email.split("@")[0] || email;
 
 /**
- * Docked composer (design: a fixed bottom-right panel, not a Dialog).
- * From is account-aware; To is mono, Subject is Roboto (font spec); ⌘↵ sends.
+ * Docked composer (design: fixed bottom-right panel, not a Dialog).
+ * Field rows are borderless by design — plain inputs, label column 44px,
+ * mono To / sans Subject (font spec), ⌘↵ sends.
  */
 export function Composer({
   open,
+  reply,
   onOpenChange,
   accounts,
 }: {
   open: boolean;
+  reply?: ComposeReply | null;
   onOpenChange: (open: boolean) => void;
   accounts: Account[];
 }) {
@@ -45,20 +57,32 @@ export function Composer({
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  /* Default From: the primary (signed-in) address, else the first account. */
+  /* Prefill on open: replies target the sender from the receiving account. */
+  useEffect(() => {
+    if (!open) return;
+    setFromId(reply?.accountId ?? null);
+    setTo(reply?.to ?? "");
+    setSubject(reply ? `Re: ${reply.subject}` : "");
+    setBody("");
+    setError(null);
+  }, [open, reply]);
+
   const from =
     sendable.find((a) => a.accountId === fromId) ??
     sendable.find((a) => a.email === session?.user.email) ??
     sendable[0] ??
     null;
 
-  useEffect(() => {
-    if (open) setError(null);
-  }, [open]);
-
   if (!open) return null;
 
   const canSend = !sending && from !== null && to.trim().length > 0;
+
+  const discard = () => {
+    setTo("");
+    setSubject("");
+    setBody("");
+    onOpenChange(false);
+  };
 
   const send = async () => {
     if (!canSend || !from) return;
@@ -71,20 +95,16 @@ export function Composer({
         subject,
         body,
       });
-      setTo("");
-      setSubject("");
-      setBody("");
-      onOpenChange(false);
+      discard();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
-    } finally {
       setSending(false);
     }
   };
 
   return (
     <section
-      aria-label="New message"
+      aria-label={reply ? "Reply" : "New message"}
       onKeyDown={(event) => {
         if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
           event.preventDefault();
@@ -94,37 +114,41 @@ export function Composer({
       }}
       className="fixed right-5 bottom-5 z-40 flex w-[520px] max-w-[calc(100vw-2.5rem)] flex-col overflow-hidden rounded-xl border border-input bg-secondary shadow-2xl"
     >
-      <header className="flex items-center gap-2 border-b bg-popover px-3.5 py-2.5">
-        <span className="text-[13px] font-medium">New message</span>
+      <header className="flex items-center gap-2 border-b bg-popover px-3.5 py-[11px]">
+        <PencilIcon className="size-3.5 text-muted-foreground" />
+        <span className="text-[13.5px] font-semibold">
+          {reply ? "Reply" : "New message"}
+        </span>
         <button
           type="button"
           title="Close composer"
           onClick={() => onOpenChange(false)}
           className="ml-auto inline-flex size-5 cursor-pointer items-center justify-center rounded text-muted-foreground/70 hover:bg-muted hover:text-foreground"
         >
-          <XIcon className="size-3.5" />
+          <XIcon className="size-[15px]" />
         </button>
       </header>
 
-      <div className="flex h-10 items-center gap-2 border-b px-4">
-        <span className="w-12 shrink-0 text-xs text-muted-foreground">
-          From
-        </span>
+      <div className="flex h-[42px] items-center gap-2.5 border-b px-4">
+        <FieldLabel>From</FieldLabel>
         {from ? (
           <DropdownMenu>
-            <DropdownMenuTrigger className="flex min-w-0 cursor-pointer items-center gap-2 rounded px-1 py-0.5 hover:bg-muted">
+            <DropdownMenuTrigger className="inline-flex min-w-0 cursor-pointer items-center gap-2 rounded-[7px] border bg-card px-2.5 py-1 hover:bg-muted">
               <AccountDot
                 colorIndex={accounts.findIndex(
                   (a) => a.accountId === from.accountId,
                 )}
                 accountId={from.accountId}
               />
-              <span className="truncate font-mono text-[12.5px]">
+              <span className="shrink-0 text-[13px]">
+                {shortName(from.email)}
+              </span>
+              <span className="truncate font-mono text-[11.5px] text-muted-foreground">
                 {from.email}
               </span>
-              <ChevronDownIcon className="size-3 shrink-0 text-muted-foreground" />
+              <ChevronDownIcon className="size-[13px] shrink-0 text-muted-foreground/70" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start">
+            <DropdownMenuContent align="start" className="w-72">
               {sendable.map((account) => (
                 <DropdownMenuItem
                   key={account.accountId}
@@ -136,7 +160,15 @@ export function Composer({
                     )}
                     accountId={account.accountId}
                   />
-                  <span className="font-mono">{account.email}</span>
+                  <span className="shrink-0 text-[13px]">
+                    {shortName(account.email)}
+                  </span>
+                  <span className="ml-auto truncate font-mono text-[11.5px] text-muted-foreground">
+                    {account.email}
+                  </span>
+                  {account.accountId === from.accountId && (
+                    <CheckIcon className="size-3.5 shrink-0 text-primary" />
+                  )}
                 </DropdownMenuItem>
               ))}
             </DropdownMenuContent>
@@ -148,51 +180,87 @@ export function Composer({
         )}
       </div>
 
-      <div className="flex h-10 items-center gap-2 border-b px-4">
-        <span className="w-12 shrink-0 text-xs text-muted-foreground">To</span>
-        <Input
+      <div className="flex h-10 items-center gap-2.5 border-b px-4">
+        <FieldLabel>To</FieldLabel>
+        <input
           autoFocus
           type="email"
           value={to}
           onChange={(event) => setTo(event.target.value)}
-          placeholder="someone@example.com"
-          className={`${FIELD_INPUT} font-mono text-[12.5px]`}
+          placeholder="name@domain.dev"
+          className="min-w-0 flex-1 bg-transparent font-mono text-[12.5px] outline-none placeholder:text-muted-foreground/60"
         />
       </div>
 
-      <div className="flex h-10 items-center gap-2 border-b px-4">
-        <span className="w-12 shrink-0 text-xs text-muted-foreground">
-          Subject
-        </span>
-        <Input
+      <div className="flex h-10 items-center gap-2.5 border-b px-4">
+        <FieldLabel>Subject</FieldLabel>
+        <input
           value={subject}
           onChange={(event) => setSubject(event.target.value)}
           placeholder="Subject"
-          className={`${FIELD_INPUT} text-[13px]`}
+          className="min-w-0 flex-1 bg-transparent text-[13.5px] outline-none placeholder:text-muted-foreground/60"
         />
       </div>
 
-      <Textarea
+      <textarea
         value={body}
         onChange={(event) => setBody(event.target.value)}
         placeholder="Write your message…"
-        className="min-h-[220px] resize-none rounded-none border-0 bg-transparent px-4 py-3 text-sm leading-relaxed shadow-none focus-visible:border-transparent focus-visible:ring-0"
+        className="h-[200px] resize-none bg-transparent px-4 py-3.5 text-[13.5px] leading-[1.6] text-foreground/85 outline-none placeholder:text-muted-foreground/60"
       />
 
-      <footer className="flex items-center gap-3 border-t px-3.5 py-2.5">
+      <footer className="flex items-center gap-2 border-t px-3.5 py-[11px]">
         <Button size="sm" disabled={!canSend} onClick={() => void send()}>
           <SendIcon data-icon="inline-start" />
           {sending ? "Sending…" : "Send"}
         </Button>
+        <span className="font-mono text-[11px] text-muted-foreground/70">
+          ⌘↵
+        </span>
         {error && (
           <span className="min-w-0 truncate font-mono text-[11px] text-label-red">
             {error}
           </span>
         )}
-        <span className="ml-auto shrink-0 font-mono text-[10.5px] text-muted-foreground/70">
-          ⌘↵ send
+        <span className="ml-auto inline-flex gap-0.5">
+          <FooterIcon icon={PaperclipIcon} title="Attachments — soon" disabled />
+          <FooterIcon icon={CodeIcon} title="Code block — soon" disabled />
+          <FooterIcon icon={LinkIcon} title="Link — soon" disabled />
+          <FooterIcon icon={Trash2Icon} title="Discard" onClick={discard} />
         </span>
       </footer>
     </section>
+  );
+}
+
+function FieldLabel({ children }: { children: string }) {
+  return (
+    <span className="w-11 shrink-0 text-[12.5px] text-muted-foreground/70">
+      {children}
+    </span>
+  );
+}
+
+function FooterIcon({
+  icon: Icon,
+  title,
+  onClick,
+  disabled = false,
+}: {
+  icon: typeof PaperclipIcon;
+  title: string;
+  onClick?: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      title={title}
+      onClick={onClick}
+      disabled={disabled}
+      className="inline-flex cursor-pointer items-center justify-center rounded-md p-1.5 text-muted-foreground hover:bg-popover hover:text-foreground disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent"
+    >
+      <Icon className="size-[15px]" />
+    </button>
   );
 }

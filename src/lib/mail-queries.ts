@@ -9,6 +9,7 @@ import {
   isTestAccount,
   makeTestEmails,
   makeTestFullEmail,
+  makeTestRawEmail,
 } from "@/lib/test-account";
 
 export type FullEmail = ThreadRowEmail & {
@@ -90,6 +91,27 @@ export function useFullEmailQuery(accountId: string, emailId: string | null) {
         `/api/message?accountId=${accountId}&id=${encodeURIComponent(emailId!)}`,
       );
       return data.email;
+    },
+  });
+}
+
+/** Raw RFC 822 source for the reader's Raw toggle. */
+export function useRawEmailQuery(
+  accountId: string,
+  emailId: string | null,
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: ["email-raw", accountId, emailId],
+    enabled: enabled && emailId !== null,
+    queryFn: async (): Promise<string> => {
+      if (isTestAccount(accountId)) {
+        return makeTestRawEmail(accountId, emailId!);
+      }
+      const data = await fetchJson<{ raw: string }>(
+        `/api/message?accountId=${accountId}&id=${encodeURIComponent(emailId!)}&format=raw`,
+      );
+      return data.raw;
     },
   });
 }

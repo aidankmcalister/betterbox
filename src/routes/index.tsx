@@ -16,7 +16,7 @@ import { makeTestAccount } from "@/lib/test-account";
 import { signIn, useSession } from "../lib/auth-client";
 import { AppSidebar } from "@/components/app-sidebar";
 import { CommandMenu } from "@/components/command-menu";
-import { Composer } from "@/components/composer";
+import { Composer, type ComposeReply } from "@/components/composer";
 import { InboxTiles } from "@/components/inbox-tiles";
 import { ModeToggle } from "@/components/mode-toggle";
 import { SettingsDialog } from "@/components/settings-dialog";
@@ -56,7 +56,15 @@ function Home() {
   );
   const { scopeIds, allOn, toggle, only } = useAccountScope(accountIds);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [composeOpen, setComposeOpen] = useState(false);
+  /* null = closed; { reply: null } = blank compose; { reply } = prefilled. */
+  const [compose, setCompose] = useState<{ reply: ComposeReply | null } | null>(
+    null,
+  );
+  const openCompose = useCallback(() => setCompose({ reply: null }), []);
+  const openReply = useCallback(
+    (reply: ComposeReply) => setCompose({ reply }),
+    [],
+  );
 
   /* Mark every fetched unread message in the scoped panes as read, flip the
      cached rows optimistically, then refresh the sidebar unread counts. */
@@ -113,7 +121,7 @@ function Home() {
       if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return;
       if (e.key === "c") {
         e.preventDefault();
-        setComposeOpen(true);
+        openCompose();
         return;
       }
       if (e.key === "g") {
@@ -164,7 +172,7 @@ function Home() {
         onOpenChange={setCmdOpen}
         onOpenSettings={() => setSettingsOpen(true)}
         onGoInbox={() => toggle("all")}
-        onCompose={() => setComposeOpen(true)}
+        onCompose={openCompose}
         onMarkAllRead={markAllRead}
         onAddTestAccount={addTestAccount}
       />
@@ -174,8 +182,9 @@ function Home() {
         accounts={allAccounts ?? []}
       />
       <Composer
-        open={composeOpen}
-        onOpenChange={setComposeOpen}
+        open={compose !== null}
+        reply={compose?.reply}
+        onOpenChange={(next) => setCompose(next ? { reply: null } : null)}
         accounts={allAccounts ?? []}
       />
       <AppSidebar
@@ -185,7 +194,7 @@ function Home() {
         onToggleScope={toggle}
         onOpenCommand={() => setCmdOpen(true)}
         onOpenSettings={() => setSettingsOpen(true)}
-        onCompose={() => setComposeOpen(true)}
+        onCompose={openCompose}
         onAddTestAccount={addTestAccount}
       />
       <SidebarInset className="min-w-0">
@@ -199,6 +208,7 @@ function Home() {
               accounts={allAccounts}
               scopeIds={scopeIds}
               onRemovePane={toggle}
+              onReply={openReply}
             />
           )}
         </div>

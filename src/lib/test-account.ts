@@ -49,6 +49,23 @@ export function makeTestFullEmail(accountId: string, emailId: string) {
   };
 }
 
+/** Pseudo RFC 822 source for the raw view on test accounts. */
+export function makeTestRawEmail(accountId: string, emailId: string): string {
+  const email = makeTestFullEmail(accountId, emailId);
+  return [
+    `Delivered-To: ${email.to}`,
+    `Message-ID: ${email.messageId}`,
+    `Date: ${email.date}`,
+    `From: ${email.from}`,
+    `To: ${email.to}`,
+    `Subject: ${email.subject}`,
+    "MIME-Version: 1.0",
+    'Content-Type: text/plain; charset="UTF-8"',
+    "",
+    email.body,
+  ].join("\n");
+}
+
 export function makeTestEmails(accountId: string): ThreadRowEmail[] {
   const seed = Number(accountId.replace(TEST_ACCOUNT_PREFIX, "")) || 1;
   const now = Date.now();
