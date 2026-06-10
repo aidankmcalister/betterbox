@@ -1,5 +1,9 @@
 import { auth } from "@/lib/auth";
-import { listRecentEmails, markEmailsRead } from "@/lib/gmail/api.server";
+import {
+  listRecentEmails,
+  markEmailsRead,
+  searchEmails,
+} from "@/lib/gmail/api.server";
 import { getGoogleToken } from "@/lib/gmail/accounts.server";
 import { json } from "@/lib/json-response";
 import { createFileRoute } from "@tanstack/react-router";
@@ -15,6 +19,7 @@ export const Route = createFileRoute("/api/emails")({
         const accountId = url.searchParams.get("accountId") ?? undefined;
         const max = Number(url.searchParams.get("max")) || 50;
         const pageToken = url.searchParams.get("pageToken") ?? undefined;
+        const q = url.searchParams.get("q")?.trim();
 
         const accessToken = await getGoogleToken(
           request.headers,
@@ -24,6 +29,14 @@ export const Route = createFileRoute("/api/emails")({
         if (!accessToken) return json({ error: "No Google access token" }, 403);
 
         try {
+          if (q) {
+            const emails = await searchEmails(accessToken, q, max);
+            return json({
+              accountId: accountId ?? null,
+              count: emails.length,
+              emails,
+            });
+          }
           const { emails, nextPageToken } = await listRecentEmails(
             accessToken,
             max,

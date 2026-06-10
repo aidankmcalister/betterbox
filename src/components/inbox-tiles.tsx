@@ -53,6 +53,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { AccountDot, useAccountColor } from "@/components/account-dot";
 import type { ComposeReply } from "@/components/composer";
+import { HtmlBody } from "@/components/html-body";
 import { RawView } from "@/components/raw-view";
 import {
   EmptyState,
@@ -87,6 +88,10 @@ type DragState = {
 };
 
 type Reading = { accountId: string; emailId: string };
+
+/** Open a message in the reader from outside the tiles (command palette). */
+export const OPEN_EMAIL_EVENT = "bm:open-email";
+export type OpenEmailDetail = Reading;
 
 type TilesCtx = {
   accounts: Account[];
@@ -300,6 +305,16 @@ export function InboxTiles({
     return () => window.removeEventListener(RESET_TILE_LAYOUT_EVENT, onReset);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mutate, idsKey]);
+
+  /* Search results in the palette open here. */
+  useEffect(() => {
+    const onOpen = (event: Event) => {
+      const detail = (event as CustomEvent<OpenEmailDetail>).detail;
+      if (detail?.accountId && detail.emailId) setReading(detail);
+    };
+    window.addEventListener(OPEN_EMAIL_EVENT, onOpen);
+    return () => window.removeEventListener(OPEN_EMAIL_EVENT, onOpen);
+  }, []);
 
   const draggedAccount = drag
     ? accounts.find((a) => a.accountId === drag.accountId)
@@ -671,20 +686,24 @@ function ReaderPane() {
             </div>
 
             <div className="pt-[18px]">
-              {(email.body || email.snippet || "(empty message)")
-                .split("\n")
-                .map((line, i) =>
-                  line.trim() === "" ? (
-                    <div key={i} className="h-3" />
-                  ) : (
-                    <p
-                      key={i}
-                      className="m-0 text-sm leading-[1.65] text-pretty text-foreground/85"
-                    >
-                      {line}
-                    </p>
-                  ),
-                )}
+              {email.bodyHtml ? (
+                <HtmlBody html={email.bodyHtml} />
+              ) : (
+                (email.body || email.snippet || "(empty message)")
+                  .split("\n")
+                  .map((line, i) =>
+                    line.trim() === "" ? (
+                      <div key={i} className="h-3" />
+                    ) : (
+                      <p
+                        key={i}
+                        className="m-0 text-sm leading-[1.65] text-pretty text-foreground/85"
+                      >
+                        {line}
+                      </p>
+                    ),
+                  )
+              )}
               <Button variant="outline" className="mt-6" onClick={reply}>
                 <ReplyIcon data-icon="inline-start" /> Reply to{" "}
                 {sender.name.split(" ")[0]}

@@ -37,14 +37,26 @@ export async function listRecentEmails(
   return { emails, nextPageToken };
 }
 
+/** Gmail full-text search (messages.list q=) as metadata rows. */
+export async function searchEmails(
+  accessToken: string,
+  q: string,
+  max = 8,
+): Promise<Email[]> {
+  const { ids } = await listMessageIds(accessToken, max, undefined, q);
+  return Promise.all(ids.map((id) => fetchEmail(accessToken, id)));
+}
+
 async function listMessageIds(
   accessToken: string,
   max: number,
   pageToken?: string,
+  q?: string,
 ): Promise<{ ids: string[]; nextPageToken?: string }> {
   const query =
     `/messages?maxResults=${max}` +
-    (pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : "");
+    (pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : "") +
+    (q ? `&q=${encodeURIComponent(q)}` : "");
   const res = await gmailFetch(accessToken, query);
   if (!res.ok) throw new Error(`Gmail list failed (${res.status})`);
   const { messages = [], nextPageToken } = (await res.json()) as {
@@ -82,6 +94,7 @@ export type FullEmail = Email & {
   to: string;
   messageId: string;
   body: string;
+  bodyHtml?: string;
 };
 
 type MessagePart = {
@@ -90,7 +103,7 @@ type MessagePart = {
   parts?: MessagePart[];
 };
 
-/** One full message: headers + a plain-text body (format=full). */
+/** One full message: headers + plain-text and HTML bodies (format=full). */
 export async function getFullEmail(
   accessToken: string,
   id: string,
@@ -116,18 +129,25 @@ export async function getFullEmail(
     messageId: header("Message-ID"),
     snippet: message.snippet,
     unread: message.labelIds?.includes("UNREAD") ?? false,
-    body: extractBody(message.payload),
+    ...extractBody(message.payload),
   };
 }
 
-/** Prefer text/plain; fall back to tag-stripped text/html. */
-function extractBody(payload?: MessagePart): string {
-  if (!payload) return "";
-  const plain = findPart(payload, "text/plain");
-  if (plain) return decodePart(plain);
+/** Plain text (exports, fallback) plus the HTML part when one exists. */
+function extractBody(payload?: MessagePart): {
+  body: string;
+  bodyHtml?: string;
+} {
+  if (!payload) return { body: "" };
   const html = findPart(payload, "text/html");
-  if (html) return stripHtml(decodePart(html));
-  return "";
+  const bodyHtml = html ? decodePart(html) : undefined;
+  const plain = findPart(payload, "text/plain");
+  const body = plain
+    ? decodePart(plain)
+    : bodyHtml
+      ? stripHtml(bodyHtml)
+      : "";
+  return { body, bodyHtml };
 }
 
 function findPart(part: MessagePart, mimeType: string): MessagePart | null {

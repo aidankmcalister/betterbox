@@ -55,6 +55,12 @@ function Home() {
     [allAccounts],
   );
   const { scopeIds, allOn, toggle, only } = useAccountScope(accountIds);
+  /* Palette search covers the accounts whose panes are on screen — the
+     reader can only open messages for panes in scope. */
+  const scopedAccounts = useMemo(
+    () => (allAccounts ?? []).filter((a) => scopeIds.includes(a.accountId)),
+    [allAccounts, scopeIds],
+  );
   const [settingsOpen, setSettingsOpen] = useState(false);
   /* null = closed; { reply: null } = blank compose; { reply } = prefilled. */
   const [compose, setCompose] = useState<{ reply: ComposeReply | null } | null>(
@@ -175,6 +181,7 @@ function Home() {
         onCompose={openCompose}
         onMarkAllRead={markAllRead}
         onAddTestAccount={addTestAccount}
+        searchAccounts={scopedAccounts}
       />
       <SettingsDialog
         open={settingsOpen}

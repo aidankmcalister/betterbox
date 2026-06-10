@@ -1,4 +1,5 @@
 import {
+  keepPreviousData,
   useInfiniteQuery,
   useQuery,
   type InfiniteData,
@@ -16,6 +17,7 @@ export type FullEmail = ThreadRowEmail & {
   to: string;
   messageId: string;
   body: string;
+  bodyHtml?: string;
 };
 
 /**
@@ -74,6 +76,44 @@ export function useEmailsQuery(accountId: string) {
         emails: data.emails ?? [],
         nextPageToken: data.nextPageToken ?? undefined,
       };
+    },
+  });
+}
+
+export type SearchHit = ThreadRowEmail & { accountId: string };
+
+/** Gmail full-text search (messages.list q=) fanned out across accounts. */
+export function useSearchEmailsQuery(accountIds: string[], q: string) {
+  const trimmed = q.trim();
+  return useQuery({
+    queryKey: ["search", accountIds, trimmed],
+    enabled: trimmed.length >= 2,
+    placeholderData: keepPreviousData,
+    queryFn: async (): Promise<SearchHit[]> => {
+      const results = await Promise.all(
+        accountIds.map(async (accountId): Promise<SearchHit[]> => {
+          if (isTestAccount(accountId)) {
+            const needle = trimmed.toLowerCase();
+            return makeTestEmails(accountId)
+              .filter((email) =>
+                [email.subject, email.from, email.snippet ?? ""].some(
+                  (field) => field.toLowerCase().includes(needle),
+                ),
+              )
+              .slice(0, 8)
+              .map((email) => ({ ...email, accountId }));
+          }
+          const data = await fetchJson<{ emails?: ThreadRowEmail[] }>(
+            `/api/emails?accountId=${accountId}&q=${encodeURIComponent(trimmed)}&max=8`,
+          );
+          return (data.emails ?? []).map((email) => ({ ...email, accountId }));
+        }),
+      );
+      return results
+        .flat()
+        .sort(
+          (a, b) => (Date.parse(b.date) || 0) - (Date.parse(a.date) || 0),
+        );
     },
   });
 }

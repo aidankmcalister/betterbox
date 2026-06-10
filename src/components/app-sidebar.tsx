@@ -5,7 +5,6 @@ import {
   PenLine,
   Search,
   Send,
-  SquareTerminal,
   Webhook,
 } from "lucide-react";
 
@@ -37,7 +36,6 @@ const mailbox = [
 const developer = [
   { title: "Webhooks", icon: Webhook },
   { title: "Analytics", icon: BarChart3 },
-  { title: "API log", icon: SquareTerminal },
 ];
 
 const groupLabel =
