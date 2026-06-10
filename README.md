@@ -2,7 +2,7 @@
 
 A web-based Gmail client for developers — a faster, denser UI on top of the Gmail API. It is **not** a new email service; it reads and acts on existing Gmail accounts. Lives at [betterbox.dev](https://betterbox.dev).
 
-> Status: major checkpoint. Multi-account reading, HTML message rendering, full-text search, compose/send, a full reading pane (raw MIME + export), and a privacy policy for Google verification all work. True reply threading and the developer-platform features are still ahead.
+> Status: major checkpoint. Multi-account reading, HTML message rendering, full-text search, compose/send, a full reading pane (raw MIME + export), and a privacy policy for Google verification all work. True reply threading, thread grouping, mobile, and billing are still ahead.
 
 ## What it does today
 
@@ -70,22 +70,18 @@ Next — **mail features:**
 - [ ] Thread grouping (`threads.get`) instead of flat messages
 - [ ] Labels, star, archive, trash
 - [ ] Attachments (view + download)
+- [ ] Mobile / responsive layout (the tiling pane UI is desktop-only today)
 
 Next — **sync & reliability:**
 
 - [ ] Incremental sync (History API) and push (`users.watch` + Pub/Sub)
 - [ ] Gmail API quota tracking + backoff (our calls to Google)
 
-Next — **developer platform:**
-
-- [ ] Outbound webhooks, analytics with [Bklit UI](https://bklit.com/), API request log
-- [ ] Public API + API keys
-- [ ] Per-plan rate limiting (throttling BetterBox's own users)
-
 Next — **business:** (i dont want to go broke)
 
 - [ ] Pricing & billing (plans, Stripe)
-- [ ] Accounts/usage limits per plan
+- [ ] Per-plan usage + rate limits
+- [ ] Product analytics (with [Bklit UI](https://bklit.com/))
 
 ## Tech stack
 
