@@ -50,7 +50,15 @@ export const Route = createFileRoute("/api/image-proxy")({
         let upstream: Response;
         try {
           upstream = await fetch(target, {
-            headers: { accept: "image/*" },
+            // Many CDNs (fbcdn, licdn, …) reject server-side fetches that have
+            // no browser User-Agent / Accept, so present as a browser.
+            headers: {
+              accept:
+                "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+              "user-agent":
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+              "accept-language": "en-US,en;q=0.9",
+            },
             redirect: "follow",
           });
         } catch {
@@ -61,7 +69,8 @@ export const Route = createFileRoute("/api/image-proxy")({
         }
 
         const type = upstream.headers.get("content-type") ?? "";
-        if (!type.startsWith("image/")) {
+        // Some CDNs mislabel images as octet-stream; allow those through too.
+        if (!type.startsWith("image/") && type !== "application/octet-stream") {
           return new Response("Not an image", { status: 415 });
         }
 
