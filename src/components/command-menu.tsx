@@ -192,39 +192,10 @@ export function CommandMenu({
               : "No results found."}
           </CommandEmpty>
 
-          {searching && hits.length > 0 && (
-            <CommandGroup heading="Emails">
-              {hits.map((hit) => (
-                <CommandItem
-                  key={`${hit.accountId}/${hit.id}`}
-                  value={`${hit.accountId}/${hit.id}`}
-                  onSelect={() => openHit(hit)}
-                >
-                  <Mail />
-                  <span className="min-w-0 flex-1 truncate">
-                    <span className={cn(hit.unread && "font-medium")}>
-                      {senderName(hit.from)}
-                    </span>
-                    <span className="text-muted-foreground">
-                      {" — "}
-                      {hit.subject || "(no subject)"}
-                    </span>
-                  </span>
-                  {searchAccounts.length > 1 && (
-                    <span className="ml-auto shrink-0 font-mono text-[10.5px] text-muted-foreground/70">
-                      {accountLabel(hit.accountId)}
-                    </span>
-                  )}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          )}
-
+          {/* Commands first (filtered by the query)… */}
           {visibleGroups.map((group, index) => (
             <Fragment key={group.heading}>
-              {(index > 0 || (searching && hits.length > 0)) && (
-                <CommandSeparator />
-              )}
+              {index > 0 && <CommandSeparator />}
               <CommandGroup heading={group.heading}>
                 {group.entries.map((entry) => (
                   <CommandItem
@@ -249,6 +220,38 @@ export function CommandMenu({
               </CommandGroup>
             </Fragment>
           ))}
+
+          {/* …then the mail search results below them. */}
+          {searching && hits.length > 0 && (
+            <>
+              {visibleGroups.length > 0 && <CommandSeparator />}
+              <CommandGroup heading="Inbox">
+                {hits.map((hit) => (
+                  <CommandItem
+                    key={`${hit.accountId}/${hit.id}`}
+                    value={`${hit.accountId}/${hit.id}`}
+                    onSelect={() => openHit(hit)}
+                  >
+                    <Mail />
+                    <span className="min-w-0 flex-1 truncate">
+                      <span className={cn(hit.unread && "font-medium")}>
+                        {senderName(hit.from)}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {" — "}
+                        {hit.subject || "(no subject)"}
+                      </span>
+                    </span>
+                    {searchAccounts.length > 1 && (
+                      <span className="ml-auto shrink-0 font-mono text-[10.5px] text-muted-foreground/70">
+                        {accountLabel(hit.accountId)}
+                      </span>
+                    )}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </>
+          )}
         </CommandList>
       </Command>
     </CommandDialog>
