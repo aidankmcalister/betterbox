@@ -280,7 +280,7 @@ function AppShell() {
               Loading accounts…
             </p>
           ) : analyticsOpen ? (
-            <AnalyticsView accounts={allAccounts} scopeIds={scopeIds} />
+            <AnalyticsView accounts={allAccounts} />
           ) : (
             <InboxTiles
               accounts={allAccounts}

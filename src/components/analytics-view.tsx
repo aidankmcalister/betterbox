@@ -35,15 +35,15 @@ const RANGE_DAYS: Record<Range, number> = { "7d": 7, "14d": 14, "30d": 30 };
 
 type Spark = { date: string; v: number }[];
 
-export function AnalyticsView({
-  accounts,
-  scopeIds,
-}: {
-  accounts: Account[];
-  scopeIds: string[];
-}) {
+export function AnalyticsView({ accounts }: { accounts: Account[] }) {
   const [range, setRange] = useState<Range>("14d");
-  const query = useAnalyticsQuery(scopeIds);
+  // Analytics always covers every linked account — it deliberately ignores the
+  // sidebar view scope, so it reads the same no matter which panes are on.
+  const accountIds = useMemo(
+    () => accounts.map((a) => a.accountId),
+    [accounts],
+  );
+  const query = useAnalyticsQuery(accountIds);
   const results = useMemo(() => query.data ?? [], [query.data]);
 
   const accountIndex = useMemo(
@@ -51,13 +51,7 @@ export function AnalyticsView({
     [accounts],
   );
 
-  const scoped = accounts.filter((a) => scopeIds.includes(a.accountId));
-  const scopeLabel =
-    scoped.length === accounts.length
-      ? "all accounts"
-      : scoped.length === 1
-        ? scoped[0].email
-        : scoped.map((a) => a.email.split("@")[0]).join(" + ");
+  const scopeLabel = accounts.length === 1 ? accounts[0].email : "all accounts";
 
   const model = useMemo(
     () => buildAnalyticsModel(results, accounts),
@@ -92,7 +86,7 @@ export function AnalyticsView({
   const sentToday = model.totalSent[last] ?? 0;
   const receivedDelta = pctDelta(receivedToday, model.totalReceived[last - 1] ?? 0);
   const sentDelta = pctDelta(sentToday, model.totalSent[last - 1] ?? 0);
-  const unread = scoped.reduce((sum, a) => sum + a.unread, 0);
+  const unread = accounts.reduce((sum, a) => sum + a.unread, 0);
   const receivedRange = model.totalReceived
     .slice(sliceFrom)
     .reduce((sum, n) => sum + n, 0);
@@ -169,7 +163,7 @@ export function AnalyticsView({
               <StatCard
                 label="Unread"
                 value={unread}
-                sub={scoped.length === 1 ? "in this inbox" : "across accounts"}
+                sub={accounts.length === 1 ? "in this inbox" : "across accounts"}
               />
               <StatCard
                 label={`Received · ${visibleDays}d`}
