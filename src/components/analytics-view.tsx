@@ -68,18 +68,18 @@ export function AnalyticsView({ accounts }: { accounts: Account[] }) {
           <button
             type="button"
             onClick={() => setBuilding(true)}
-            className="inline-flex h-6 items-center gap-1.5 rounded-md border border-hairline bg-surface-1 px-2.5 font-mono text-[11.5px] text-ink-subtle hover:bg-surface-3 hover:text-ink"
+            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-hairline bg-surface-1 px-3 font-mono text-[12px] text-ink-subtle hover:bg-surface-3 hover:text-ink"
           >
-            <PlusIcon className="size-3" />
+            <PlusIcon className="size-3.5" />
             Add custom chart
           </button>
-          <div className="flex rounded-[7px] border border-hairline bg-surface-1 p-0.5">
+          <div className="flex h-8 items-center rounded-[7px] border border-hairline bg-surface-1 p-0.5">
             {(Object.keys(RANGE_DAYS) as Range[]).map((r) => (
               <button
                 key={r}
                 type="button"
                 onClick={() => setRange(r)}
-                className={`h-6 rounded-[5px] px-[11px] font-mono text-[11.5px] transition-colors ${
+                className={`h-7 rounded-[5px] px-[11px] font-mono text-[11.5px] transition-colors ${
                   range === r
                     ? "bg-surface-3 text-ink"
                     : "text-ink-subtle hover:text-ink"
@@ -247,7 +247,7 @@ function StatNumber({
             fill={TEAL.base}
             fillOpacity={0.34}
             gradientToOpacity={0}
-            fadeEdges={false}
+            fadeEdges="left"
           />
         </AreaChart>
       ) : (
@@ -293,8 +293,8 @@ function SeriesCell(props: CellCtx) {
         data={chartData}
         xDataKey="date"
         aspectRatio="auto"
-        style={{ height: 190 }}
-        margin={{ top: 8, right: 8, bottom: 26, left: 8 }}
+        style={{ height: 200 }}
+        margin={{ top: 8, right: 8, bottom: 38, left: 8 }}
         animationDuration={0}
       >
         <Grid numTicksRows={4} stroke={GRID_STROKE} strokeDasharray="3 5" />
@@ -307,7 +307,7 @@ function SeriesCell(props: CellCtx) {
             fill={l.color}
             fillOpacity={isLine ? 0 : 0.26}
             gradientToOpacity={isLine ? 0 : 0.02}
-            fadeEdges={false}
+            fadeEdges
           />
         ))}
         <XAxis numTicks={5} />

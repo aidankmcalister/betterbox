@@ -7,6 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -137,25 +144,28 @@ export function ChartBuilder({
             <div className="flex flex-col gap-2">
               {series.map((row, i) => (
                 <div key={i} className="flex items-center gap-2">
-                  <select
-                    value={
-                      QUERY_PRESETS.some((p) => p.q === row.q) ? row.q : ""
-                    }
-                    onChange={(e) => {
-                      const preset = QUERY_PRESETS.find(
-                        (p) => p.q === e.target.value,
-                      );
-                      if (preset) setRow(i, { q: preset.q, label: preset.label });
+                  <Select
+                    value={QUERY_PRESETS.some((p) => p.q === row.q) ? row.q : ""}
+                    onValueChange={(value) => {
+                      const preset = QUERY_PRESETS.find((p) => p.q === value);
+                      if (preset)
+                        setRow(i, { q: preset.q, label: preset.label });
                     }}
-                    className="h-8 shrink-0 rounded-md border border-input bg-transparent px-2 font-mono text-[12px] text-foreground"
                   >
-                    <option value="">Preset…</option>
-                    {QUERY_PRESETS.map((p) => (
-                      <option key={p.q} value={p.q}>
-                        {p.label}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger
+                      size="sm"
+                      className="w-[116px] shrink-0 font-mono text-[12px]"
+                    >
+                      <SelectValue placeholder="Preset…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {QUERY_PRESETS.map((p) => (
+                        <SelectItem key={p.q} value={p.q}>
+                          {p.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <Input
                     value={row.q}
                     onChange={(e) => setRow(i, { q: e.target.value })}
