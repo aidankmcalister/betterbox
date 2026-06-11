@@ -1,10 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDownIcon, ChevronUpIcon, PlusIcon, XIcon } from "lucide-react";
+import {
+  ChevronDownIcon,
+  ChevronUpIcon,
+  GripVerticalIcon,
+  PlusIcon,
+  XIcon,
+} from "lucide-react";
 
 import type { Account } from "@/lib/account";
 import type { ChartDef } from "@/lib/analytics/types";
 import { TEAL, CATEGORICAL } from "@/lib/analytics/defs";
 import { pctDelta, toSpark, type ChartData, type Delta } from "@/lib/analytics/model";
+import { parseStoredTree, type LayoutNode } from "@/lib/layout-tree";
+import {
+  TileBoard,
+  useTileDrag,
+  type TileStorage,
+} from "@/components/tile-board";
 import { resolveAccountColor } from "@/components/account-dot";
 import { useSettings } from "@/hooks/use-settings";
 import { useChartDefs } from "@/hooks/use-preferences";
@@ -23,6 +35,16 @@ import {
   LegendValue,
 } from "@/components/charts/legend";
 import { ChartBuilder } from "@/components/chart-builder";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const GRID_STROKE = "color-mix(in srgb, #8a8f98 16%, transparent)";
 const CELL_DIVIDERS = {
@@ -31,6 +53,29 @@ const CELL_DIVIDERS = {
 
 type Range = "7d" | "14d" | "30d";
 const RANGE_DAYS: Record<Range, number> = { "7d": 7, "14d": 14, "30d": 30 };
+
+/* The chart *layout* is per-device (it follows the screen, and resize drags
+   would spam the DB) — kept in localStorage. The chart *definitions* sync via
+   DB preferences (useChartDefs). */
+const LAYOUT_KEY = "bm.analytics-layout";
+const layoutStorage: TileStorage = {
+  load: () => {
+    try {
+      const raw = localStorage.getItem(LAYOUT_KEY);
+      return raw ? parseStoredTree(JSON.parse(raw)) : null;
+    } catch {
+      return null;
+    }
+  },
+  save: (tree: LayoutNode | null) => {
+    try {
+      if (tree === null) localStorage.removeItem(LAYOUT_KEY);
+      else localStorage.setItem(LAYOUT_KEY, JSON.stringify(tree));
+    } catch {
+      /* storage unavailable — layout just won't persist */
+    }
+  },
+};
 
 export function AnalyticsView({ accounts }: { accounts: Account[] }) {
   const [range, setRange] = useState<Range>("14d");
@@ -54,6 +99,24 @@ export function AnalyticsView({ accounts }: { accounts: Account[] }) {
   const panels = charts.filter((c) => c.kind !== "stat");
 
   const ctx = { accountIds, days, colorOf, emailOf, onRemove: remove };
+
+  const panelById = new Map(panels.map((p) => [p.id, p]));
+  const paneIds = panels.map((p) => p.id);
+  const renderPane = (id: string) => {
+    const def = panelById.get(id);
+    if (!def) return null;
+    return def.kind === "senders" ? (
+      <SendersCell def={def} {...ctx} />
+    ) : (
+      <SeriesCell def={def} {...ctx} />
+    );
+  };
+  const renderDragLabel = (id: string) => (
+    <>
+      <GripVerticalIcon className="size-3.5 text-muted-foreground" />
+      <span className="font-mono text-xs">{panelById.get(id)?.name}</span>
+    </>
+  );
 
   return (
     <div className="flex h-full min-w-0 flex-col bg-canvas">
@@ -92,21 +155,29 @@ export function AnalyticsView({ accounts }: { accounts: Account[] }) {
         </div>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="flex min-h-0 flex-1 flex-col">
         {stats.length > 0 && (
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] overflow-hidden border-b border-hairline">
+          <div className="grid flex-none grid-cols-[repeat(auto-fit,minmax(200px,1fr))] overflow-hidden border-b border-hairline">
             {stats.map((def) => (
               <StatCell key={def.id} def={def} {...ctx} />
             ))}
           </div>
         )}
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] overflow-hidden">
-          {panels.map((def) =>
-            def.kind === "senders" ? (
-              <SendersCell key={def.id} def={def} {...ctx} />
-            ) : (
-              <SeriesCell key={def.id} def={def} {...ctx} />
-            ),
+        <div className="min-h-0 flex-1">
+          {paneIds.length > 0 ? (
+            <TileBoard
+              paneIds={paneIds}
+              renderPane={renderPane}
+              storage={layoutStorage}
+              renderDragLabel={renderDragLabel}
+              emptyLabel="No charts yet."
+            />
+          ) : (
+            <div className="grid h-full place-items-center">
+              <span className="font-mono text-[12px] text-ink-tertiary">
+                No charts — add one above.
+              </span>
+            </div>
           )}
         </div>
       </div>
@@ -132,43 +203,79 @@ function Cell({
   onRemove,
   caption,
   children,
-  className = "",
-  style,
 }: {
   def: ChartDef;
   onRemove: (id: string) => void;
   caption?: string;
   children: React.ReactNode;
-  className?: string;
-  style?: React.CSSProperties;
 }) {
+  const beginDrag = useTileDrag();
   return (
-    <section
-      className={`group/cell relative min-w-0 px-[18px] pt-3.5 pb-[18px] ${className}`}
-      style={{ ...CELL_DIVIDERS, ...style }}
-    >
-      <div className="mb-3 flex items-baseline gap-2.5">
-        <span className="truncate font-mono text-[10.5px] font-medium tracking-[0.5px] text-ink-tertiary uppercase">
+    <section className="group/cell flex h-full min-w-0 flex-col bg-canvas">
+      <div
+        onPointerDown={(event) => beginDrag(event, def.id)}
+        className="flex h-9 shrink-0 cursor-grab touch-none items-center gap-2 border-b px-2.5 select-none active:cursor-grabbing"
+      >
+        <GripVerticalIcon className="size-3.5 shrink-0 text-muted-foreground/70" />
+        <span className="min-w-0 truncate font-mono text-xs font-medium tracking-[0.4px] text-ink-tertiary uppercase">
           {def.name}
         </span>
         {caption && (
-          <span className="ml-auto truncate font-mono text-[10.5px] text-ink-tertiary">
+          <span className="ml-auto shrink-0 font-mono text-[11px] text-ink-tertiary">
             {caption}
           </span>
         )}
-        {!def.builtin && (
-          <button
-            type="button"
-            aria-label="Remove chart"
-            onClick={() => onRemove(def.id)}
-            className="ml-1 hidden size-4 shrink-0 items-center justify-center rounded text-ink-tertiary group-hover/cell:flex hover:bg-surface-3 hover:text-ink"
-          >
-            <XIcon className="size-3" />
-          </button>
-        )}
+        <RemoveChart
+          name={def.name}
+          onConfirm={() => onRemove(def.id)}
+          className={caption ? "ml-1.5" : "ml-auto"}
+        />
       </div>
-      {children}
+      <div className="flex min-h-0 flex-1 flex-col px-3.5 pt-3 pb-3">
+        {children}
+      </div>
     </section>
+  );
+}
+
+/** X button → shadcn confirm dialog. Used by every chart cell so removing one
+ *  (including a default) always asks first. */
+function RemoveChart({
+  name,
+  onConfirm,
+  className = "",
+}: {
+  name: string;
+  onConfirm: () => void;
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        aria-label="Remove chart"
+        onClick={() => setOpen(true)}
+        className={`inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground/70 opacity-0 group-hover/cell:opacity-100 hover:bg-muted hover:text-foreground ${className}`}
+      >
+        <XIcon className="size-3.5" />
+      </button>
+      <AlertDialog open={open} onOpenChange={setOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove “{name}”?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes the chart from your analytics. You can add it back any
+              time with “Add custom chart”.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={onConfirm}>Remove</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 
@@ -193,16 +300,11 @@ function StatCell(props: CellCtx) {
           {def.name}
         </span>
         {total.length > 1 && <DeltaPill delta={delta} />}
-        {!def.builtin && (
-          <button
-            type="button"
-            aria-label="Remove chart"
-            onClick={() => onRemove(def.id)}
-            className="hidden size-4 shrink-0 items-center justify-center rounded text-ink-tertiary group-hover/cell:flex hover:bg-surface-3 hover:text-ink"
-          >
-            <XIcon className="size-3" />
-          </button>
-        )}
+        <RemoveChart
+          name={def.name}
+          onConfirm={() => onRemove(def.id)}
+          className={total.length > 1 ? "ml-1.5" : "ml-auto"}
+        />
       </div>
       <StatNumber value={today} sub="today" spark={spark} />
     </div>
@@ -289,30 +391,32 @@ function SeriesCell(props: CellCtx) {
           </LegendItem>
         </Legend>
       )}
-      <AreaChart
-        data={chartData}
-        xDataKey="date"
-        aspectRatio="auto"
-        style={{ height: 200 }}
-        margin={{ top: 8, right: 8, bottom: 38, left: 8 }}
-        animationDuration={0}
-      >
-        <Grid numTicksRows={4} stroke={GRID_STROKE} strokeDasharray="3 5" />
-        {lines.map((l) => (
-          <Area
-            key={l.key}
-            dataKey={l.key}
-            stroke={l.color}
-            strokeWidth={1.75}
-            fill={l.color}
-            fillOpacity={isLine ? 0 : 0.26}
-            gradientToOpacity={isLine ? 0 : 0.02}
-            fadeEdges
-          />
-        ))}
-        <XAxis numTicks={5} />
-        <ChartTooltip rows={(point) => lineRows(point, lines)} />
-      </AreaChart>
+      <div className="min-h-[140px] flex-1">
+        <AreaChart
+          data={chartData}
+          xDataKey="date"
+          aspectRatio="auto"
+          style={{ height: "100%" }}
+          margin={{ top: 8, right: 8, bottom: 38, left: 8 }}
+          animationDuration={0}
+        >
+          <Grid numTicksRows={4} stroke={GRID_STROKE} strokeDasharray="3 5" />
+          {lines.map((l) => (
+            <Area
+              key={l.key}
+              dataKey={l.key}
+              stroke={l.color}
+              strokeWidth={1.75}
+              fill={l.color}
+              fillOpacity={isLine ? 0 : 0.26}
+              gradientToOpacity={isLine ? 0 : 0.02}
+              fadeEdges
+            />
+          ))}
+          <XAxis numTicks={5} />
+          <ChartTooltip rows={(point) => lineRows(point, lines)} />
+        </AreaChart>
+      </div>
     </Cell>
   );
 }
@@ -327,7 +431,7 @@ function SendersCell(props: CellCtx) {
 
   return (
     <Cell def={def} onRemove={onRemove} caption="30d">
-      <div className="flex flex-col gap-3 pt-0.5">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pt-0.5">
         {senders.map((s, i) => (
           <div key={s.email} className="flex items-center gap-2.5">
             <span className="w-[13px] flex-none font-mono text-[10.5px] text-ink-tertiary">
