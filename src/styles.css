@@ -102,6 +102,11 @@
   --color-chart-foreground-muted: var(--chart-foreground-muted);
   --color-chart-foreground: var(--chart-foreground);
   --color-chart-background: var(--chart-background);
+  --color-legend-track: var(--legend-track);
+  --color-legend-muted-foreground: var(--legend-muted-foreground);
+  --color-legend-muted: var(--legend-muted);
+  --color-legend-foreground: var(--legend-foreground);
+  --color-legend: var(--legend);
 }
 
 :root {
@@ -157,6 +162,11 @@
   --chart-marker-foreground: oklch(0.3 0.01 260);
   --chart-ring-background: oklch(0.9 0.005 260 / 0.25);
   --chart-label: oklch(0.45 0.01 260);
+  --legend: oklch(1 0 0);
+  --legend-foreground: oklch(0.141 0.005 285.823);
+  --legend-muted: oklch(0.967 0.001 286.375);
+  --legend-muted-foreground: oklch(0.552 0.016 285.938);
+  --legend-track: oklch(0.92 0.004 286.32);
 }
 
 /* Dark mode = the Better Mail design. Semantic tokens map onto the palette so
@@ -208,6 +218,11 @@
   --chart-marker-foreground: oklch(0.9 0 0);
   --chart-ring-background: oklch(0.35 0.01 260 / 0.25);
   --chart-label: oklch(0.75 0.01 260);
+  --legend: oklch(0.21 0.006 285.885);
+  --legend-foreground: oklch(0.985 0 0);
+  --legend-muted: oklch(0.274 0.006 286.033);
+  --legend-muted-foreground: oklch(0.705 0.015 286.067);
+  --legend-track: oklch(0.274 0.006 286.033);
 }
 
 @layer base {

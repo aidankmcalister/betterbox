@@ -17,6 +17,13 @@ import { XAxis } from "@/components/charts/x-axis";
 import { ChartTooltip, type TooltipRow } from "@/components/charts/tooltip";
 import { ChartStatFlow } from "@/components/charts/chart-stat-flow";
 import { useChart } from "@/components/charts/chart-context";
+import {
+  Legend,
+  LegendItem,
+  LegendLabel,
+  LegendMarker,
+  LegendValue,
+} from "@/components/charts/legend";
 
 /* Aggregate sparklines use the dev teal; multi-account series are colored by
    each account's own color (Settings → Accounts) so they match its sidebar dot. */
@@ -178,17 +185,20 @@ export function AnalyticsView({
               caption={`received · last ${visibleDays} days`}
               className="mb-3.5"
             >
-              <div className="mb-3 flex flex-wrap items-center gap-x-3.5 gap-y-1.5">
-                {seriesView.map((s) => (
-                  <span
-                    key={s.accountId}
-                    className="inline-flex items-center gap-1.5 font-sans text-[11.5px] text-ink-subtle"
-                  >
-                    <Swatch color={s.color} />
-                    {s.email}
-                  </span>
-                ))}
-              </div>
+              <Legend
+                items={seriesView.map((s) => ({
+                  label: s.email,
+                  value: s.rangeReceived,
+                  color: s.color,
+                }))}
+                className="mb-3 flex-row flex-wrap items-center gap-x-4 gap-y-1"
+              >
+                <LegendItem className="flex items-center gap-1.5">
+                  <LegendMarker className="size-1.5" />
+                  <LegendLabel className="font-sans text-[11.5px] text-ink-subtle" />
+                  <LegendValue className="font-mono text-[11px] text-ink-tertiary tabular-nums" />
+                </LegendItem>
+              </Legend>
               <AreaChart
                 data={heroData}
                 xDataKey="date"
@@ -454,15 +464,6 @@ function DeltaPill({ delta }: { delta: Delta }) {
         ))}
       {delta.label}
     </span>
-  );
-}
-
-function Swatch({ color }: { color: string }) {
-  return (
-    <span
-      className="inline-block h-[3px] w-2.5 flex-none rounded-sm"
-      style={{ background: color }}
-    />
   );
 }
 
