@@ -21,6 +21,7 @@ import { toFolder, type Folder } from "@/lib/folders";
 import { makeTestAccount } from "@/lib/test-account";
 import { signIn, useSession } from "../lib/auth-client";
 import { AppSidebar } from "@/components/app-sidebar";
+import { AnalyticsView } from "@/components/analytics-view";
 import { CommandMenu } from "@/components/command-menu";
 import { Composer } from "@/components/composer";
 import { InboxTiles, type Reading } from "@/components/inbox-tiles";
@@ -94,6 +95,8 @@ function AppShell() {
       ? { accountId: search.account, emailId: emailMatch.id }
       : null;
   const settingsOpen = Boolean(matchRoute({ to: "/settings" }));
+  const analyticsOpen = Boolean(matchRoute({ to: "/analytics" }));
+  const view: "mail" | "analytics" = analyticsOpen ? "analytics" : "mail";
 
   /* Folders are real paths (/trash, /sent, …). When the reader is open it
      carries the folder in its search so the panes behind keep their folder. */
@@ -123,6 +126,10 @@ function AppShell() {
   );
   const openSettings = useCallback(
     () => navigate({ to: "/settings" }),
+    [navigate],
+  );
+  const openAnalytics = useCallback(
+    () => navigate({ to: "/analytics" }),
     [navigate],
   );
 
@@ -257,7 +264,9 @@ function AppShell() {
         scopeIds={scopeIds}
         allOn={allOn}
         folder={folder}
+        view={view}
         onFolder={openFolder}
+        onOpenAnalytics={openAnalytics}
         onToggleScope={toggle}
         onOpenCommand={() => setCmdOpen(true)}
         onOpenSettings={openSettings}
@@ -270,6 +279,8 @@ function AppShell() {
             <p className="p-6 text-sm text-muted-foreground">
               Loading accounts…
             </p>
+          ) : analyticsOpen ? (
+            <AnalyticsView accounts={allAccounts} scopeIds={scopeIds} />
           ) : (
             <InboxTiles
               accounts={allAccounts}

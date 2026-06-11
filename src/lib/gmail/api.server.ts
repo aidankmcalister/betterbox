@@ -354,6 +354,114 @@ export async function markAccountRead(accessToken: string): Promise<number> {
   return total;
 }
 
+// ── Analytics ────────────────────────────────────────────────────────────────
+// Real mailbox metrics for the Analytics page. Every number here comes off the
+// live Gmail API — no invented placeholders. Counts use messages.list's
+// resultSizeEstimate (Gmail's own count for a query); senders are tallied from
+// a sample of recent inbox metadata.
+
+/** date is ISO `YYYY-MM-DD` — the chart layer formats it for display. */
+export type AnalyticsDay = { date: string; received: number; sent: number };
+export type TopSender = { name: string; email: string; count: number };
+export type AccountAnalytics = { days: AnalyticsDay[]; topSenders: TopSender[] };
+
+/** Received + sent counts per day plus top senders, for one account. */
+export async function getAnalytics(
+  accessToken: string,
+  days = 30,
+): Promise<AccountAnalytics> {
+  const buckets = dayBuckets(days);
+  const [series, topSenders] = await Promise.all([
+    mapPool(buckets, 6, async (bucket) => {
+      const [received, sent] = await Promise.all([
+        // received = everything that landed in the mailbox that day (incl.
+        // archived), excluding our own sent / drafts / chats.
+        countMessages(
+          accessToken,
+          `-in:sent -in:draft -in:chats after:${bucket.after} before:${bucket.before}`,
+        ),
+        countMessages(
+          accessToken,
+          `in:sent after:${bucket.after} before:${bucket.before}`,
+        ),
+      ]);
+      return { date: bucket.date, received, sent };
+    }),
+    getTopSenders(accessToken),
+  ]);
+  return { days: series, topSenders };
+}
+
+/** Gmail's own estimate of how many messages match a query (cheap: maxResults=1
+ *  still returns resultSizeEstimate for the whole result set). */
+async function countMessages(accessToken: string, q: string): Promise<number> {
+  const res = await gmailFetchOk(
+    accessToken,
+    `/messages?maxResults=1&q=${encodeURIComponent(q)}`,
+  );
+  if (!res.ok) return 0;
+  const { resultSizeEstimate = 0 } = (await res.json()) as {
+    resultSizeEstimate?: number;
+  };
+  return resultSizeEstimate;
+}
+
+/** Day buckets oldest→newest, as Gmail `after:`/`before:` date strings. */
+function dayBuckets(days: number) {
+  const buckets: { date: string; after: string; before: string }[] = [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  for (let i = days - 1; i >= 0; i--) {
+    const day = new Date(today);
+    day.setDate(today.getDate() - i);
+    const next = new Date(day);
+    next.setDate(day.getDate() + 1);
+    buckets.push({
+      date: isoDate(day),
+      after: gmailDate(day),
+      before: gmailDate(next),
+    });
+  }
+  return buckets;
+}
+
+const pad2 = (n: number) => String(n).padStart(2, "0");
+const isoDate = (d: Date) =>
+  `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const gmailDate = (d: Date) =>
+  `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
+
+/** Tally the most frequent senders from a sample of recent inbox metadata. */
+async function getTopSenders(
+  accessToken: string,
+  sample = 120,
+): Promise<TopSender[]> {
+  const { ids } = await listMessageIds(accessToken, sample, undefined, "in:inbox");
+  const rows = await mapPool(ids, 8, (id) => fetchEmail(accessToken, id));
+  const tally = new Map<string, TopSender>();
+  for (const row of rows) {
+    const { name, email } = parseFromHeader(row.from);
+    if (!email) continue;
+    const key = email.toLowerCase();
+    const existing = tally.get(key);
+    if (existing) existing.count += 1;
+    else tally.set(key, { name: name || email, email, count: 1 });
+  }
+  return [...tally.values()]
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 6);
+}
+
+/** "Name <addr@host>" → { name, email }; bare addresses keep an empty name. */
+function parseFromHeader(from: string): { name: string; email: string } {
+  const match = from.match(/^\s*(.*?)\s*<([^>]+)>\s*$/);
+  if (match) {
+    return { name: match[1].replace(/^"(.*)"$/, "$1").trim(), email: match[2].trim() };
+  }
+  const bare = from.trim();
+  return { name: "", email: /@/.test(bare) ? bare : "" };
+}
+
 function gmailFetch(accessToken: string, path: string, init?: RequestInit) {
   return fetch(`${GMAIL}${path}`, {
     ...init,

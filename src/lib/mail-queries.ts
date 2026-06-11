@@ -124,6 +124,33 @@ export function useSearchEmailsQuery(accountIds: string[], q: string) {
   });
 }
 
+export type AnalyticsDay = { date: string; received: number; sent: number };
+export type TopSender = { name: string; email: string; count: number };
+export type AccountAnalytics = { days: AnalyticsDay[]; topSenders: TopSender[] };
+export type ScopedAnalytics = { accountId: string; analytics: AccountAnalytics };
+
+/** Real per-account mailbox metrics for the Analytics page, fanned out across
+ *  the scoped accounts. Cached 5 min — these are heavy (a list call per day). */
+export function useAnalyticsQuery(accountIds: string[]) {
+  return useQuery({
+    queryKey: ["analytics", [...accountIds].sort()],
+    enabled: accountIds.length > 0,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async (): Promise<ScopedAnalytics[]> =>
+      Promise.all(
+        accountIds.map(async (accountId): Promise<ScopedAnalytics> => {
+          if (isTestAccount(accountId)) {
+            return { accountId, analytics: { days: [], topSenders: [] } };
+          }
+          const data = await fetchJson<{ analytics: AccountAnalytics }>(
+            `/api/analytics?accountId=${accountId}&days=30`,
+          );
+          return { accountId, analytics: data.analytics };
+        }),
+      ),
+  });
+}
+
 /** One full message for the reader pane. */
 export function useFullEmailQuery(accountId: string, emailId: string | null) {
   return useQuery({
