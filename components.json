@@ -21,8 +21,5 @@
     "lib": "@/lib",
     "hooks": "@/hooks"
   },
-  "registries": {
-    "@bklit": "https://ui.bklit.com/r/{name}.json",
-    "@ncdai": "https://chanhdai.com/r/{name}.json"
-  }
+  "registries": {}
 }

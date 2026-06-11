@@ -43,8 +43,8 @@ const mailbox: { id: Folder; title: string; icon: typeof Inbox }[] = [
 ];
 
 const developer = [
-  { title: "Webhooks", icon: Webhook, live: false },
-  { title: "Analytics", icon: BarChart3, live: true },
+  { title: "Webhooks", icon: Webhook },
+  { title: "Analytics", icon: BarChart3 },
 ];
 
 const groupLabel =
@@ -62,9 +62,7 @@ export function AppSidebar({
   scopeIds,
   allOn,
   folder,
-  view,
   onFolder,
-  onOpenAnalytics,
   onToggleScope,
   onOpenCommand,
   onOpenSettings,
@@ -75,10 +73,7 @@ export function AppSidebar({
   scopeIds: string[];
   allOn: boolean;
   folder: Folder;
-  /** Which top-level surface is showing — drives nav active state. */
-  view: "mail" | "analytics";
   onFolder: (folder: Folder) => void;
-  onOpenAnalytics: () => void;
   onToggleScope: (id: string | "all") => void;
   onOpenCommand: () => void;
   onOpenSettings: () => void;
@@ -128,7 +123,7 @@ export function AppSidebar({
               {mailbox.map((item) => (
                 <SidebarMenuItem key={item.id}>
                   <SidebarMenuButton
-                    isActive={view === "mail" && folder === item.id}
+                    isActive={folder === item.id}
                     onClick={() => onFolder(item.id)}
                     className={navButton}
                   >
@@ -152,30 +147,17 @@ export function AppSidebar({
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="gap-px">
-              {developer.map((item) =>
-                item.live ? (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      isActive={view === "analytics"}
-                      onClick={onOpenAnalytics}
-                      className={navButton}
-                    >
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ) : (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton disabled className={soonButton}>
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </SidebarMenuButton>
-                    <SidebarMenuBadge className={soonBadge}>
-                      Soon
-                    </SidebarMenuBadge>
-                  </SidebarMenuItem>
-                ),
-              )}
+              {developer.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton disabled className={soonButton}>
+                    <item.icon />
+                    <span>{item.title}</span>
+                  </SidebarMenuButton>
+                  <SidebarMenuBadge className={soonBadge}>
+                    Soon
+                  </SidebarMenuBadge>
+                </SidebarMenuItem>
+              ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

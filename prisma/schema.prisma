@@ -19,10 +19,6 @@ model User {
   sessions      Session[]
   accounts      Account[]
 
-  /// App preferences (settings + custom charts) as one expandable JSON blob,
-  /// so everything in the settings page persists across sessions and devices.
-  preferences   Json?
-
   @@unique([email])
   @@map("user")
 }

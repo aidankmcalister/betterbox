@@ -7,12 +7,6 @@ import {
 import type { ThreadRowEmail } from "@/components/thread-row";
 import type { Account } from "@/lib/account";
 import type { Folder } from "@/lib/folders";
-import type { SeriesPoint, TopSender } from "@/lib/analytics/types";
-import {
-  buildChartData,
-  type ChartData,
-  type ChartSeriesRaw,
-} from "@/lib/analytics/model";
 import {
   isTestAccount,
   makeTestEmails,
@@ -126,91 +120,6 @@ export function useSearchEmailsQuery(accountIds: string[], q: string) {
         .sort(
           (a, b) => (Date.parse(b.date) || 0) - (Date.parse(a.date) || 0),
         );
-    },
-  });
-}
-
-/** Counts for one chart's queries across all accounts, folded into the render
- *  shape. One list call per (query × account × day) — cached 5 min. */
-export function useChartData(
-  accountIds: string[],
-  series: { label: string; q: string }[],
-  days: number,
-) {
-  const qkey = series.map((s) => s.q).join("|");
-  return useQuery({
-    queryKey: ["chart-data", [...accountIds].sort(), qkey, days],
-    enabled: accountIds.length > 0 && series.length > 0,
-    staleTime: 5 * 60 * 1000,
-    queryFn: async (): Promise<ChartData> => {
-      const raw: ChartSeriesRaw[] = await Promise.all(
-        series.map(async (s) => ({
-          label: s.label,
-          q: s.q,
-          perAccount: await Promise.all(
-            accountIds.map(async (accountId) => {
-              if (isTestAccount(accountId)) return { accountId, points: [] };
-              const data = await fetchJson<{ days: SeriesPoint[] }>(
-                `/api/analytics?accountId=${accountId}&q=${encodeURIComponent(s.q)}&days=${days}`,
-              );
-              return { accountId, points: data.days ?? [] };
-            }),
-          ),
-        })),
-      );
-      return buildChartData(raw);
-    },
-  });
-}
-
-/** Top senders merged across all accounts (busiest account owns the row). */
-export function useTopSendersQuery(accountIds: string[]) {
-  return useQuery({
-    queryKey: ["top-senders", [...accountIds].sort()],
-    enabled: accountIds.length > 0,
-    staleTime: 5 * 60 * 1000,
-    queryFn: async (): Promise<(TopSender & { accountId: string })[]> => {
-      const perAccount = await Promise.all(
-        accountIds.map(async (accountId) => {
-          if (isTestAccount(accountId)) return [];
-          const data = await fetchJson<{ senders: TopSender[] }>(
-            `/api/analytics?accountId=${accountId}&senders=1`,
-          );
-          return (data.senders ?? []).map((s) => ({ ...s, accountId }));
-        }),
-      );
-      const merged = new Map<
-        string,
-        TopSender & { accountId: string; byAccount: Map<string, number> }
-      >();
-      for (const row of perAccount.flat()) {
-        const key = row.email.toLowerCase();
-        const hit = merged.get(key);
-        if (hit) {
-          hit.count += row.count;
-          hit.byAccount.set(
-            row.accountId,
-            (hit.byAccount.get(row.accountId) ?? 0) + row.count,
-          );
-          if ((hit.byAccount.get(row.accountId) ?? 0) > (hit.byAccount.get(hit.accountId) ?? 0)) {
-            hit.accountId = row.accountId;
-          }
-        } else {
-          merged.set(key, {
-            ...row,
-            byAccount: new Map([[row.accountId, row.count]]),
-          });
-        }
-      }
-      return [...merged.values()]
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 6)
-        .map(({ name, email, count, accountId }) => ({
-          name,
-          email,
-          count,
-          accountId,
-        }));
     },
   });
 }

@@ -13,11 +13,9 @@ import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as ApiSendRouteImport } from './routes/api/send'
-import { Route as ApiPreferencesRouteImport } from './routes/api/preferences'
 import { Route as ApiMessageRouteImport } from './routes/api/message'
 import { Route as ApiImageProxyRouteImport } from './routes/api/image-proxy'
 import { Route as ApiEmailsRouteImport } from './routes/api/emails'
-import { Route as ApiAnalyticsRouteImport } from './routes/api/analytics'
 import { Route as ApiAccountsRouteImport } from './routes/api/accounts'
 import { Route as AppTrashRouteImport } from './routes/_app/trash'
 import { Route as AppSpamRouteImport } from './routes/_app/spam'
@@ -25,7 +23,6 @@ import { Route as AppSettingsRouteImport } from './routes/_app/settings'
 import { Route as AppSentRouteImport } from './routes/_app/sent'
 import { Route as AppDraftsRouteImport } from './routes/_app/drafts'
 import { Route as AppArchivedRouteImport } from './routes/_app/archived'
-import { Route as AppAnalyticsRouteImport } from './routes/_app/analytics'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AppEmailIdRouteImport } from './routes/_app/email.$id'
 
@@ -48,11 +45,6 @@ const ApiSendRoute = ApiSendRouteImport.update({
   path: '/api/send',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPreferencesRoute = ApiPreferencesRouteImport.update({
-  id: '/api/preferences',
-  path: '/api/preferences',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiMessageRoute = ApiMessageRouteImport.update({
   id: '/api/message',
   path: '/api/message',
@@ -66,11 +58,6 @@ const ApiImageProxyRoute = ApiImageProxyRouteImport.update({
 const ApiEmailsRoute = ApiEmailsRouteImport.update({
   id: '/api/emails',
   path: '/api/emails',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiAnalyticsRoute = ApiAnalyticsRouteImport.update({
-  id: '/api/analytics',
-  path: '/api/analytics',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAccountsRoute = ApiAccountsRouteImport.update({
@@ -108,11 +95,6 @@ const AppArchivedRoute = AppArchivedRouteImport.update({
   path: '/archived',
   getParentRoute: () => AppRoute,
 } as any)
-const AppAnalyticsRoute = AppAnalyticsRouteImport.update({
-  id: '/analytics',
-  path: '/analytics',
-  getParentRoute: () => AppRoute,
-} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -127,7 +109,6 @@ const AppEmailIdRoute = AppEmailIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/privacy': typeof PrivacyRoute
-  '/analytics': typeof AppAnalyticsRoute
   '/archived': typeof AppArchivedRoute
   '/drafts': typeof AppDraftsRoute
   '/sent': typeof AppSentRoute
@@ -135,18 +116,15 @@ export interface FileRoutesByFullPath {
   '/spam': typeof AppSpamRoute
   '/trash': typeof AppTrashRoute
   '/api/accounts': typeof ApiAccountsRoute
-  '/api/analytics': typeof ApiAnalyticsRoute
   '/api/emails': typeof ApiEmailsRoute
   '/api/image-proxy': typeof ApiImageProxyRoute
   '/api/message': typeof ApiMessageRoute
-  '/api/preferences': typeof ApiPreferencesRoute
   '/api/send': typeof ApiSendRoute
   '/email/$id': typeof AppEmailIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
-  '/analytics': typeof AppAnalyticsRoute
   '/archived': typeof AppArchivedRoute
   '/drafts': typeof AppDraftsRoute
   '/sent': typeof AppSentRoute
@@ -154,11 +132,9 @@ export interface FileRoutesByTo {
   '/spam': typeof AppSpamRoute
   '/trash': typeof AppTrashRoute
   '/api/accounts': typeof ApiAccountsRoute
-  '/api/analytics': typeof ApiAnalyticsRoute
   '/api/emails': typeof ApiEmailsRoute
   '/api/image-proxy': typeof ApiImageProxyRoute
   '/api/message': typeof ApiMessageRoute
-  '/api/preferences': typeof ApiPreferencesRoute
   '/api/send': typeof ApiSendRoute
   '/': typeof AppIndexRoute
   '/email/$id': typeof AppEmailIdRoute
@@ -168,7 +144,6 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
   '/privacy': typeof PrivacyRoute
-  '/_app/analytics': typeof AppAnalyticsRoute
   '/_app/archived': typeof AppArchivedRoute
   '/_app/drafts': typeof AppDraftsRoute
   '/_app/sent': typeof AppSentRoute
@@ -176,11 +151,9 @@ export interface FileRoutesById {
   '/_app/spam': typeof AppSpamRoute
   '/_app/trash': typeof AppTrashRoute
   '/api/accounts': typeof ApiAccountsRoute
-  '/api/analytics': typeof ApiAnalyticsRoute
   '/api/emails': typeof ApiEmailsRoute
   '/api/image-proxy': typeof ApiImageProxyRoute
   '/api/message': typeof ApiMessageRoute
-  '/api/preferences': typeof ApiPreferencesRoute
   '/api/send': typeof ApiSendRoute
   '/_app/': typeof AppIndexRoute
   '/_app/email/$id': typeof AppEmailIdRoute
@@ -191,7 +164,6 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/privacy'
-    | '/analytics'
     | '/archived'
     | '/drafts'
     | '/sent'
@@ -199,18 +171,15 @@ export interface FileRouteTypes {
     | '/spam'
     | '/trash'
     | '/api/accounts'
-    | '/api/analytics'
     | '/api/emails'
     | '/api/image-proxy'
     | '/api/message'
-    | '/api/preferences'
     | '/api/send'
     | '/email/$id'
     | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/privacy'
-    | '/analytics'
     | '/archived'
     | '/drafts'
     | '/sent'
@@ -218,11 +187,9 @@ export interface FileRouteTypes {
     | '/spam'
     | '/trash'
     | '/api/accounts'
-    | '/api/analytics'
     | '/api/emails'
     | '/api/image-proxy'
     | '/api/message'
-    | '/api/preferences'
     | '/api/send'
     | '/'
     | '/email/$id'
@@ -231,7 +198,6 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_app'
     | '/privacy'
-    | '/_app/analytics'
     | '/_app/archived'
     | '/_app/drafts'
     | '/_app/sent'
@@ -239,11 +205,9 @@ export interface FileRouteTypes {
     | '/_app/spam'
     | '/_app/trash'
     | '/api/accounts'
-    | '/api/analytics'
     | '/api/emails'
     | '/api/image-proxy'
     | '/api/message'
-    | '/api/preferences'
     | '/api/send'
     | '/_app/'
     | '/_app/email/$id'
@@ -254,11 +218,9 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   PrivacyRoute: typeof PrivacyRoute
   ApiAccountsRoute: typeof ApiAccountsRoute
-  ApiAnalyticsRoute: typeof ApiAnalyticsRoute
   ApiEmailsRoute: typeof ApiEmailsRoute
   ApiImageProxyRoute: typeof ApiImageProxyRoute
   ApiMessageRoute: typeof ApiMessageRoute
-  ApiPreferencesRoute: typeof ApiPreferencesRoute
   ApiSendRoute: typeof ApiSendRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
@@ -293,13 +255,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSendRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/preferences': {
-      id: '/api/preferences'
-      path: '/api/preferences'
-      fullPath: '/api/preferences'
-      preLoaderRoute: typeof ApiPreferencesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/message': {
       id: '/api/message'
       path: '/api/message'
@@ -319,13 +274,6 @@ declare module '@tanstack/react-router' {
       path: '/api/emails'
       fullPath: '/api/emails'
       preLoaderRoute: typeof ApiEmailsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/analytics': {
-      id: '/api/analytics'
-      path: '/api/analytics'
-      fullPath: '/api/analytics'
-      preLoaderRoute: typeof ApiAnalyticsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/accounts': {
@@ -377,13 +325,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppArchivedRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/analytics': {
-      id: '/_app/analytics'
-      path: '/analytics'
-      fullPath: '/analytics'
-      preLoaderRoute: typeof AppAnalyticsRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -402,7 +343,6 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppRouteChildren {
-  AppAnalyticsRoute: typeof AppAnalyticsRoute
   AppArchivedRoute: typeof AppArchivedRoute
   AppDraftsRoute: typeof AppDraftsRoute
   AppSentRoute: typeof AppSentRoute
@@ -414,7 +354,6 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
-  AppAnalyticsRoute: AppAnalyticsRoute,
   AppArchivedRoute: AppArchivedRoute,
   AppDraftsRoute: AppDraftsRoute,
   AppSentRoute: AppSentRoute,
@@ -431,11 +370,9 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   PrivacyRoute: PrivacyRoute,
   ApiAccountsRoute: ApiAccountsRoute,
-  ApiAnalyticsRoute: ApiAnalyticsRoute,
   ApiEmailsRoute: ApiEmailsRoute,
   ApiImageProxyRoute: ApiImageProxyRoute,
   ApiMessageRoute: ApiMessageRoute,
-  ApiPreferencesRoute: ApiPreferencesRoute,
   ApiSendRoute: ApiSendRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
