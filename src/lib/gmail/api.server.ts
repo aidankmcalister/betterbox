@@ -1,3 +1,8 @@
+import type {
+  AccountAnalytics,
+  TopSender,
+} from "@/lib/analytics-types";
+
 const GMAIL = "https://gmail.googleapis.com/gmail/v1/users/me";
 const METADATA_HEADERS = ["Subject", "From", "Date"];
 
@@ -359,11 +364,6 @@ export async function markAccountRead(accessToken: string): Promise<number> {
 // live Gmail API — no invented placeholders. Counts use messages.list's
 // resultSizeEstimate (Gmail's own count for a query); senders are tallied from
 // a sample of recent inbox metadata.
-
-/** date is ISO `YYYY-MM-DD` — the chart layer formats it for display. */
-export type AnalyticsDay = { date: string; received: number; sent: number };
-export type TopSender = { name: string; email: string; count: number };
-export type AccountAnalytics = { days: AnalyticsDay[]; topSenders: TopSender[] };
 
 /** Received + sent counts per day plus top senders, for one account. */
 export async function getAnalytics(

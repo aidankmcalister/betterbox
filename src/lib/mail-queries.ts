@@ -7,6 +7,12 @@ import {
 import type { ThreadRowEmail } from "@/components/thread-row";
 import type { Account } from "@/lib/account";
 import type { Folder } from "@/lib/folders";
+import type {
+  AnalyticsDay,
+  TopSender,
+  AccountAnalytics,
+  ScopedAnalytics,
+} from "@/lib/analytics-types";
 import {
   isTestAccount,
   makeTestEmails,
@@ -124,10 +130,8 @@ export function useSearchEmailsQuery(accountIds: string[], q: string) {
   });
 }
 
-export type AnalyticsDay = { date: string; received: number; sent: number };
-export type TopSender = { name: string; email: string; count: number };
-export type AccountAnalytics = { days: AnalyticsDay[]; topSenders: TopSender[] };
-export type ScopedAnalytics = { accountId: string; analytics: AccountAnalytics };
+// Re-export the wire types so existing importers keep using `@/lib/mail-queries`.
+export type { AnalyticsDay, TopSender, AccountAnalytics, ScopedAnalytics };
 
 /** Real per-account mailbox metrics for the Analytics page, fanned out across
  *  the scoped accounts. Cached 5 min — these are heavy (a list call per day). */

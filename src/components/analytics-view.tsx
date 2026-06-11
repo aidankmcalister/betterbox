@@ -3,7 +3,14 @@ import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 
 import type { Account } from "@/lib/account";
 import { useAccountColor } from "@/components/account-dot";
-import { useAnalyticsQuery, type ScopedAnalytics } from "@/lib/mail-queries";
+import { useAnalyticsQuery } from "@/lib/mail-queries";
+import {
+  buildAnalyticsModel,
+  pctDelta,
+  sliceSeries,
+  type Delta,
+  type SeriesAccount,
+} from "@/lib/analytics-model";
 import { AreaChart, Area } from "@/components/charts/area-chart";
 import { Grid } from "@/components/charts/grid";
 import { XAxis } from "@/components/charts/x-axis";
@@ -53,7 +60,10 @@ export function AnalyticsView({
         ? scoped[0].email
         : scoped.map((a) => a.email.split("@")[0]).join(" + ");
 
-  const model = useMemo(() => buildModel(results, accounts), [results, accounts]);
+  const model = useMemo(
+    () => buildAnalyticsModel(results, accounts),
+    [results, accounts],
+  );
   const days = RANGE_DAYS[range];
   const sliceFrom = Math.max(0, model.dates.length - days);
   const visibleDays = model.dates.length - sliceFrom;
@@ -265,121 +275,10 @@ export function AnalyticsView({
   );
 }
 
-// ── data model ───────────────────────────────────────────────────────────────
+// ── tooltip rows for the volume hero ─────────────────────────────────────────
 
-type SeriesAccount = {
-  accountId: string;
-  email: string;
-  received: number[];
-  sent: number[];
-  totalReceived: number;
-};
-
-type TopSenderRow = {
-  name: string;
-  email: string;
-  count: number;
-  accountId: string;
-};
-
-type Model = {
-  dates: string[];
-  series: SeriesAccount[];
-  totalReceived: number[];
-  totalSent: number[];
-  topSenders: TopSenderRow[];
-  maxSender: number;
-};
-
-/** Align every account's day series to one canonical date axis, sum the totals,
- *  and merge top senders across accounts (busiest account owns the dot). */
-function buildModel(results: ScopedAnalytics[], accounts: Account[]): Model {
-  const emailOf = new Map(accounts.map((a) => [a.accountId, a.email]));
-  const withData = results.filter((r) => r.analytics.days.length > 0);
-  const base = withData.reduce<ScopedAnalytics | null>(
-    (a, b) => (!a || b.analytics.days.length > a.analytics.days.length ? b : a),
-    null,
-  );
-  const dates = base ? base.analytics.days.map((d) => d.date) : [];
-
-  const series: SeriesAccount[] = withData
-    .map((r) => {
-      const received = new Map(r.analytics.days.map((d) => [d.date, d.received]));
-      const sent = new Map(r.analytics.days.map((d) => [d.date, d.sent]));
-      const recv = dates.map((dt) => received.get(dt) ?? 0);
-      return {
-        accountId: r.accountId,
-        email: emailOf.get(r.accountId) ?? r.accountId,
-        received: recv,
-        sent: dates.map((dt) => sent.get(dt) ?? 0),
-        totalReceived: recv.reduce((sum, n) => sum + n, 0),
-      };
-    })
-    .sort((a, b) => b.totalReceived - a.totalReceived);
-
-  const totalReceived = dates.map((_, i) =>
-    series.reduce((sum, s) => sum + (s.received[i] ?? 0), 0),
-  );
-  const totalSent = dates.map((_, i) =>
-    series.reduce((sum, s) => sum + (s.sent[i] ?? 0), 0),
-  );
-
-  // Merge senders across accounts; the account contributing the most to a
-  // sender owns the colored dot.
-  const merged = new Map<
-    string,
-    { name: string; email: string; count: number; byAccount: Map<string, number> }
-  >();
-  for (const r of withData) {
-    for (const s of r.analytics.topSenders) {
-      const key = s.email.toLowerCase();
-      const existing = merged.get(key);
-      if (existing) {
-        existing.count += s.count;
-        existing.byAccount.set(
-          r.accountId,
-          (existing.byAccount.get(r.accountId) ?? 0) + s.count,
-        );
-      } else {
-        merged.set(key, {
-          name: s.name,
-          email: s.email,
-          count: s.count,
-          byAccount: new Map([[r.accountId, s.count]]),
-        });
-      }
-    }
-  }
-  const topSenders: TopSenderRow[] = [...merged.values()]
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 6)
-    .map((s) => ({
-      name: s.name,
-      email: s.email,
-      count: s.count,
-      accountId: dominantAccount(s.byAccount),
-    }));
-  const maxSender = Math.max(1, ...topSenders.map((s) => s.count));
-
-  return { dates, series, totalReceived, totalSent, topSenders, maxSender };
-}
-
-function dominantAccount(byAccount: Map<string, number>): string {
-  let best = "";
-  let bestCount = -1;
-  for (const [id, count] of byAccount) {
-    if (count > bestCount) {
-      best = id;
-      bestCount = count;
-    }
-  }
-  return best;
-}
-
-function sliceSeries(dates: string[], values: number[], from: number) {
-  return dates.slice(from).map((date, i) => ({ date, v: values[from + i] ?? 0 }));
-}
-
+/** Hover tooltip rows for the volume hero: one per account (email · value in
+ *  its series color), then a total row. `point` is bklit's hovered data row. */
 function heroRows(
   point: Record<string, unknown>,
   series: SeriesAccount[],
@@ -395,17 +294,6 @@ function heroRows(
     value: Number(point.total ?? 0).toLocaleString(),
   });
   return rows;
-}
-
-type Delta = { label: string; good: boolean; neutral: boolean };
-
-function pctDelta(today: number, prev: number): Delta {
-  if (prev === 0) {
-    return { label: today > 0 ? "new" : "0%", good: today > 0, neutral: today === 0 };
-  }
-  const pct = Math.round(((today - prev) / prev) * 100);
-  const sign = pct > 0 ? "+" : pct < 0 ? "−" : "";
-  return { label: `${sign}${Math.abs(pct)}%`, good: pct >= 0, neutral: pct === 0 };
 }
 
 // ── pieces ───────────────────────────────────────────────────────────────────
