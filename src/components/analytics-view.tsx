@@ -11,6 +11,7 @@ import { ChartTooltip, type TooltipRow } from "@/components/charts/tooltip";
 import { RingChart } from "@/components/charts/ring-chart";
 import { Ring } from "@/components/charts/ring";
 import { RingCenter } from "@/components/charts/ring-center";
+import { StaticChartPreviewProvider } from "@/components/charts/static-chart-preview-context";
 
 /* Color contract (analytics-spec): charts speak the dev-only teal ramp. Account
    identity lives only in the 6px dots — never as a chart series color. */
@@ -56,8 +57,6 @@ export function AnalyticsView({
   const days = RANGE_DAYS[range];
   const sliceFrom = Math.max(0, model.dates.length - days);
   const visibleDays = model.dates.length - sliceFrom;
-
-  const status = query.isLoading ? "loading" : "ready";
 
   // ── KPI values (today vs yesterday, off the full series) ────────────────────
   const last = model.dates.length - 1;
@@ -112,10 +111,11 @@ export function AnalyticsView({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-[18px]">
+      <StaticChartPreviewProvider>
+       <div className="min-h-0 flex-1 overflow-y-auto p-[18px]">
         {query.isError ? (
           <ErrorState onRetry={() => query.refetch()} />
-        ) : model.series.length === 0 && status === "ready" ? (
+        ) : model.series.length === 0 && !query.isLoading ? (
           <EmptyState />
         ) : (
           <>
@@ -127,7 +127,6 @@ export function AnalyticsView({
                 sub="today · all accounts"
                 delta={receivedDelta}
                 spark={receivedSpark}
-                status={status}
               />
               <KpiCard
                 label="Sent"
@@ -135,7 +134,6 @@ export function AnalyticsView({
                 sub="today · all accounts"
                 delta={sentDelta}
                 spark={sentSpark}
-                status={status}
               />
               <KpiCard
                 label="Median first reply"
@@ -174,7 +172,7 @@ export function AnalyticsView({
                 aspectRatio="auto"
                 style={{ height: 240 }}
                 margin={{ top: 8, right: 10, bottom: 28, left: 10 }}
-                status={status}
+                animationDuration={0}
               >
                 <Grid numTicksRows={5} stroke={GRID_STROKE} strokeDasharray="3 5" />
                 {drawOrder.map((idx) => {
@@ -193,11 +191,7 @@ export function AnalyticsView({
                   );
                 })}
                 <XAxis numTicks={5} />
-                <ChartTooltip
-                  indicatorColor="rgba(247,248,248,0.28)"
-                  indicatorDasharray="3 4"
-                  rows={(point) => heroRows(point, model.series)}
-                />
+                <ChartTooltip rows={(point) => heroRows(point, model.series)} />
               </AreaChart>
             </Card>
 
@@ -248,25 +242,14 @@ export function AnalyticsView({
               <Card title="Webhook success" caption="30d">
                 <div className="mx-auto" style={{ width: 172, height: 172 }}>
                   <RingChart
-                    data={[{ label: "Delivered", value: 0, maxValue: 100 }]}
+                    data={[{ label: "delivered", value: 0, maxValue: 100 }]}
                     strokeWidth={6}
                     startAngle={-0.75 * Math.PI}
                     endAngle={0.75 * Math.PI}
                     className="size-full"
                   >
                     <Ring index={0} color={TEAL.bright} lineCap="round" />
-                    <RingCenter>
-                      {() => (
-                        <div className="flex flex-col items-center gap-[3px]">
-                          <span className="font-sans text-[27px] font-semibold tracking-[-1px] text-ink">
-                            —
-                          </span>
-                          <span className="font-mono text-[10px] text-ink-tertiary">
-                            no deliveries yet
-                          </span>
-                        </div>
-                      )}
-                    </RingCenter>
+                    <RingCenter defaultLabel="delivered" suffix="%" />
                   </RingChart>
                 </div>
                 <div className="mt-2.5 text-center font-mono text-[10.5px] text-ink-tertiary">
@@ -276,7 +259,8 @@ export function AnalyticsView({
             </div>
           </>
         )}
-      </div>
+       </div>
+      </StaticChartPreviewProvider>
     </div>
   );
 }
@@ -462,7 +446,6 @@ function KpiCard({
   sub,
   delta,
   spark,
-  status,
   absent = false,
 }: {
   label: string;
@@ -470,7 +453,6 @@ function KpiCard({
   sub: string;
   delta?: Delta;
   spark?: { date: string; v: number }[];
-  status?: "loading" | "ready";
   absent?: boolean;
 }) {
   return (
@@ -502,7 +484,7 @@ function KpiCard({
           aspectRatio="auto"
           style={{ height: 34 }}
           margin={{ top: 3, right: 0, bottom: 0, left: 0 }}
-          status={status}
+          animationDuration={0}
           className="mt-2.5"
         >
           <Area
