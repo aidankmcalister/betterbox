@@ -76,6 +76,8 @@ export const NAV_SECTIONS: {
 const groupLabel =
   "px-1.5 pt-2 pb-[5px] font-mono text-[10.5px] font-medium tracking-[0.5px] uppercase text-muted-foreground/70";
 const navButton = "h-7 gap-[9px] px-2 text-[13px]";
+/* soon items: dimmed harder than the stock disabled 50% */
+const soonButton = `${navButton} disabled:opacity-35 aria-disabled:opacity-35`;
 /* rows are h-7 (not the stock h-8), so re-center the absolute badge: (28-20)/2 */
 const badgePos = "peer-data-[size=default]/menu-button:top-1";
 const countBadge = `${badgePos} min-w-[18px] rounded-full bg-accent px-1.5 text-center font-mono text-[10.5px] text-muted-foreground`;
@@ -87,8 +89,6 @@ export function AppSidebar({
   allOn,
   folder,
   onFolder,
-  onDeveloper,
-  activeDeveloperId,
   onToggleScope,
   onOpenCommand,
   onOpenSettings,
@@ -101,9 +101,6 @@ export function AppSidebar({
   allOn: boolean;
   folder: Folder;
   onFolder: (folder: Folder) => void;
-  onDeveloper: (id: string) => void;
-  /** Sidebar item id of the developer page currently open, or null. */
-  activeDeveloperId: string | null;
   onToggleScope: (id: string | "all") => void;
   onOpenCommand: () => void;
   onOpenSettings: () => void;
@@ -164,7 +161,7 @@ export function AppSidebar({
               {visibleMailbox.map((item) => (
                 <SidebarMenuItem key={item.id}>
                   <SidebarMenuButton
-                    isActive={!activeDeveloperId && folder === item.id}
+                    isActive={folder === item.id}
                     onClick={() => onFolder(item.id)}
                     className={navButton}
                   >
@@ -191,11 +188,7 @@ export function AppSidebar({
               <SidebarMenu className="gap-px">
                 {visibleDeveloper.map((item) => (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      isActive={activeDeveloperId === item.id}
-                      onClick={() => onDeveloper(item.id)}
-                      className={navButton}
-                    >
+                    <SidebarMenuButton disabled className={soonButton}>
                       <item.icon />
                       <span>{item.title}</span>
                     </SidebarMenuButton>

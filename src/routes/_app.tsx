@@ -129,12 +129,10 @@ function AppShell() {
     : (PATH_FOLDER[location.pathname] ?? "inbox");
   const folderSearch = folder === "inbox" ? {} : { folder };
 
-  /* Developer "Soon" pages (Webhooks, Rules, API, PRs) render in place of the
-     inbox tiles. activeDeveloperId maps the path back to the sidebar item id. */
+  /* Developer "Soon" pages (Webhooks, Rules, API, PRs) aren't linked from the
+     sidebar (those stay disabled) — they're reachable by typing the URL, and
+     render here in place of the inbox tiles. */
   const onDevPage = DEV_PATHS.has(location.pathname);
-  const activeDeveloperId = onDevPage
-    ? location.pathname.slice(1).replace(/-/g, "_")
-    : null;
 
   const openEmail = useCallback(
     (accountId: string, emailId: string) =>
@@ -153,25 +151,6 @@ function AppShell() {
   );
   const openFolder = useCallback(
     (next: Folder) => navigate({ to: FOLDER_PATH[next] }),
-    [navigate],
-  );
-  const openDeveloper = useCallback(
-    (id: string) => {
-      switch (id) {
-        case "pull_requests":
-          navigate({ to: "/pull-requests" });
-          break;
-        case "webhooks":
-          navigate({ to: "/webhooks" });
-          break;
-        case "rules":
-          navigate({ to: "/rules" });
-          break;
-        case "api":
-          navigate({ to: "/api" });
-          break;
-      }
-    },
     [navigate],
   );
   const openSettings = useCallback(() => setSettingsOpen(true), []);
@@ -303,8 +282,6 @@ function AppShell() {
         allOn={allOn}
         folder={folder}
         onFolder={openFolder}
-        onDeveloper={openDeveloper}
-        activeDeveloperId={activeDeveloperId}
         onToggleScope={toggle}
         onOpenCommand={() => setCmdOpen(true)}
         onOpenSettings={openSettings}
