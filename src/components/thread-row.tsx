@@ -5,6 +5,14 @@ import { SenderAvatar } from "@/components/sender-avatar";
 import { useSettings } from "@/hooks/use-settings";
 import { isVerifiedSender } from "@/lib/verified-senders";
 import { cn } from "@/lib/utils";
+import {
+  ContextMenu,
+  ContextMenuTrigger,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuGroup,
+  ContextMenuSeparator,
+} from "@/components/ui/context-menu";
 
 export type ThreadRowEmail = {
   id: string;
@@ -46,6 +54,8 @@ function shortTime(raw: string, hour12: boolean): string {
   return date.toLocaleDateString([], { month: "short", year: "2-digit" });
 }
 
+import { actOnEmail, markEmailsRead } from "@/lib/mail-queries";
+
 export function ThreadRow({
   email,
   density = "comfortable",
@@ -61,6 +71,41 @@ export function ThreadRow({
   accountId?: string;
   onClick?: () => void;
 }) {
+  const runMarkRead = async () => {
+    if (!accountId) return;
+    await markEmailsRead(accountId, [email.id]);
+  };
+
+  const runTrash = async () => {
+    if (!accountId) return;
+    await actOnEmail(accountId, email.id, "trash");
+  };
+
+  // Open the reader, then signal it. The ReaderPane mounts on the next render
+  // and attaches its start-reply/start-forward listener in a passive effect
+  // (after paint), so a synchronous dispatch would miss it — wait two frames.
+  const openThen = (eventName: "start-reply" | "start-forward") => {
+    if (onClick) onClick();
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() =>
+        window.dispatchEvent(
+          new CustomEvent(eventName, {
+            detail: { accountId, emailId: email.id },
+          }),
+        ),
+      ),
+    );
+  };
+
+  const runReply = () => openThen("start-reply");
+  const runForward = () => openThen("start-forward");
+
+  const copyId = async () => {
+    try {
+      await navigator.clipboard.writeText(email.id);
+    } catch {}
+  };
+
   const { snippetFont, showSnippets, clock, inboxAvatars } = useSettings();
   const accountColor = useAccountColor(dotIndex, accountId);
   const unread = email.unread ?? false;
@@ -115,7 +160,11 @@ export function ThreadRow({
   );
   const subjectSnippet = (
     <span className="min-w-0 flex-1 truncate text-[12.5px] text-muted-foreground/70">
-      <span className={cn(unread ? "font-medium text-foreground" : "text-muted-foreground")}>
+      <span
+        className={cn(
+          unread ? "font-medium text-foreground" : "text-muted-foreground",
+        )}
+      >
         {subject}
       </span>
       {showSnippets && email.snippet && (
@@ -133,43 +182,98 @@ export function ThreadRow({
 
   if (density === "compact") {
     return (
-      <button
-        type="button"
-        onClick={onClick}
-        className={cn(rowClass, "flex h-[34px] items-center gap-[9px] px-3.5")}
-      >
-        <AccountDot colorIndex={dotIndex} accountId={accountId} unread={unread} />
-        {avatar("size-[18px]")}
-        <span className="flex w-28 shrink-0 text-[12.5px]">{sender}</span>
-        {subjectSnippet}
-        <span className="min-w-[54px] shrink-0 text-right">{time}</span>
-      </button>
+      <div className="relative">
+        <ContextMenu>
+          <ContextMenuTrigger asChild>
+            <button
+              type="button"
+              onClick={onClick}
+              className={cn(
+                rowClass,
+                "flex h-[34px] items-center gap-[9px] px-3.5",
+              )}
+            >
+              <AccountDot
+                colorIndex={dotIndex}
+                accountId={accountId}
+                unread={unread}
+              />
+              {avatar("size-[18px]")}
+              <span className="flex w-28 shrink-0 text-[12.5px]">{sender}</span>
+              {subjectSnippet}
+              <span className="min-w-[54px] shrink-0 text-right">{time}</span>
+            </button>
+          </ContextMenuTrigger>
+          <ContextMenuContent>
+            <ContextMenuGroup>
+              <ContextMenuItem onClick={runMarkRead}>Mark read</ContextMenuItem>
+              <ContextMenuItem onClick={runReply}>Reply</ContextMenuItem>
+              <ContextMenuItem onClick={runForward}>Forward</ContextMenuItem>
+            </ContextMenuGroup>
+            <ContextMenuSeparator />
+            <ContextMenuGroup>
+              <ContextMenuItem onClick={runTrash} variant="destructive">
+                Trash
+              </ContextMenuItem>
+              <ContextMenuItem onClick={copyId}>Copy id</ContextMenuItem>
+            </ContextMenuGroup>
+          </ContextMenuContent>
+        </ContextMenu>
+      </div>
     );
   }
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(rowClass, "flex gap-2.5 px-3.5 py-[7px]")}
-    >
-      {inboxAvatars ? (
-        <span className="flex items-center gap-2 pt-[3px]">
-          <AccountDot colorIndex={dotIndex} accountId={accountId} unread={unread} />
-          {avatar("size-7")}
-        </span>
-      ) : (
-        <span className="pt-[5px]">
-          <AccountDot colorIndex={dotIndex} accountId={accountId} unread={unread} />
-        </span>
-      )}
-      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="flex items-center gap-2 text-[13px]">
-          <span className="flex min-w-0 flex-1 text-left">{sender}</span>
-          {time}
-        </span>
-        {subjectSnippet}
-      </span>
-    </button>
+    <div className="relative">
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
+          <button
+            type="button"
+            onClick={onClick}
+            className={cn(rowClass, "flex gap-2.5 px-3.5")}
+          >
+            {inboxAvatars ? (
+              <span className="flex items-center gap-2 pt-[3px]">
+                <AccountDot
+                  colorIndex={dotIndex}
+                  accountId={accountId}
+                  unread={unread}
+                />
+                {avatar("size-7")}
+              </span>
+            ) : (
+              <span className="pt-[5px]">
+                <AccountDot
+                  colorIndex={dotIndex}
+                  accountId={accountId}
+                  unread={unread}
+                />
+              </span>
+            )}
+            <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+              <span className="flex items-center gap-2 text-[13px]">
+                <span className="flex min-w-0 flex-1 text-left">{sender}</span>
+                {time}
+              </span>
+              {subjectSnippet}
+            </span>
+          </button>
+        </ContextMenuTrigger>
+        <ContextMenuContent>
+          <ContextMenuGroup>
+            <ContextMenuItem onClick={runMarkRead}>Mark read</ContextMenuItem>
+            <ContextMenuItem onClick={runReply}>Reply</ContextMenuItem>
+            <ContextMenuItem onClick={runForward}>Forward</ContextMenuItem>
+          </ContextMenuGroup>
+          <ContextMenuSeparator />
+          <ContextMenuGroup>
+            <ContextMenuItem onClick={runTrash} variant="destructive">
+              Trash
+            </ContextMenuItem>
+            <ContextMenuItem onClick={copyId}>Copy id</ContextMenuItem>
+          </ContextMenuGroup>
+        </ContextMenuContent>
+      </ContextMenu>
+    </div>
   );
 }
