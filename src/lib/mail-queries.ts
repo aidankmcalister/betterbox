@@ -6,7 +6,7 @@ import {
 } from "@tanstack/react-query";
 import type { ThreadRowEmail } from "@/components/thread-row";
 import type { Account } from "@/lib/account";
-import type { Folder } from "@/lib/folders";
+import { FOLDER_QUERY, type Folder } from "@/lib/folders";
 import {
   isTestAccount,
   makeTestEmails,
@@ -69,7 +69,7 @@ export const emailsQueryKey = (
   q?: string,
 ) =>
   q && q.trim()
-    ? (["emails-search", accountId, q.trim()] as const)
+    ? (["emails-search", accountId, folder, q.trim()] as const)
     : (["emails", accountId, folder] as const);
 
 export type EmailsPage = { emails: ThreadRowEmail[]; nextPageToken?: string };
@@ -81,7 +81,8 @@ export const flattenEmails = (data: EmailsData | undefined) =>
 /**
  * One inbox pane's emails — paged 50 at a time via Gmail's pageToken. With a
  * `q` it becomes an in-pane Gmail search (server-side, full text + operators
- * like `in:important`), scoped to the account and ignoring the folder.
+ * like `in:important`), scoped to the CURRENT folder (the folder's Gmail query
+ * is AND-ed with the user's query, e.g. `in:drafts github`).
  */
 export function useEmailsQuery(
   accountId: string,
@@ -96,7 +97,7 @@ export function useEmailsQuery(
     queryFn: async ({ pageParam }): Promise<EmailsPage> => {
       if (isTestAccount(accountId)) {
         await sleep(LIST_LATENCY_MS);
-        const list = makeTestEmails(accountId, search ? "inbox" : folder);
+        const list = makeTestEmails(accountId, folder);
         if (!search) return { emails: list };
         const needle = search.toLowerCase();
         return {
@@ -110,8 +111,9 @@ export function useEmailsQuery(
       const pageQuery = pageParam
         ? `&pageToken=${encodeURIComponent(pageParam)}`
         : "";
+      // Scope the search to the folder: AND the folder query with the user's.
       const scope = search
-        ? `&q=${encodeURIComponent(search)}`
+        ? `&q=${encodeURIComponent(`${FOLDER_QUERY[folder]} ${search}`)}`
         : `&folder=${folder}`;
       const data = await fetchJson<{
         emails?: ThreadRowEmail[];
