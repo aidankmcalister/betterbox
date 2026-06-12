@@ -236,16 +236,37 @@ function AccountsPage({ accounts }: { accounts: Account[] }) {
   );
 }
 
-/** Which preview rows start unread (drives the accent dots in the mockup). */
-const PREVIEW_UNREAD = [true, false, true, false, false];
+/** Sample senders for the preview — real text so the fonts and the 12/24-hour
+ *  clock are visible (sender = sans, time = mono). */
+const PREVIEW_ROWS = [
+  { sender: "GitHub", h: 14, m: 14, unread: true },
+  { sender: "Vercel", h: 13, m: 2, unread: false },
+  { sender: "Stripe", h: 11, m: 30, unread: true },
+  { sender: "Linear", h: 9, m: 48, unread: false },
+  { sender: "Figma", h: 8, m: 15, unread: false },
+];
+
+const previewTime = (h: number, m: number, hour12: boolean) =>
+  new Date(2026, 0, 1, h, m).toLocaleTimeString([], {
+    hour: hour12 ? "numeric" : "2-digit",
+    minute: "2-digit",
+    hour12,
+  });
 
 /** A tiny, non-interactive mockup of the app that reacts live to the appearance
- *  settings — density, accent, and per-row avatars — so changes are visible
- *  without leaving Settings. Built from theme tokens, so it tracks light/dark. */
+ *  settings — density, accent, avatars, the 12/24h clock, and which sidebar
+ *  items are shown. Real text makes the fonts + clock visible; theme tokens
+ *  keep it tracking light/dark. */
 function InterfacePreview() {
-  const { density, accent, inboxAvatars } = useSettings();
+  const { density, accent, inboxAvatars, clock, hiddenNav } = useSettings();
   const color = ACCENTS[accent].base;
-  const rows = PREVIEW_UNREAD.slice(0, density === "compact" ? 5 : 3);
+  const rows = PREVIEW_ROWS.slice(0, density === "compact" ? 5 : 3);
+  const nav = [
+    "Inbox",
+    ...HIDEABLE_NAV.filter((item) => !hiddenNav.includes(item.id)).map(
+      (item) => item.title,
+    ),
+  ];
 
   const dot = (unread: boolean) => (
     <span
@@ -257,35 +278,71 @@ function InterfacePreview() {
       }
     />
   );
-  const bar = (unread: boolean, width: number) => (
+  const monogram = (sender: string, size: string) =>
+    inboxAvatars ? (
+      <span
+        className={cn(
+          "inline-flex shrink-0 items-center justify-center rounded-full border border-border text-[7px] font-semibold text-foreground",
+          size,
+        )}
+        style={{
+          background: `color-mix(in srgb, ${color} 22%, var(--background))`,
+        }}
+      >
+        {sender[0]}
+      </span>
+    ) : null;
+  const senderText = (sender: string, unread: boolean) => (
     <span
       className={cn(
-        "h-1.5 shrink-0 rounded",
-        unread ? "bg-foreground/70" : "bg-muted-foreground/40",
+        "truncate text-[8.5px]",
+        unread ? "font-semibold text-foreground" : "text-muted-foreground",
       )}
-      style={{ width }}
-    />
+    >
+      {sender}
+    </span>
+  );
+  const timeText = (h: number, m: number) => (
+    <span className="ml-auto shrink-0 font-mono text-[7.5px] text-muted-foreground/70">
+      {previewTime(h, m, clock === "12h")}
+    </span>
   );
 
   return (
     <div className="pointer-events-none overflow-hidden rounded-xl border bg-card select-none">
-      <div className="flex h-[188px]">
-        {/* Mini sidebar */}
-        <div className="flex w-[92px] shrink-0 flex-col gap-2 border-r bg-sidebar p-2">
-          <div className="flex items-center gap-1.5">
+      <div className="flex h-[212px]">
+        {/* Mini sidebar — nav reflects the show/hide toggles */}
+        <div className="flex w-[104px] shrink-0 flex-col gap-1.5 border-r bg-sidebar p-2">
+          <div className="flex items-center gap-1">
             <span
-              className="size-3 rounded-[3px]"
+              className="size-2.5 rounded-[2px]"
               style={{ background: color }}
             />
-            <span className="h-1.5 w-9 rounded bg-foreground/30" />
+            <span className="font-mono text-[7px] font-semibold">BetterBox</span>
           </div>
-          <span className="h-4 rounded-[5px]" style={{ background: color }} />
-          <span className="h-3.5 rounded border bg-card" />
-          <div className="mt-1 flex flex-col gap-1.5">
-            <span className="h-1.5 w-12 rounded bg-foreground/40" />
-            <span className="h-1.5 w-10 rounded bg-muted-foreground/40" />
-            <span className="h-1.5 w-11 rounded bg-muted-foreground/40" />
-            <span className="h-1.5 w-8 rounded bg-muted-foreground/40" />
+          <span
+            className="flex h-4 items-center justify-center rounded text-[7px] font-medium text-on-primary"
+            style={{ background: color }}
+          >
+            Compose
+          </span>
+          <span className="flex h-3.5 items-center rounded border bg-card px-1 font-mono text-[6.5px] text-muted-foreground/70">
+            Search
+          </span>
+          <div className="mt-0.5 flex flex-col gap-px overflow-hidden">
+            {nav.slice(0, 8).map((label, i) => (
+              <span
+                key={label}
+                className={cn(
+                  "truncate rounded px-1 py-[2px] text-[7.5px]",
+                  i === 0
+                    ? "bg-muted font-medium text-foreground"
+                    : "text-muted-foreground",
+                )}
+              >
+                {label}
+              </span>
+            ))}
           </div>
         </div>
 
@@ -293,39 +350,39 @@ function InterfacePreview() {
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex h-6 shrink-0 items-center gap-1.5 border-b px-2">
             {dot(true)}
-            <span className="h-1.5 w-16 rounded bg-foreground/40" />
+            <span className="font-mono text-[8px] text-foreground/70">
+              personal@…
+            </span>
             <span
-              className="ml-auto h-1.5 w-6 rounded"
-              style={{ background: color, opacity: 0.75 }}
-            />
+              className="ml-auto font-mono text-[8px] font-medium"
+              style={{ color }}
+            >
+              {rows.filter((row) => row.unread).length} new
+            </span>
           </div>
           <div className="flex min-w-0 flex-1 flex-col">
-            {rows.map((unread, i) =>
+            {rows.map((row, i) =>
               density === "compact" ? (
                 <div
                   key={i}
                   className="flex h-[22px] items-center gap-1.5 border-b border-border/60 px-2"
                 >
-                  {dot(unread)}
-                  {inboxAvatars && (
-                    <span className="size-3 shrink-0 rounded-full border border-border bg-muted" />
-                  )}
-                  {bar(unread, 44)}
-                  <span className="ml-auto h-1.5 w-4 rounded bg-muted-foreground/30" />
+                  {dot(row.unread)}
+                  {monogram(row.sender, "size-3.5")}
+                  {senderText(row.sender, row.unread)}
+                  {timeText(row.h, row.m)}
                 </div>
               ) : (
                 <div
                   key={i}
                   className="flex gap-1.5 border-b border-border/60 px-2 py-1.5"
                 >
-                  <span className="pt-0.5">{dot(unread)}</span>
-                  {inboxAvatars && (
-                    <span className="size-4 shrink-0 rounded-full border border-border bg-muted" />
-                  )}
+                  <span className="pt-0.5">{dot(row.unread)}</span>
+                  {monogram(row.sender, "size-4")}
                   <div className="flex min-w-0 flex-1 flex-col gap-1">
                     <div className="flex items-center gap-2">
-                      {bar(unread, 52)}
-                      <span className="ml-auto h-1.5 w-5 rounded bg-muted-foreground/30" />
+                      {senderText(row.sender, row.unread)}
+                      {timeText(row.h, row.m)}
                     </div>
                     <span className="h-1.5 w-3/4 rounded bg-muted-foreground/25" />
                   </div>
@@ -352,7 +409,12 @@ function AppearancePage() {
 
   return (
     <Page title="Appearance" description="Choose how BetterBox looks">
-      <InterfacePreview />
+      {/* Sticky so it stays visible while scrolling the controls below. The
+          -mx-6/px-6 bleeds the cover bg to the scroll container's padding so
+          rows pass cleanly underneath; bg-popover matches the dialog surface. */}
+      <div className="sticky top-0 z-10 -mx-6 -mt-2 bg-popover px-6 pt-2 pb-4">
+        <InterfacePreview />
+      </div>
 
       <PageSection title="Theme">
         <SettingRow
