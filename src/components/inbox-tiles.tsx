@@ -18,6 +18,7 @@ import {
   GripVerticalIcon,
   HashIcon,
   MailOpenIcon,
+  RefreshCwIcon,
   ReplyAllIcon,
   ReplyIcon,
   SendIcon,
@@ -41,7 +42,7 @@ import type { Account } from "@/lib/account";
 import { linkGoogle } from "@/lib/auth-client";
 import { formatCount } from "@/lib/format";
 import { exportEmail } from "@/lib/export-email";
-import { useQueryClient } from "@tanstack/react-query";
+import { useIsFetching, useQueryClient } from "@tanstack/react-query";
 import {
   accountsQueryKey,
   actOnEmail,
@@ -523,12 +524,32 @@ function ReaderPane() {
             onReconnect={() => linkGoogle()}
           />
         ) : !email || !sender ? (
-          <div className="mx-auto flex max-w-[720px] flex-col gap-3 px-8 py-6">
-            <div className="h-5 w-2/3 rounded bg-accent" />
-            <div className="h-3 w-1/2 rounded bg-muted" />
-            <div className="mt-3 h-3 w-full rounded bg-muted" />
-            <div className="h-3 w-5/6 rounded bg-muted" />
-            <div className="h-3 w-4/6 rounded bg-muted" />
+          /* Mirrors the real article: subject, sender row (avatar + meta), body.
+             Same padding/sizes so the layout doesn't jump when it fills in. */
+          <div className="mx-auto max-w-[720px] animate-pulse px-[34px] pt-[22px] pb-24">
+            <div className="h-[26px] w-3/4 rounded bg-accent" />
+            <div className="mt-3 border-b pb-4">
+              <div className="flex items-start gap-3">
+                <div className="size-9 shrink-0 rounded-full bg-muted" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <div className="h-3.5 w-28 rounded bg-muted" />
+                    <div className="h-3 w-40 rounded bg-muted/60" />
+                    <div className="ml-auto h-3 w-24 rounded bg-muted/60" />
+                  </div>
+                  <div className="mt-2 h-3 w-32 rounded bg-muted/50" />
+                </div>
+              </div>
+              <div className="flex flex-col gap-2.5 pt-[20px]">
+                <div className="h-3.5 w-full rounded bg-muted" />
+                <div className="h-3.5 w-[94%] rounded bg-muted" />
+                <div className="h-3.5 w-[97%] rounded bg-muted" />
+                <div className="h-3.5 w-[80%] rounded bg-muted" />
+                <div className="mt-2 h-3.5 w-[90%] rounded bg-muted" />
+                <div className="h-3.5 w-[96%] rounded bg-muted" />
+                <div className="h-3.5 w-2/3 rounded bg-muted" />
+              </div>
+            </div>
           </div>
         ) : (
           <article className="mx-auto max-w-[720px] px-[34px] pt-[22px] pb-24">
@@ -850,12 +871,27 @@ function PaneHeader({
   dotIndex: number;
   width: number;
 }) {
-  const { removable, onRemovePane } = useTiles();
+  const { removable, onRemovePane, folder } = useTiles();
   const beginHeaderDrag = useTileDrag();
+  const queryClient = useQueryClient();
   const label =
     width >= FULL_EMAIL_MIN_WIDTH || width === 0
       ? account.email || account.accountId
       : account.email.split("@")[0] || account.accountId;
+
+  /* Spin while this account's email list is in flight (initial or refetch). */
+  const refreshing =
+    useIsFetching({
+      queryKey: emailsQueryKey(account.accountId, folder),
+    }) > 0;
+
+  /* Re-pull the list from Gmail and refresh the unread badges. */
+  const refresh = () => {
+    queryClient.invalidateQueries({
+      queryKey: emailsQueryKey(account.accountId, folder),
+    });
+    queryClient.invalidateQueries({ queryKey: accountsQueryKey });
+  };
 
   return (
     <div
@@ -872,12 +908,22 @@ function PaneHeader({
           {formatCount(account.unread)} new
         </span>
       )}
+      <Hint label="Refresh">
+        <button
+          type="button"
+          disabled={refreshing}
+          onClick={refresh}
+          className="ml-auto inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground/70 hover:bg-muted hover:text-foreground disabled:cursor-default disabled:hover:bg-transparent"
+        >
+          <RefreshCwIcon className={cn("size-3.5", refreshing && "animate-spin")} />
+        </button>
+      </Hint>
       {removable && (
         <Hint label={`Remove ${account.email} from view`}>
           <button
             type="button"
             onClick={() => onRemovePane(account.accountId)}
-            className="ml-auto inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground/70 hover:bg-muted hover:text-foreground"
+            className="inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground/70 hover:bg-muted hover:text-foreground"
           >
             <XIcon className="size-3.5" />
           </button>

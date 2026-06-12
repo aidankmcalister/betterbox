@@ -4,7 +4,6 @@ import {
   Inbox,
   Laptop,
   LogOut,
-  Mail,
   Moon,
   PenLine,
   RotateCcw,
@@ -19,6 +18,8 @@ import { linkGoogle, signOut } from "@/lib/auth-client";
 import { RESET_TILE_LAYOUT_EVENT } from "@/lib/layout-tree";
 import { useSearchEmailsQuery, type SearchHit } from "@/lib/mail-queries";
 import { cn } from "@/lib/utils";
+import { useSettings } from "@/hooks/use-settings";
+import { shortTime } from "@/components/thread-row";
 import { useTheme } from "@/components/theme-provider";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -68,6 +69,7 @@ export function CommandMenu({
   searchAccounts: Account[];
 }) {
   const { setTheme } = useTheme();
+  const { clock } = useSettings();
 
   /* Email search: cmdk's own filtering is off — Gmail matches on full text
      the palette can't see, so results must never be re-filtered locally.
@@ -113,6 +115,9 @@ export function CommandMenu({
       .find((account) => account.accountId === accountId)
       ?.email.split("@")[0] ?? "";
 
+  const accountIndex = (accountId: string) =>
+    searchAccounts.findIndex((account) => account.accountId === accountId);
+
   const needle = search.trim().toLowerCase();
   const matches = (entry: CommandEntry) =>
     !needle || entry.label.toLowerCase().includes(needle);
@@ -129,7 +134,7 @@ export function CommandMenu({
           shortcut: "G I",
         },
         { label: "Add account", icon: <UserPlus />, action: () => linkGoogle() },
-        ...(import.meta.env.DEV && onAddTestAccount
+        ...(onAddTestAccount
           ? [
               {
                 label: "Add test account",
@@ -233,7 +238,12 @@ export function CommandMenu({
                         value={`${hit.accountId}/${hit.id}`}
                         onSelect={() => openHit(hit)}
                       >
-                        <Mail />
+                        <AccountDot
+                          colorIndex={accountIndex(hit.accountId)}
+                          accountId={hit.accountId}
+                          unread={!!hit.unread}
+                          className="ml-1.5"
+                        />
                         <span className="min-w-0 flex-1 truncate">
                           <span className={cn(hit.unread && "font-medium")}>
                             {senderName(hit.from)}
@@ -243,11 +253,14 @@ export function CommandMenu({
                             {hit.subject || "(no subject)"}
                           </span>
                         </span>
-                        {searchAccounts.length > 1 && (
-                          <span className="ml-auto shrink-0 font-mono text-[10.5px] text-muted-foreground/70">
-                            {accountLabel(hit.accountId)}
-                          </span>
-                        )}
+                        <span className="ml-auto flex shrink-0 items-center gap-2 font-mono text-[10.5px] text-muted-foreground/70">
+                          <span>{shortTime(hit.date, clock === "12h")}</span>
+                          {searchAccounts.length > 1 && (
+                            <span className="border-l border-border/60 pl-2">
+                              {accountLabel(hit.accountId)}
+                            </span>
+                          )}
+                        </span>
                       </CommandItem>
                     ))
                   : hitsQuery.isFetching || debouncing

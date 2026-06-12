@@ -39,6 +39,15 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   return data as T;
 }
 
+/**
+ * Test/demo accounts otherwise resolve in a single tick, which makes folder
+ * switches read as a glitchy flash. A small artificial latency lets the
+ * skeleton paint first, so demo mode loads like a real inbox would.
+ */
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const LIST_LATENCY_MS = 480;
+const READ_LATENCY_MS = 260;
+
 export const accountsQueryKey = ["accounts"] as const;
 
 export function useAccountsQuery(enabled: boolean) {
@@ -69,7 +78,8 @@ export function useEmailsQuery(accountId: string, folder: Folder = "inbox") {
     getNextPageParam: (last: EmailsPage) => last.nextPageToken ?? undefined,
     queryFn: async ({ pageParam }): Promise<EmailsPage> => {
       if (isTestAccount(accountId)) {
-        return { emails: makeTestEmails(accountId) };
+        await sleep(LIST_LATENCY_MS);
+        return { emails: makeTestEmails(accountId, folder) };
       }
       const pageQuery = pageParam
         ? `&pageToken=${encodeURIComponent(pageParam)}`
@@ -87,6 +97,11 @@ export function useEmailsQuery(accountId: string, folder: Folder = "inbox") {
 }
 
 export type SearchHit = ThreadRowEmail & { accountId: string };
+
+/** Per-account cap on search hits. Gmail hydrates each id with one cheap
+ *  metadata fetch (pooled at 8), so a higher cap stays fast while surfacing the
+ *  long tail — "github" matching dozens of messages shouldn't stop at 8. */
+const SEARCH_LIMIT = 25;
 
 /** Gmail full-text search (messages.list q=) fanned out across accounts. */
 export function useSearchEmailsQuery(accountIds: string[], q: string) {
@@ -106,11 +121,11 @@ export function useSearchEmailsQuery(accountIds: string[], q: string) {
                   (field) => field.toLowerCase().includes(needle),
                 ),
               )
-              .slice(0, 8)
+              .slice(0, SEARCH_LIMIT)
               .map((email) => ({ ...email, accountId }));
           }
           const data = await fetchJson<{ emails?: ThreadRowEmail[] }>(
-            `/api/emails?accountId=${accountId}&q=${encodeURIComponent(trimmed)}&max=8`,
+            `/api/emails?accountId=${accountId}&q=${encodeURIComponent(trimmed)}&max=${SEARCH_LIMIT}`,
           );
           return (data.emails ?? []).map((email) => ({ ...email, accountId }));
         }),
@@ -131,6 +146,7 @@ export function useFullEmailQuery(accountId: string, emailId: string | null) {
     enabled: emailId !== null,
     queryFn: async (): Promise<FullEmail> => {
       if (isTestAccount(accountId)) {
+        await sleep(READ_LATENCY_MS);
         return makeTestFullEmail(accountId, emailId!);
       }
       const data = await fetchJson<{ email: FullEmail }>(
@@ -151,6 +167,7 @@ export function useThreadQuery(
     enabled: !!threadId,
     queryFn: async (): Promise<FullEmail[]> => {
       if (isTestAccount(accountId)) {
+        await sleep(READ_LATENCY_MS);
         return [makeTestFullEmail(accountId, threadId!)];
       }
       const data = await fetchJson<{ messages: FullEmail[] }>(
@@ -172,6 +189,7 @@ export function useRawEmailQuery(
     enabled: enabled && emailId !== null,
     queryFn: async (): Promise<string> => {
       if (isTestAccount(accountId)) {
+        await sleep(READ_LATENCY_MS);
         return makeTestRawEmail(accountId, emailId!);
       }
       const data = await fetchJson<{ raw: string }>(

@@ -11,14 +11,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MailIcon } from "lucide-react";
 import { useAccountScope } from "@/hooks/use-account-scope";
 import type { Account } from "@/lib/account";
-import { useApplyAccent } from "@/hooks/use-settings";
+import { useApplyAccent, useSettings } from "@/hooks/use-settings";
 import {
   accountsQueryKey,
   markAllAccountRead,
   useAccountsQuery,
 } from "@/lib/mail-queries";
 import { toFolder, type Folder } from "@/lib/folders";
-import { makeTestAccount } from "@/lib/test-account";
+import { makeDemoAccounts, makeTestAccount } from "@/lib/test-account";
 import { signIn, useSession } from "../lib/auth-client";
 import { AppSidebar } from "@/components/app-sidebar";
 import { CommandMenu } from "@/components/command-menu";
@@ -53,6 +53,7 @@ const PATH_FOLDER: Record<string, Folder> = {
 
 function AppShell() {
   useApplyAccent();
+  const { devTools, demoMode } = useSettings();
   const { data: session, isPending } = useSession();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -69,10 +70,27 @@ function AppShell() {
     ]);
   }, []);
 
-  const allAccounts = useMemo(
-    () => (accounts === undefined ? null : [...accounts, ...testAccounts]),
-    [accounts, testAccounts],
-  );
+  // Owners can flip dev affordances (test accounts) on from Settings → Owner
+  // tools; the role gates whether the toggle is even reachable. Everyone else
+  // never sees them. Gated on role + opt-in, not import.meta.env.DEV.
+  const isOwner = session?.user.role === "OWNER";
+  const onAddTestAccount = isOwner && devTools ? addTestAccount : undefined;
+
+  /* Demo mode (Owner tools): hide real accounts entirely and run on a fixed
+     demo set so nothing private shows while recording. Test accounts already
+     route every query/search/read through generated mail.
+
+     Gated on demoMode alone — NOT isOwner. The toggle is only reachable from
+     the owner-only settings page, and reading session role here would flip the
+     view back to real mail for the split second useSession() re-pends during
+     navigation (the flicker). The demo set is memoized once so real-account
+     refetches can't churn the panes either. */
+  const demoAccounts = useMemo(() => makeDemoAccounts(), []);
+  const demo = demoMode;
+  const allAccounts = useMemo(() => {
+    if (demo) return demoAccounts;
+    return accounts === undefined ? null : [...accounts, ...testAccounts];
+  }, [demo, demoAccounts, accounts, testAccounts]);
   const accountIds = useMemo(
     () => (allAccounts ?? []).map((account) => account.accountId),
     [allAccounts],
@@ -180,11 +198,13 @@ function AppShell() {
     return () => document.removeEventListener("keydown", down);
   }, [accountIds, only, toggle, openCompose]);
 
-  if (isPending) {
-    return <LoadingScreen />;
-  }
+  // Only the splash needs a full takeover, and only once we KNOW there's no
+  // session. While the session is still pending we render the (static) shell
+  // and skeleton just the account/user blocks — so the sidebar never shows up
+  // late. `booting` covers both the session fetch and the first accounts load.
+  const booting = isPending || allAccounts === null;
 
-  if (!session) {
+  if (!isPending && !session) {
     return (
       <main className="grid min-h-svh w-full place-items-center bg-canvas p-6 text-ink">
         <div className="flex max-w-[400px] flex-col items-center px-6 text-center">
@@ -231,7 +251,7 @@ function AppShell() {
         onGoInbox={() => toggle("all")}
         onCompose={openCompose}
         onMarkAccountRead={markAccountRead}
-        onAddTestAccount={addTestAccount}
+        onAddTestAccount={onAddTestAccount}
         onOpenEmail={openEmail}
         accounts={allAccounts ?? []}
         searchAccounts={scopedAccounts}
@@ -258,7 +278,8 @@ function AppShell() {
         onOpenCommand={() => setCmdOpen(true)}
         onOpenSettings={openSettings}
         onCompose={openCompose}
-        onAddTestAccount={addTestAccount}
+        onAddTestAccount={onAddTestAccount}
+        loading={booting}
       />
       <SidebarInset className="min-w-0">
         <div className="h-svh min-h-0 w-full max-w-full overflow-hidden">
@@ -295,7 +316,7 @@ function LoadingScreen({
 }) {
   return (
     <div
-      className={`grid w-full place-items-center bg-canvas ${
+      className={`grid w-full place-items-center bg-background ${
         fill ? "h-full" : "min-h-svh"
       }`}
     >

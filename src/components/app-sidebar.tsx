@@ -15,7 +15,7 @@ import {
 import { linkGoogle } from "@/lib/auth-client";
 import { formatCount } from "@/lib/format";
 import { NavUser } from "@/components/nav-user";
-import { ViewCard } from "@/components/view-card";
+import { ViewCard, ViewCardSkeleton } from "@/components/view-card";
 import type { Account } from "@/lib/account";
 import type { Folder } from "@/lib/folders";
 import { Button } from "@/components/ui/button";
@@ -68,6 +68,7 @@ export function AppSidebar({
   onOpenSettings,
   onCompose,
   onAddTestAccount,
+  loading = false,
 }: {
   accounts: Account[];
   scopeIds: string[];
@@ -79,6 +80,8 @@ export function AppSidebar({
   onOpenSettings: () => void;
   onCompose: () => void;
   onAddTestAccount?: () => void;
+  /** Session/accounts still booting — skeleton the account + profile blocks. */
+  loading?: boolean;
 }) {
   const scopedUnread = accounts
     .filter((account) => scopeIds.includes(account.accountId))
@@ -164,7 +167,9 @@ export function AppSidebar({
 
         <SidebarGroup className="mt-auto p-0 pb-3">
           <SidebarGroupContent>
-            {accounts.length > 0 ? (
+            {loading ? (
+              <ViewCardSkeleton />
+            ) : accounts.length > 0 ? (
               <ViewCard
                 accounts={accounts}
                 scopeIds={scopeIds}
@@ -179,7 +184,7 @@ export function AppSidebar({
       </SidebarContent>
 
       <SidebarFooter className="border-t">
-        <NavUser onOpenSettings={onOpenSettings} />
+        <NavUser onOpenSettings={onOpenSettings} loading={loading} />
       </SidebarFooter>
     </Sidebar>
   );

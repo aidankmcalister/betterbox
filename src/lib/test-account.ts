@@ -1,4 +1,5 @@
 import type { ThreadRowEmail } from "@/components/thread-row";
+import { toFolder, type Folder } from "@/lib/folders";
 
 /**
  * Dev-only dummy accounts for exercising the multi-account tiles without
@@ -15,26 +16,61 @@ export function makeTestAccount(index: number) {
   return {
     accountId: `${TEST_ACCOUNT_PREFIX}${index}`,
     email: `test${index}@example.dev`,
-    unread: (index * 137) % 1900 + 12,
+    unread: ((index * 137) % 1900) + 12,
   };
 }
 
+/**
+ * The fixed account set shown in demo mode (Owner tools → Demo mode). Real
+ * Gmail accounts are hidden and replaced with these so nothing private appears
+ * on screen while recording. They're ordinary test accounts (so every pane,
+ * search, and the reader render generated mail) with friendlier display emails.
+ */
+export function makeDemoAccounts() {
+  return [
+    { ...makeTestAccount(1), email: "personal@betterbox.dev", unread: 18 },
+    { ...makeTestAccount(2), email: "work@betterbox.dev", unread: 4 },
+  ];
+}
+
 const SENDERS = [
-  ["GitHub", "[scope/api] PR #214 merged", "fix: debounce token refresh on 401"],
+  [
+    "GitHub",
+    "[scope/api] PR #214 merged",
+    "fix: debounce token refresh on 401",
+  ],
   ["Vercel", "Deployment ready", "betterbox deployed to production in 34s"],
-  ["Stripe", "Your invoice is available", "Invoice #A1B2-0042 for $20.00 is ready"],
+  [
+    "Stripe",
+    "Your invoice is available",
+    "Invoice #A1B2-0042 for $20.00 is ready",
+  ],
   ["Dependabot", "Bump vite from 6.0.1 to 6.0.4", "CI passed on all 9 checks"],
   ["npm", "ratchet@2.4.1 published", "Published to the npm registry"],
-  ["Linear", "3 issues assigned to you", "SCO-114, SCO-118, SCO-121 moved to In Progress"],
-  ["Discord", "2 new mentions in #dev", "@aidan: does the parser expose the AST?"],
-  ["Google Cloud", "Quota warning", "gmail.googleapis.com at 78% of daily quota"],
+  [
+    "Linear",
+    "3 issues assigned to you",
+    "SCO-114, SCO-118, SCO-121 moved to In Progress",
+  ],
+  [
+    "Discord",
+    "2 new mentions in #dev",
+    "@aidan: does the parser expose the AST?",
+  ],
+  [
+    "Google Cloud",
+    "Quota warning",
+    "gmail.googleapis.com at 78% of daily quota",
+  ],
   ["AWS", "Your bill is available", "Estimated charges for June: $4.87"],
   ["Figma", "Comments on BetterBox", "2 new comments on Component Spec"],
 ] as const;
 
 /** Full message for the reader pane, synthesized from the row data. */
 export function makeTestFullEmail(accountId: string, emailId: string) {
-  const row = makeTestEmails(accountId).find((email) => email.id === emailId);
+  const row = makeTestEmails(accountId, folderFromId(accountId, emailId)).find(
+    (email) => email.id === emailId,
+  );
   const index = Number(accountId.replace(TEST_ACCOUNT_PREFIX, "")) || 1;
   return {
     id: emailId,
@@ -69,18 +105,100 @@ export function makeTestRawEmail(accountId: string, emailId: string): string {
   ].join("\n");
 }
 
-export function makeTestEmails(accountId: string): ThreadRowEmail[] {
+/** Per-folder mail so every folder looks distinct in demo/test mode instead of
+ *  echoing the inbox. Tuples are [sender, subject, snippet]; `self` folders
+ *  (sent/drafts) come from "You". */
+type Mail = readonly [name: string, subject: string, snippet: string];
+
+const ARCHIVED: readonly Mail[] = [
+  ["Notion", "Your weekly digest", "12 pages updated across 3 teamspaces"],
+  ["Calendly", "Event scheduled", "Intro call confirmed for Thursday 2:00 PM"],
+  ["Cloudflare", "Weekly analytics", "1.2M requests served · 0 origin errors"],
+  ["1Password", "Watchtower report", "No compromised logins this week"],
+  ["Raycast", "What’s new in 1.80", "AI commands, window tiling, and more"],
+  ["Postmark", "Sending report", "8,402 emails delivered · 99.8% delivery"],
+];
+
+const SENT: readonly Mail[] = [
+  ["You", "Re: PR #214 merged", "Thanks — deploying now, will confirm once live."],
+  ["You", "Re: Invoice #A1B2-0042", "Paid, receipt attached. Appreciate it!"],
+  ["You", "Spec feedback", "Left comments on the component spec — mostly nits."],
+  ["You", "Re: 3 issues assigned", "Picking up SCO-118 first, rest by Friday."],
+  ["You", "Quota follow-up", "Bumped the daily quota, should hold us for now."],
+];
+
+const DRAFTS: readonly Mail[] = [
+  ["You", "Re: parser AST question", "Yes — exposeAst() lands next minor, here’s…"],
+  ["You", "Launch checklist", "1. flip demo mode  2. record  3. ship the cut"],
+  ["You", "(no subject)", ""],
+];
+
+const SPAM: readonly Mail[] = [
+  ["Winner Notice", "You’ve been selected!!!", "Claim your $1,000 reward — act fast"],
+  ["Crypto Signals", "10x your portfolio today", "Limited VIP trading spots left"],
+  ["Pharma Deals", "Save 90% on meds", "No prescription needed, discreet shipping"],
+  ["Account Team", "Verify your account", "Unusual activity detected, confirm here"],
+];
+
+const TRASH: readonly Mail[] = [
+  ["Old Newsletter", "Weekly roundup #88", "You unsubscribed from this list"],
+  ["Calendar", "Event canceled", "Standup on Monday was removed"],
+  ["GitHub", "[scope/api] PR #201 closed", "Closed without merging"],
+  ["Receipts", "Refund processed", "$12.00 refunded to your card"],
+];
+
+const FOLDER_MAIL: Record<
+  Folder,
+  { mail: readonly Mail[]; count: number; self?: boolean; allRead?: boolean }
+> = {
+  inbox: { mail: SENDERS, count: 120 },
+  archived: { mail: ARCHIVED, count: 16, allRead: true },
+  sent: { mail: SENT, count: 12, self: true, allRead: true },
+  drafts: { mail: DRAFTS, count: 3, self: true, allRead: true },
+  spam: { mail: SPAM, count: 7 },
+  trash: { mail: TRASH, count: 8, allRead: true },
+};
+
+/** Recover the folder a synthesized email belongs to from its id. */
+function folderFromId(accountId: string, emailId: string): Folder {
+  const rest = emailId.startsWith(`${accountId}-`)
+    ? emailId.slice(accountId.length + 1)
+    : emailId;
+  return toFolder(rest.split("-")[0]);
+}
+
+export function makeTestEmails(
+  accountId: string,
+  folder: Folder = "inbox",
+): ThreadRowEmail[] {
   const seed = Number(accountId.replace(TEST_ACCOUNT_PREFIX, "")) || 1;
   const now = Date.now();
-  return Array.from({ length: 30 }, (_, i) => {
-    const [name, subject, snippet] = SENDERS[(seed + i) % SENDERS.length];
+  const { mail, count: baseCount, self, allRead } = FOLDER_MAIL[folder];
+
+  // Vary volume, cadence, and ordering per account so two inboxes never look
+  // cloned. Everything is derived from the account seed, so it stays stable
+  // across renders while differing clearly between accounts.
+  // Cap the spread so high-volume folders (inbox) stay full — accounts still
+  // differ by up to ~20 messages, but a 120-row inbox never dips below 100.
+  const spread = Math.min(20, Math.max(1, Math.round(baseCount * 0.2)));
+  const count = Math.max(self ? 2 : 3, baseCount - ((seed * 7) % (spread + 1)));
+
+  let minutesAgo = (seed * 11) % 23; // each account starts at a different time
+  return Array.from({ length: count }, (_, i) => {
+    // Non-uniform gaps (28–80 min) keyed off account + index, so timestamps
+    // don't line up row-for-row between panes.
+    minutesAgo += 28 + ((seed * 17 + i * 13) % 53);
+    const [name, subject, snippet] = mail[(seed * 5 + i) % mail.length];
+    const from = self
+      ? `You <test${seed}@example.dev>`
+      : `${name} <noreply@${name.toLowerCase().replace(/[^a-z0-9]/g, "")}.com>`;
     return {
-      id: `${accountId}-${i}`,
-      from: `${name} <noreply@${name.toLowerCase().replace(/ /g, "")}.com>`,
-      subject: `${subject}`,
+      id: `${accountId}-${folder}-${i}`,
+      from,
+      subject,
       snippet,
-      date: new Date(now - i * 47 * 60_000 - seed * 9 * 60_000).toISOString(),
-      unread: (seed + i) % 4 === 0,
+      date: new Date(now - minutesAgo * 60_000).toISOString(),
+      unread: allRead ? false : (seed * 3 + i) % 4 === 0,
     };
   });
 }

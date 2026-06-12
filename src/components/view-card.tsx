@@ -6,6 +6,35 @@ import { formatCount } from "@/lib/format";
 import { Hint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
+/** Placeholder shown in the sidebar while accounts (and the session) load, so
+ *  the View card area doesn't pop in late. Mirrors the card's shape. */
+export function ViewCardSkeleton() {
+  return (
+    <div className="overflow-hidden rounded-lg border bg-card">
+      <div className="flex h-7 items-center border-b px-2">
+        <div className="h-2.5 w-20 animate-pulse rounded bg-muted" />
+      </div>
+      <div className="flex flex-col gap-1 p-1">
+        {[0, 1].map((i) => (
+          <div key={i} className="flex items-center gap-[9px] px-1 py-[5px]">
+            <div className="size-3.5 shrink-0 animate-pulse rounded-[4px] bg-muted" />
+            <div
+              className="h-3 animate-pulse rounded bg-muted/70"
+              style={{ width: i === 0 ? "68%" : "52%" }}
+            />
+            <div className="ml-auto h-2.5 w-5 shrink-0 animate-pulse rounded bg-muted/50" />
+          </div>
+        ))}
+        {/* "Add account" row — keeps the skeleton's height ~= the real card. */}
+        <div className="flex items-center gap-[9px] px-1 py-[5px]">
+          <div className="size-3.5 shrink-0 animate-pulse rounded bg-muted/50" />
+          <div className="h-3 w-20 animate-pulse rounded bg-muted/50" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /**
  * The sidebar View section (design: status header + mono caps summary bar +
  * real checkboxes). The bar reports the composed view; each row's checkbox —
@@ -122,8 +151,8 @@ export function ViewCard({
             </span>
           </button>
         )}
-        {import.meta.env.DEV && onAddTestAccount && (
-          <Hint label="Dev only: add a dummy account with generated mail">
+        {onAddTestAccount && (
+          <Hint label="Owner only: add a dummy account with generated mail">
           <button
             type="button"
             onClick={onAddTestAccount}

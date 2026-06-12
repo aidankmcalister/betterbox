@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
-  AtSign,
   ChevronDownIcon,
+  Clapperboard,
   Command,
   Inbox,
   MailIcon,
@@ -10,6 +10,8 @@ import {
   PlusIcon,
   ShieldCheck,
   SquareTerminal,
+  CircleUserRound,
+  Wrench,
 } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 
@@ -36,12 +38,27 @@ import {
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 
-type PageId = "accounts" | "appearance" | "inbox" | "developer" | "keyboard";
+type PageId =
+  | "accounts"
+  | "appearance"
+  | "inbox"
+  | "developer"
+  | "keyboard"
+  | "owner";
 
-const NAV: { section: string; pages: { id: PageId; label: string; icon: ComponentType<{ className?: string }> }[] }[] = [
+type NavGroup = {
+  section: string;
+  pages: {
+    id: PageId;
+    label: string;
+    icon: ComponentType<{ className?: string }>;
+  }[];
+};
+
+const NAV: NavGroup[] = [
   {
     section: "Account",
-    pages: [{ id: "accounts", label: "Accounts", icon: AtSign }],
+    pages: [{ id: "accounts", label: "Accounts", icon: CircleUserRound }],
   },
   {
     section: "App",
@@ -54,6 +71,12 @@ const NAV: { section: string; pages: { id: PageId; label: string; icon: Componen
   },
 ];
 
+/** Only owners ever see this group (gated on session role, not env). */
+const OWNER_NAV: NavGroup = {
+  section: "Owner",
+  pages: [{ id: "owner", label: "Owner tools", icon: Wrench }],
+};
+
 export function SettingsDialog({
   open,
   onOpenChange,
@@ -65,6 +88,9 @@ export function SettingsDialog({
 }) {
   const [page, setPage] = useState<PageId>("accounts");
   const navigate = useNavigate();
+  const { data: session } = useSession();
+  const isOwner = session?.user.role === "OWNER";
+  const nav = isOwner ? [...NAV, OWNER_NAV] : NAV;
 
   const openPrivacy = () => {
     onOpenChange(false);
@@ -86,7 +112,7 @@ export function SettingsDialog({
             </span>
             <span className="font-mono text-xs font-semibold">Settings</span>
           </div>
-          {NAV.map((group) => (
+          {nav.map((group) => (
             <div key={group.section} className="flex flex-col gap-px">
               <span className="px-1.5 pt-2 pb-1 font-mono text-[10.5px] font-medium tracking-[0.5px] text-muted-foreground/70 uppercase">
                 {group.section}
@@ -125,6 +151,7 @@ export function SettingsDialog({
           {page === "inbox" && <InboxPage />}
           {page === "developer" && <DeveloperPage />}
           {page === "keyboard" && <KeyboardPage />}
+          {page === "owner" && isOwner && <OwnerPage />}
         </div>
       </DialogContent>
     </Dialog>
@@ -390,6 +417,61 @@ function DeveloperPage() {
   );
 }
 
+function OwnerPage() {
+  const settings = useSettings();
+  const { data: session } = useSession();
+
+  return (
+    <Page
+      title="Owner tools"
+      description="Only visible to owners — toggles for development affordances"
+    >
+      <PageSection title="Access">
+        <SettingRow
+          label="Role"
+          description="Granted out-of-band; clients can't set their own role"
+        >
+          <span className="inline-flex items-center gap-1.5 rounded-md border border-accent-2/40 bg-accent-2/[0.08] px-2 py-1 font-mono text-[11px] font-medium tracking-wide text-accent-2-hover uppercase">
+            <Wrench className="size-3" />
+            {session?.user.role ?? "USER"}
+          </span>
+        </SettingRow>
+      </PageSection>
+
+      <PageSection title="Recording">
+        <div className="flex items-center justify-between gap-6 rounded-lg border border-accent-2/30 bg-accent-2/[0.05] px-3.5 py-3">
+          <div className="flex min-w-0 items-start gap-2.5">
+            <Clapperboard className="mt-0.5 size-4 shrink-0 text-accent-2-hover" />
+            <div className="min-w-0">
+              <p className="text-[13px] font-medium">Demo mode</p>
+              <p className="text-xs text-muted-foreground">
+                Hide real accounts and run on generated mail — flip it on before
+                recording, off when you’re done.
+              </p>
+            </div>
+          </div>
+          <Switch
+            checked={settings.demoMode}
+            onCheckedChange={(demoMode) => updateSettings({ demoMode })}
+          />
+        </div>
+      </PageSection>
+
+      <PageSection title="Development">
+        <SettingRow
+          label="Developer tools"
+          description="Show the “Add test account” button in the sidebar and command palette"
+        >
+          <Switch
+            checked={settings.devTools}
+            onCheckedChange={(devTools) => updateSettings({ devTools })}
+          />
+        </SettingRow>
+      </PageSection>
+    </Page>
+  );
+}
+
 const SHORTCUTS = [
   { label: "Command palette", keys: ["⌘", "K"] },
   { label: "Compose", keys: ["C"] },
@@ -543,7 +625,13 @@ function SegmentedButtons<T extends string>({
 }
 
 /** A control that exists in the design but isn't wired yet. */
-function SoonControl({ label, mono = false }: { label: string; mono?: boolean }) {
+function SoonControl({
+  label,
+  mono = false,
+}: {
+  label: string;
+  mono?: boolean;
+}) {
   return (
     <Hint label="Soon">
       <Button

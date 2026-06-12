@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 
 import { signOut, useSession } from "@/lib/auth-client";
+import { useSettings } from "@/hooks/use-settings";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Hint } from "@/components/ui/tooltip";
@@ -36,12 +37,42 @@ const THEMES = [
 
 /** Profile block at the bottom of the sidebar. The primary (signed-in Google)
  *  account; linked inboxes live in the View card above. */
-export function NavUser({ onOpenSettings }: { onOpenSettings: () => void }) {
+export function NavUser({
+  onOpenSettings,
+  loading = false,
+}: {
+  onOpenSettings: () => void;
+  /** Booting — skeleton in step with the View card above (same flag) so the
+   *  two sidebar blocks reveal together instead of at different times. */
+  loading?: boolean;
+}) {
   const { data: session } = useSession();
   const { theme, setTheme } = useTheme();
+  const { demoMode } = useSettings();
 
-  if (!session) return null;
-  const user = session.user;
+  // Hold the profile block's shape with a skeleton until the sidebar is ready.
+  if (loading || !session) {
+    return (
+      <SidebarMenu>
+        <SidebarMenuItem>
+          {/* Matches SidebarMenuButton size="lg": h-12, p-2, gap-2. */}
+          <div className="flex h-12 items-center gap-2 p-2">
+            <div className="size-8 shrink-0 animate-pulse rounded-lg bg-muted" />
+            <div className="grid flex-1 gap-1.5">
+              <div className="h-3 w-24 animate-pulse rounded bg-muted" />
+              <div className="h-2.5 w-32 animate-pulse rounded bg-muted/60" />
+            </div>
+            <div className="size-4 shrink-0 animate-pulse rounded bg-muted/50" />
+          </div>
+        </SidebarMenuItem>
+      </SidebarMenu>
+    );
+  }
+  /* Demo mode masks the real signed-in identity too, so a recording shows only
+     the demo persona (the toggle is owner-only reachable). */
+  const user = demoMode
+    ? { name: "Demo User", email: "personal@betterbox.dev", image: null }
+    : session.user;
   const initials = (user.name ?? user.email ?? "?").slice(0, 2).toUpperCase();
 
   const profile = (
@@ -89,7 +120,10 @@ export function NavUser({ onOpenSettings }: { onOpenSettings: () => void }) {
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem onClick={onOpenSettings}>
+              <DropdownMenuItem
+                onClick={onOpenSettings}
+                className="focus:bg-foreground/10 focus:text-foreground"
+              >
                 <Settings />
                 Settings
               </DropdownMenuItem>
@@ -117,7 +151,10 @@ export function NavUser({ onOpenSettings }: { onOpenSettings: () => void }) {
               ))}
             </div>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => signOut()}>
+            <DropdownMenuItem
+              onClick={() => signOut()}
+              className="focus:bg-foreground/10 focus:text-foreground"
+            >
               <LogOut />
               Sign out
             </DropdownMenuItem>

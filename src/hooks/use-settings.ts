@@ -25,11 +25,17 @@ export type Settings = {
   exportFormat: ExportFormat;
   clock: Clock;
   markRead: MarkRead;
+  /** Owner-only: surfaces dev affordances (test accounts) across the app. The
+   *  role check still gates whether this toggle is even reachable. */
+  devTools: boolean;
+  /** Owner-only: hide real accounts and run entirely on demo data — for
+   *  recording videos without exposing real mail. */
+  demoMode: boolean;
 };
 
 const STORAGE_KEY = "bm.settings";
 const DEFAULT_SETTINGS: Settings = {
-  density: "comfortable",
+  density: "compact",
   showSnippets: true,
   snippetFont: "sans",
   accent: "orange",
@@ -38,6 +44,8 @@ const DEFAULT_SETTINGS: Settings = {
   exportFormat: "md",
   clock: "12h",
   markRead: "1s",
+  devTools: false,
+  demoMode: false,
 };
 
 /** Mark-read delay in ms, or null when disabled. */

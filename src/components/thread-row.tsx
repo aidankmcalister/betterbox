@@ -21,7 +21,7 @@ function senderName(from: string): string {
 }
 
 /** Short mono time column: today → 2:05 PM, this year → Jun 5, else Dec 2024. */
-function shortTime(raw: string, hour12: boolean): string {
+export function shortTime(raw: string, hour12: boolean): string {
   const date = new Date(raw);
   if (Number.isNaN(date.getTime())) return "";
   const now = new Date();
