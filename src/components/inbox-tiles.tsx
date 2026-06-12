@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import {
   ArchiveIcon,
   BadgeCheckIcon,
@@ -415,14 +416,26 @@ function ReaderPane() {
   const appliedTags = labels.filter((label) => appliedIds.includes(label.id));
   const [tagPickerOpen, setTagPickerOpen] = useState(false);
   const [newTag, setNewTag] = useState("");
-  const tagRef = useRef<HTMLDivElement>(null);
+  /* The picker is portalled to <body> (fixed-positioned off the button) so the
+     tile panes' stacking/overflow can't clip it or render over it. */
+  const tagButtonRef = useRef<HTMLButtonElement>(null);
+  const tagPickerRef = useRef<HTMLDivElement>(null);
+  const [pickerPos, setPickerPos] = useState<{ top: number; right: number }>();
+  const openTagPicker = () => {
+    const rect = tagButtonRef.current?.getBoundingClientRect();
+    if (rect) {
+      setPickerPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+    }
+    setTagPickerOpen(true);
+  };
 
   useEffect(() => {
     if (!tagPickerOpen) return;
     const onDown = (event: PointerEvent) => {
-      if (tagRef.current && !tagRef.current.contains(event.target as Node)) {
-        setTagPickerOpen(false);
-      }
+      const target = event.target as Node;
+      if (tagButtonRef.current?.contains(target)) return;
+      if (tagPickerRef.current?.contains(target)) return;
+      setTagPickerOpen(false);
     };
     document.addEventListener("pointerdown", onDown);
     return () => document.removeEventListener("pointerdown", onDown);
@@ -656,29 +669,37 @@ function ReaderPane() {
         <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold">
           {email?.subject || "Reading"}
         </span>
-        <div
-          ref={tagRef}
-          className="relative shrink-0"
-          onPointerDown={(event) => event.stopPropagation()}
-        >
-          <Hint label="Tags">
-            <button
-              type="button"
-              disabled={!email || busy}
-              aria-pressed={tagPickerOpen}
-              onClick={() => setTagPickerOpen((o) => !o)}
-              className={cn(
-                "inline-flex size-7 shrink-0 items-center justify-center rounded-md hover:bg-muted disabled:opacity-40 disabled:hover:bg-transparent",
-                appliedTags.length > 0
-                  ? "text-accent-2-hover"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
+        <Hint label="Tags">
+          <button
+            ref={tagButtonRef}
+            type="button"
+            disabled={!email || busy}
+            aria-pressed={tagPickerOpen}
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={() => (tagPickerOpen ? setTagPickerOpen(false) : openTagPicker())}
+            className={cn(
+              "inline-flex size-7 shrink-0 items-center justify-center rounded-md hover:bg-muted disabled:opacity-40 disabled:hover:bg-transparent",
+              appliedTags.length > 0
+                ? "text-accent-2-hover"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <TagIcon className="size-[15px]" />
+          </button>
+        </Hint>
+        {tagPickerOpen &&
+          email &&
+          pickerPos &&
+          createPortal(
+            <div
+              ref={tagPickerRef}
+              style={{
+                position: "fixed",
+                top: pickerPos.top,
+                right: pickerPos.right,
+              }}
+              className="z-[100] w-60 overflow-hidden rounded-lg border bg-popover shadow-2xl"
             >
-              <TagIcon className="size-[15px]" />
-            </button>
-          </Hint>
-          {tagPickerOpen && email && (
-            <div className="absolute top-full right-0 z-50 mt-1 w-60 overflow-hidden rounded-lg border bg-popover shadow-2xl">
               <div className="no-scrollbar max-h-56 overflow-y-auto p-1">
                 {labels.length === 0 ? (
                   <p className="px-2 py-2 text-[12px] text-muted-foreground">
@@ -711,6 +732,7 @@ function ReaderPane() {
               </div>
               <div className="border-t p-1.5">
                 <input
+                  autoFocus
                   value={newTag}
                   onChange={(event) => setNewTag(event.target.value)}
                   onKeyDown={(event) => {
@@ -723,9 +745,9 @@ function ReaderPane() {
                   className="w-full rounded-md bg-background/60 px-2 py-1 text-[12.5px] outline-none placeholder:text-muted-foreground/60"
                 />
               </div>
-            </div>
+            </div>,
+            document.body,
           )}
-        </div>
         <Hint label={starred ? "Unstar" : "Star"}>
           <button
             type="button"
