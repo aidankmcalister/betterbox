@@ -14,6 +14,7 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as ApiSendRouteImport } from './routes/api/send'
 import { Route as ApiMessageRouteImport } from './routes/api/message'
+import { Route as ApiLabelsRouteImport } from './routes/api/labels'
 import { Route as ApiImageProxyRouteImport } from './routes/api/image-proxy'
 import { Route as ApiEmailsRouteImport } from './routes/api/emails'
 import { Route as ApiAccountsRouteImport } from './routes/api/accounts'
@@ -51,6 +52,11 @@ const ApiSendRoute = ApiSendRouteImport.update({
 const ApiMessageRoute = ApiMessageRouteImport.update({
   id: '/api/message',
   path: '/api/message',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiLabelsRoute = ApiLabelsRouteImport.update({
+  id: '/api/labels',
+  path: '/api/labels',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiImageProxyRoute = ApiImageProxyRouteImport.update({
@@ -139,6 +145,7 @@ export interface FileRoutesByFullPath {
   '/api/accounts': typeof ApiAccountsRoute
   '/api/emails': typeof ApiEmailsRoute
   '/api/image-proxy': typeof ApiImageProxyRoute
+  '/api/labels': typeof ApiLabelsRoute
   '/api/message': typeof ApiMessageRoute
   '/api/send': typeof ApiSendRoute
   '/email/$id': typeof AppEmailIdRoute
@@ -158,6 +165,7 @@ export interface FileRoutesByTo {
   '/api/accounts': typeof ApiAccountsRoute
   '/api/emails': typeof ApiEmailsRoute
   '/api/image-proxy': typeof ApiImageProxyRoute
+  '/api/labels': typeof ApiLabelsRoute
   '/api/message': typeof ApiMessageRoute
   '/api/send': typeof ApiSendRoute
   '/': typeof AppIndexRoute
@@ -180,6 +188,7 @@ export interface FileRoutesById {
   '/api/accounts': typeof ApiAccountsRoute
   '/api/emails': typeof ApiEmailsRoute
   '/api/image-proxy': typeof ApiImageProxyRoute
+  '/api/labels': typeof ApiLabelsRoute
   '/api/message': typeof ApiMessageRoute
   '/api/send': typeof ApiSendRoute
   '/_app/': typeof AppIndexRoute
@@ -203,6 +212,7 @@ export interface FileRouteTypes {
     | '/api/accounts'
     | '/api/emails'
     | '/api/image-proxy'
+    | '/api/labels'
     | '/api/message'
     | '/api/send'
     | '/email/$id'
@@ -222,6 +232,7 @@ export interface FileRouteTypes {
     | '/api/accounts'
     | '/api/emails'
     | '/api/image-proxy'
+    | '/api/labels'
     | '/api/message'
     | '/api/send'
     | '/'
@@ -243,6 +254,7 @@ export interface FileRouteTypes {
     | '/api/accounts'
     | '/api/emails'
     | '/api/image-proxy'
+    | '/api/labels'
     | '/api/message'
     | '/api/send'
     | '/_app/'
@@ -256,6 +268,7 @@ export interface RootRouteChildren {
   ApiAccountsRoute: typeof ApiAccountsRoute
   ApiEmailsRoute: typeof ApiEmailsRoute
   ApiImageProxyRoute: typeof ApiImageProxyRoute
+  ApiLabelsRoute: typeof ApiLabelsRoute
   ApiMessageRoute: typeof ApiMessageRoute
   ApiSendRoute: typeof ApiSendRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -296,6 +309,13 @@ declare module '@tanstack/react-router' {
       path: '/api/message'
       fullPath: '/api/message'
       preLoaderRoute: typeof ApiMessageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/labels': {
+      id: '/api/labels'
+      path: '/api/labels'
+      fullPath: '/api/labels'
+      preLoaderRoute: typeof ApiLabelsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/image-proxy': {
@@ -435,6 +455,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAccountsRoute: ApiAccountsRoute,
   ApiEmailsRoute: ApiEmailsRoute,
   ApiImageProxyRoute: ApiImageProxyRoute,
+  ApiLabelsRoute: ApiLabelsRoute,
   ApiMessageRoute: ApiMessageRoute,
   ApiSendRoute: ApiSendRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,

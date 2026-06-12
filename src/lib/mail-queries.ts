@@ -1,5 +1,4 @@
 import {
-  keepPreviousData,
   useInfiniteQuery,
   useQuery,
   type InfiniteData,
@@ -141,48 +140,6 @@ export function useEmailsQuery(
   });
 }
 
-export type SearchHit = ThreadRowEmail & { accountId: string };
-
-/** Per-account cap on search hits. Gmail hydrates each id with one cheap
- *  metadata fetch (pooled at 8), so a higher cap stays fast while surfacing the
- *  long tail — "github" matching dozens of messages shouldn't stop at 8. */
-const SEARCH_LIMIT = 25;
-
-/** Gmail full-text search (messages.list q=) fanned out across accounts. */
-export function useSearchEmailsQuery(accountIds: string[], q: string) {
-  const trimmed = q.trim();
-  return useQuery({
-    queryKey: ["search", accountIds, trimmed],
-    enabled: trimmed.length >= 2,
-    placeholderData: keepPreviousData,
-    queryFn: async (): Promise<SearchHit[]> => {
-      const results = await Promise.all(
-        accountIds.map(async (accountId): Promise<SearchHit[]> => {
-          if (isTestAccount(accountId)) {
-            const needle = trimmed.toLowerCase();
-            return makeTestEmails(accountId)
-              .filter((email) =>
-                [email.subject, email.from, email.snippet ?? ""].some(
-                  (field) => field.toLowerCase().includes(needle),
-                ),
-              )
-              .slice(0, SEARCH_LIMIT)
-              .map((email) => ({ ...email, accountId }));
-          }
-          const data = await fetchJson<{ emails?: ThreadRowEmail[] }>(
-            `/api/emails?accountId=${accountId}&q=${encodeURIComponent(trimmed)}&max=${SEARCH_LIMIT}`,
-          );
-          return (data.emails ?? []).map((email) => ({ ...email, accountId }));
-        }),
-      );
-      return results
-        .flat()
-        .sort(
-          (a, b) => (Date.parse(b.date) || 0) - (Date.parse(a.date) || 0),
-        );
-    },
-  });
-}
 
 /** One full message for the reader pane. */
 export function useFullEmailQuery(accountId: string, emailId: string | null) {
