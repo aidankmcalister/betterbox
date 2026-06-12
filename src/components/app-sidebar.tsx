@@ -15,6 +15,8 @@ import {
   Webhook,
 } from "lucide-react";
 
+import { useLocation, useNavigate } from "@tanstack/react-router";
+
 import { linkGoogle } from "@/lib/auth-client";
 import { useSettings } from "@/hooks/use-settings";
 import { formatCount } from "@/lib/format";
@@ -47,10 +49,15 @@ const mailbox: { id: Folder; title: string; icon: typeof Inbox }[] = [
   { id: "trash", title: "Trash", icon: Trash2 },
 ];
 
-const developer = [
+const developer: {
+  id: string;
+  title: string;
+  icon: typeof Inbox;
+  to?: string;
+}[] = [
   { id: "pull_requests", title: "PRs", icon: GitPullRequest },
   { id: "webhooks", title: "Webhooks", icon: Webhook },
-  { id: "rules", title: "Rules", icon: GitBranch },
+  { id: "rules", title: "Rules", icon: GitBranch, to: "/rules" },
   { id: "api", title: "API", icon: Braces },
 ];
 
@@ -112,6 +119,9 @@ export function AppSidebar({
   loading?: boolean;
 }) {
   const { hiddenNav } = useSettings();
+  const navigate = useNavigate();
+  const pathname = useLocation({ select: (location) => location.pathname });
+  const onLiveDev = developer.some((item) => item.to === pathname);
   const scopedUnread = accounts
     .filter((account) => scopeIds.includes(account.accountId))
     .reduce((sum, account) => sum + account.unread, 0);
@@ -163,7 +173,7 @@ export function AppSidebar({
               {visibleMailbox.map((item) => (
                 <SidebarMenuItem key={item.id}>
                   <SidebarMenuButton
-                    isActive={folder === item.id}
+                    isActive={!onLiveDev && folder === item.id}
                     onClick={() => onFolder(item.id)}
                     className={navButton}
                   >
@@ -188,17 +198,30 @@ export function AppSidebar({
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu className="gap-px">
-                {visibleDeveloper.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton disabled className={soonButton}>
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </SidebarMenuButton>
-                    <SidebarMenuBadge className={soonBadge}>
-                      Soon
-                    </SidebarMenuBadge>
-                  </SidebarMenuItem>
-                ))}
+                {visibleDeveloper.map((item) =>
+                  item.to ? (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton
+                        isActive={pathname === item.to}
+                        onClick={() => navigate({ to: item.to })}
+                        className={navButton}
+                      >
+                        <item.icon />
+                        <span>{item.title}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ) : (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton disabled className={soonButton}>
+                        <item.icon />
+                        <span>{item.title}</span>
+                      </SidebarMenuButton>
+                      <SidebarMenuBadge className={soonBadge}>
+                        Soon
+                      </SidebarMenuBadge>
+                    </SidebarMenuItem>
+                  ),
+                )}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>

@@ -53,13 +53,9 @@ const PATH_FOLDER: Record<string, Folder> = {
   "/trash": "trash",
 };
 
-/** Developer "Soon" pages — rendered in place of the inbox tiles. */
-const DEV_PATHS = new Set([
-  "/pull-requests",
-  "/webhooks",
-  "/rules",
-  "/api",
-]);
+// Full-page developer routes that render in place of the inbox tiles. Rules is
+// live (and linked from the sidebar); the rest are "Soon" pages reachable by URL.
+const DEV_PATHS = new Set(["/pull-requests", "/webhooks", "/rules", "/api"]);
 
 function AppShell() {
   useApplyAccent();
@@ -131,9 +127,6 @@ function AppShell() {
     : (PATH_FOLDER[location.pathname] ?? "inbox");
   const folderSearch = folder === "inbox" ? {} : { folder };
 
-  /* Developer "Soon" pages (Webhooks, Rules, API, PRs) aren't linked from the
-     sidebar (those stay disabled) — they're reachable by typing the URL, and
-     render here in place of the inbox tiles. */
   const onDevPage = DEV_PATHS.has(location.pathname);
 
   const openEmail = useCallback(

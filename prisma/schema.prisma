@@ -24,9 +24,40 @@ model User {
   updatedAt     DateTime  @updatedAt
   sessions      Session[]
   accounts      Account[]
+  rules         Rule[]
 
   @@unique([email])
   @@map("user")
+}
+
+// Automation config, not mail data: a condition + actions our own engine runs
+// via gmail.modify. Persisted so the backend can run it without the app open.
+model Rule {
+  id        String  @id @default(cuid())
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId String // a specific Gmail accountId, or "all"
+  name      String?
+  enabled   Boolean @default(true)
+
+  // Condition
+  field    String // from | to | subject | hasAttachment
+  operator String // contains | is
+  value    String
+
+  // Actions (any combination)
+  doArchive  Boolean @default(false)
+  doMarkRead Boolean @default(false)
+  doStar     Boolean @default(false)
+  doTrash    Boolean @default(false)
+  labelId    String? // Gmail label id to apply
+  forwardTo  String? // address to forward to (no Gmail verification needed)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("rule")
 }
 
 model Session {
