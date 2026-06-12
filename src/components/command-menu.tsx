@@ -1,5 +1,9 @@
 import { Fragment, useState, type ReactNode } from "react";
 import {
+  AlignLeft,
+  CircleUserRound,
+  Clock,
+  Columns2,
   FlaskConical,
   Inbox,
   Laptop,
@@ -7,6 +11,7 @@ import {
   Moon,
   PenLine,
   RotateCcw,
+  Rows3,
   Settings,
   Sun,
   UserPlus,
@@ -20,6 +25,12 @@ import {
   SEARCH_INBOX_EVENT,
   type SearchInboxDetail,
 } from "@/lib/layout-tree";
+import {
+  ACCENTS,
+  updateSettings,
+  useSettings,
+  type AccentId,
+} from "@/hooks/use-settings";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/components/theme-provider";
 import {
@@ -67,8 +78,15 @@ export function CommandMenu({
   /** Accounts whose panes are on screen — the "Search in …" targets. */
   searchAccounts: Account[];
 }) {
-  const { setTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
+  const settings = useSettings();
   const [search, setSearch] = useState("");
+
+  /** Mark the option that's already active so the palette shows current state. */
+  const current = (active: boolean) =>
+    active
+      ? { shortcut: "Current", shortcutClassName: "text-muted-foreground/40" }
+      : {};
 
   const setOpen = (next: boolean) => {
     onOpenChange(next);
@@ -139,11 +157,78 @@ export function CommandMenu({
       ],
     },
     {
+      heading: "Appearance",
+      entries: [
+        {
+          label: `Swap reading pane to ${
+            settings.readerMode === "shared" ? "per account" : "shared"
+          }`,
+          icon: <Columns2 />,
+          action: () =>
+            updateSettings({
+              readerMode: settings.readerMode === "shared" ? "split" : "shared",
+            }),
+        },
+        {
+          label: `Swap density to ${
+            settings.density === "compact" ? "comfortable" : "dense"
+          }`,
+          icon: <Rows3 />,
+          action: () =>
+            updateSettings({
+              density: settings.density === "compact" ? "comfortable" : "compact",
+            }),
+        },
+        {
+          label: `Swap clock to ${settings.clock === "12h" ? "24-hour" : "12-hour"}`,
+          icon: <Clock />,
+          action: () =>
+            updateSettings({ clock: settings.clock === "12h" ? "24h" : "12h" }),
+        },
+        {
+          label: `${settings.inboxAvatars ? "Hide" : "Show"} profile icons`,
+          icon: <CircleUserRound />,
+          action: () => updateSettings({ inboxAvatars: !settings.inboxAvatars }),
+        },
+        {
+          label: `${settings.showSnippets ? "Hide" : "Show"} snippets`,
+          icon: <AlignLeft />,
+          action: () => updateSettings({ showSnippets: !settings.showSnippets }),
+        },
+        ...(Object.keys(ACCENTS) as AccentId[]).map((id) => ({
+          label: `Accent · ${ACCENTS[id].label}`,
+          icon: (
+            <span
+              className="size-3.5 shrink-0 rounded-full"
+              style={{ background: ACCENTS[id].base }}
+            />
+          ),
+          action: () => updateSettings({ accent: id }),
+          ...current(settings.accent === id),
+        })),
+      ],
+    },
+    {
       heading: "Theme",
       entries: [
-        { label: "Light", icon: <Sun />, action: () => setTheme("light") },
-        { label: "Dark", icon: <Moon />, action: () => setTheme("dark") },
-        { label: "System", icon: <Laptop />, action: () => setTheme("system") },
+        {
+          label: "Light",
+          icon: <Sun />,
+          action: () => setTheme("light"),
+          ...current(theme === "light"),
+        },
+        {
+          label: "Dark",
+          icon: <Moon />,
+          action: () => setTheme("dark"),
+          ...current(theme === "dark"),
+        },
+        {
+          label: "System",
+          icon: <Laptop />,
+          action: () => setTheme("system"),
+          ...current(theme === "system"),
+        },
       ],
     },
     {
