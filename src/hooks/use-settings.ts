@@ -1,18 +1,11 @@
 import { useEffect, useSyncExternalStore } from "react";
 import type { Density } from "@/components/thread-row";
 
-/**
- * App settings, persisted to localStorage. A tiny external store (no provider
- * needed): any component reads via useSettings(), writes via updateSettings().
- */
-
 export type AccentId = "orange" | "blue" | "teal" | "purple" | "green" | "yellow";
 export type SnippetFont = "sans" | "mono";
 export type ExportFormat = "md" | "json" | "txt";
 export type Clock = "12h" | "24h";
-/** Delay before an opened message is marked read ("off" disables it). */
 export type MarkRead = "off" | "instant" | "1s" | "5s";
-/** One shared reading pane, or a separate reader docked per account. */
 export type ReaderMode = "shared" | "split";
 
 export type Settings = {
@@ -20,28 +13,21 @@ export type Settings = {
   showSnippets: boolean;
   snippetFont: SnippetFont;
   accent: AccentId;
-  /** accountId → index into ACCOUNT_COLORS; unset accounts fall back to their
-   *  position in the accounts list. */
+  /** accountId → index into ACCOUNT_COLORS; unset accounts fall back to their position in the accounts list. */
   accountColors: Record<string, number>;
-  /** Gmail label id → index into the tag color palette. A client-side display
-   *  preference only (the label name still derives a default color). */
+  /** Gmail label id → index into the tag color palette; client-side only (label name still derives a default color). */
   tagColors: Record<string, number>;
   showTechnicalMetadata: boolean;
   exportFormat: ExportFormat;
   clock: Clock;
   markRead: MarkRead;
-  /** Shared reading pane vs. a separate reader pane per account. */
   readerMode: ReaderMode;
-  /** Show a small sender avatar at the start of every inbox row (off by
-   *  default — the account dot already carries the account color). */
+  /** Off by default — the account dot already carries the account color. */
   inboxAvatars: boolean;
-  /** Sidebar nav item ids the user has hidden (Inbox can never be hidden). */
+  /** Inbox can never be hidden. */
   hiddenNav: string[];
-  /** Owner-only: surfaces dev affordances (test accounts) across the app. The
-   *  role check still gates whether this toggle is even reachable. */
   devTools: boolean;
-  /** Owner-only: hide real accounts and run entirely on demo data — for
-   *  recording videos without exposing real mail. */
+  /** Hides real accounts and runs on demo data — for recording videos without exposing real mail. */
   demoMode: boolean;
 };
 
@@ -64,7 +50,6 @@ const DEFAULT_SETTINGS: Settings = {
   demoMode: false,
 };
 
-/** Mark-read delay in ms, or null when disabled. */
 export const MARK_READ_MS: Record<MarkRead, number | null> = {
   off: null,
   instant: 0,
@@ -121,10 +106,6 @@ export function setTagColor(labelId: string, colorIndex: number) {
   });
 }
 
-// ── Accent ───────────────────────────────────────────────────────────────────
-// Orange is the design default; alternates are curated from the label palette
-// (design Appearance page order). Hover/focus shades pre-picked per accent.
-
 export const ACCENTS: Record<
   AccentId,
   { label: string; base: string; hover: string; focus: string }
@@ -146,7 +127,6 @@ const ACCENT_VARS = [
   "--sidebar-ring",
 ] as const;
 
-/** Applies the accent setting as inline CSS vars (wins over :root and .dark). */
 export function useApplyAccent() {
   const { accent } = useSettings();
   useEffect(() => {

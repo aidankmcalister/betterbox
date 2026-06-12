@@ -19,19 +19,16 @@ export type ThreadRowEmail = {
 
 export type Density = "comfortable" | "compact";
 
-/** "Jane Doe <jane@x.com>" → "Jane Doe"; bare addresses pass through. */
 function senderName(from: string): string {
   const match = from.match(/^\s*"?([^"<]*)"?\s*</);
   const name = match?.[1]?.trim();
   return name || from.replace(/[<>]/g, "").trim();
 }
 
-/** "Jane Doe <jane@x.com>" → "jane@x.com"; bare addresses pass through. */
 function senderAddress(from: string): string {
   return from.match(/<([^>]+)>/)?.[1]?.trim() || from.trim();
 }
 
-/** Short mono time column: today → 2:05 PM, this year → Jun 5, else Dec 2024. */
 function shortTime(raw: string, hour12: boolean): string {
   const date = new Date(raw);
   if (Number.isNaN(date.getTime())) return "";
@@ -69,8 +66,6 @@ export function ThreadRow({
   const unread = email.unread ?? false;
   const subject = email.subject || "(no subject)";
 
-  /** Optional per-row sender avatar (Settings → Appearance). The account dot
-   *  stays as the account-color signal; this rides alongside it. */
   const avatar = (size: string) =>
     inboxAvatars ? (
       <SenderAvatar
@@ -119,7 +114,6 @@ export function ThreadRow({
     </span>
   );
   const subjectSnippet = (
-    // color here is what the truncation ellipsis renders in
     <span className="min-w-0 flex-1 truncate text-[12.5px] text-muted-foreground/70">
       <span className={cn(unread ? "font-medium text-foreground" : "text-muted-foreground")}>
         {subject}
@@ -153,7 +147,6 @@ export function ThreadRow({
     );
   }
 
-  // Comfortable — exactly two lines: sender + time, then subject — snippet.
   return (
     <button
       type="button"

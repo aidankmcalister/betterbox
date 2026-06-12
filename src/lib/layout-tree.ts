@@ -1,9 +1,3 @@
-/**
- * The inbox-tiles layout is a recursive split tree (design spec), not a grid.
- * Pure data + operations; rendering and drag interactions live in
- * components/inbox-tiles.tsx. Every operation returns a new tree.
- */
-
 export type SplitDir = "row" | "col";
 export type DropZone = "center" | "left" | "right" | "top" | "bottom";
 
@@ -12,7 +6,6 @@ export type SplitNode = {
   type: "split";
   id: string;
   dir: SplitDir;
-  /** Fractions that sum to 1, one per child. */
   sizes: number[];
   children: LayoutNode[];
 };
@@ -20,17 +13,14 @@ export type LayoutNode = PaneNode | SplitNode;
 
 export const MIN_PANE_FRACTION = 0.15;
 
-/** Dispatch this on window to restore the default tile layout (⌘K action). */
+/** Dispatch on window to restore the default tile layout (⌘K action). */
 export const RESET_TILE_LAYOUT_EVENT = "bm:reset-tile-layout";
 
-/** Dispatched by ⌘K "Search in …" to run a query in a pane's in-pane search.
- *  accountId "all" targets every visible pane. */
+/** Dispatched by ⌘K "Search in …" to run a query in a pane's in-pane search. accountId "all" targets every visible pane. */
 export const SEARCH_INBOX_EVENT = "bm:search-inbox";
 export type SearchInboxDetail = { accountId: string | "all"; query: string };
 
-/** The reader is an ordinary pane in the tree under this reserved id, so it
- *  drags/swaps/splits like an inbox. It only survives validation while a
- *  message is open (the caller includes it in the valid pane ids). */
+/** Reserved id: reader lives as an ordinary pane so it drags/swaps/splits like an inbox; only survives validation while a message is open. */
 export const READER_PANE_ID = "__reader__";
 
 const newSplitId = () => crypto.randomUUID();
@@ -48,7 +38,6 @@ function paneAccountIds(node: LayoutNode): string[] {
   return node.children.flatMap(paneAccountIds);
 }
 
-/** Spec default: wide primary pane, remaining accounts stacked on the right. */
 export function defaultLayout(accountIds: string[]): LayoutNode | null {
   if (accountIds.length === 0) return null;
   if (accountIds.length === 1) return pane(accountIds[0]);
@@ -65,7 +54,6 @@ function evenSizes(count: number): number[] {
   return Array.from({ length: count }, () => 1 / count);
 }
 
-/** Remove a pane; collapse single-child splits and renormalize sizes. */
 function removePane(
   node: LayoutNode,
   accountId: string,
@@ -89,7 +77,6 @@ function removePane(
   };
 }
 
-/** Replace the target pane with a 50/50 split holding it and the new pane. */
 function splitPane(
   node: LayoutNode,
   targetAccountId: string,
@@ -128,11 +115,7 @@ function swapPanes(
   };
 }
 
-/**
- * Drop handler: center swaps the two panes; an edge moves the dragged pane
- * (remove first, collapse, then split the target). Self/no-target is a no-op
- * at the call site.
- */
+/** center = swap; edge = remove-then-split. Self-drop is a no-op at the call site. */
 export function movePane(
   tree: LayoutNode,
   sourceAccountId: string,
@@ -147,7 +130,6 @@ export function movePane(
   return splitPane(without, targetAccountId, sourceAccountId, zone);
 }
 
-/** New accounts dock as a right-side pane (spec: existing 0.66 / new 0.34). */
 function appendPaneRight(
   tree: LayoutNode | null,
   accountId: string,
@@ -171,11 +153,6 @@ export function withSplitSizes(
   };
 }
 
-/**
- * Reconcile a (possibly stale or null) tree with the connected accounts:
- * drop panes for disconnected accounts, dock newly connected ones on the
- * right, fall back to the default layout when nothing survives.
- */
 export function validateLayout(
   tree: LayoutNode | null,
   accountIds: string[],
@@ -198,7 +175,6 @@ export function validateLayout(
   return next ?? defaultLayout(accountIds);
 }
 
-/** Parse a stored tree defensively; any malformed node rejects the whole tree. */
 export function parseStoredTree(value: unknown): LayoutNode | null {
   return isLayoutNode(value) ? value : null;
 }

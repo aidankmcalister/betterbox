@@ -25,10 +25,6 @@ import { setTagColor, useSettings } from "@/hooks/use-settings";
 import { Hint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
-// ── Color ────────────────────────────────────────────────────────────────────
-// A tag's color is the user's per-label override (Settings) or a stable default
-// derived from the name. No mail data is stored either way.
-
 const TAG_COLORS = [
   "--color-label-blue",
   "--color-label-green",
@@ -43,10 +39,6 @@ const tagColorIndex = (label: Label, overrides: Record<string, number>) =>
     TAG_COLORS.length;
 const tagColorVar = (index: number) => `var(${TAG_COLORS[index % TAG_COLORS.length]})`;
 
-// ── Actions ──────────────────────────────────────────────────────────────────
-// One hook owns all tag mutations with optimistic cache updates, shared by the
-// picker and the applied-tag chips so they stay in sync.
-
 export type TagActions = ReturnType<typeof useTagActions>;
 
 export function useTagActions(accountId: string, email: FullEmail | undefined) {
@@ -55,7 +47,6 @@ export function useTagActions(accountId: string, email: FullEmail | undefined) {
   const appliedIds = email?.labelIds ?? [];
   const appliedTags = labels.filter((label) => appliedIds.includes(label.id));
 
-  /** Optimistically patch one message's labels in the reader + every row list. */
   const patchLabels = useCallback(
     (messageId: string, labelId: string, on: boolean) => {
       const upd = (ids: string[] = []) =>
@@ -171,7 +162,6 @@ export function useTagActions(accountId: string, email: FullEmail | undefined) {
   return { labels, appliedIds, appliedTags, toggleTag, createTag, renameTag, deleteTag };
 }
 
-/** A small colored dot for a tag (its override color, or name-derived). */
 export function LabelDot({ label, className }: { label: Label; className?: string }) {
   const { tagColors } = useSettings();
   return (
@@ -182,9 +172,6 @@ export function LabelDot({ label, className }: { label: Label; className?: strin
   );
 }
 
-// ── Chips ────────────────────────────────────────────────────────────────────
-
-/** A tag pill. `onRemove` adds an × (reader); omit it for read-only chips. */
 function TagChip({ label, onRemove }: { label: Label; onRemove?: () => void }) {
   const { tagColors } = useSettings();
   const color = tagColorVar(tagColorIndex(label, tagColors));
@@ -210,7 +197,6 @@ function TagChip({ label, onRemove }: { label: Label; onRemove?: () => void }) {
   );
 }
 
-/** The applied-tag chips shown under a message's subject. */
 export function AppliedTags({ tags }: { tags: TagActions }) {
   if (tags.appliedTags.length === 0) return null;
   return (
@@ -222,10 +208,7 @@ export function AppliedTags({ tags }: { tags: TagActions }) {
   );
 }
 
-// ── Picker ───────────────────────────────────────────────────────────────────
-
-/** The reader-header tag button: toggle, create, rename, recolor, delete. The
- *  popover is portalled to <body> so the tile panes can't clip or cover it. */
+/** Portalled to <body> so tile panes can't clip it. */
 export function TagPicker({
   tags,
   disabled,

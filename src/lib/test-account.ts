@@ -1,11 +1,7 @@
 import type { ThreadRowEmail } from "@/components/thread-row";
 import { toFolder, type Folder } from "@/lib/folders";
 
-/**
- * Dev-only dummy accounts for exercising the multi-account tiles without
- * linking real Gmail accounts. Panes detect the prefix and render generated
- * mail instead of calling /api/emails.
- */
+// Dev-only dummy accounts; panes detect this prefix and render generated mail instead of calling /api/emails.
 export const TEST_ACCOUNT_PREFIX = "test-";
 
 export function isTestAccount(accountId: string): boolean {
@@ -17,25 +13,16 @@ export function makeTestAccount(index: number) {
   return {
     accountId,
     email: `test${index}@example.dev`,
-    // Derive the badge from the real inbox so "N new" matches the unread dots
-    // actually shown in the list (no more 18-new header over 28 unread rows).
     unread: testInboxUnread(accountId),
   };
 }
 
-/** Unread count for an account's generated inbox — the source of truth for the
- *  account's "N new" badge. */
 export function testInboxUnread(accountId: string): number {
   return makeTestEmails(accountId, "inbox").filter((email) => email.unread)
     .length;
 }
 
-/**
- * The fixed account set shown in demo mode (Owner tools → Demo mode). Real
- * Gmail accounts are hidden and replaced with these so nothing private appears
- * on screen while recording. They're ordinary test accounts (so every pane,
- * search, and the reader render generated mail) with friendlier display emails.
- */
+// Demo mode replaces real Gmail accounts with these so nothing private appears on screen while recording.
 export function makeDemoAccounts() {
   return [
     { ...makeTestAccount(1), email: "personal@betterbox.dev" },
@@ -76,7 +63,6 @@ const SENDERS = [
   ["Figma", "Comments on BetterBox", "2 new comments on Component Spec"],
 ] as const;
 
-/** Full message for the reader pane, synthesized from the row data. */
 export function makeTestFullEmail(accountId: string, emailId: string) {
   const row = makeTestEmails(accountId, folderFromId(accountId, emailId)).find(
     (email) => email.id === emailId,
@@ -98,7 +84,6 @@ export function makeTestFullEmail(accountId: string, emailId: string) {
   };
 }
 
-/** Pseudo RFC 822 source for the raw view on test accounts. */
 export function makeTestRawEmail(accountId: string, emailId: string): string {
   const email = makeTestFullEmail(accountId, emailId);
   return [
@@ -115,9 +100,6 @@ export function makeTestRawEmail(accountId: string, emailId: string): string {
   ].join("\n");
 }
 
-/** Per-folder mail so every folder looks distinct in demo/test mode instead of
- *  echoing the inbox. Tuples are [sender, subject, snippet]; `self` folders
- *  (sent/drafts) come from "You". */
 type Mail = readonly [name: string, subject: string, snippet: string];
 
 const ARCHIVED: readonly Mail[] = [
@@ -162,9 +144,7 @@ const FOLDER_MAIL: Record<
   { mail: readonly Mail[]; count: number; self?: boolean; allRead?: boolean }
 > = {
   inbox: { mail: SENDERS, count: 120 },
-  // "labeled" renders the accordion view, not this flat list; this entry just
-  // satisfies the Record<Folder> shape (and the demo per-label stand-in).
-  labeled: { mail: SENDERS, count: 8 },
+  labeled: { mail: SENDERS, count: 8 }, // accordion view; entry satisfies Record<Folder> shape
   archived: { mail: ARCHIVED, count: 16, allRead: true },
   sent: { mail: SENT, count: 12, self: true, allRead: true },
   drafts: { mail: DRAFTS, count: 3, self: true, allRead: true },
@@ -172,7 +152,6 @@ const FOLDER_MAIL: Record<
   trash: { mail: TRASH, count: 8, allRead: true },
 };
 
-/** Recover the folder a synthesized email belongs to from its id. */
 function folderFromId(accountId: string, emailId: string): Folder {
   const rest = emailId.startsWith(`${accountId}-`)
     ? emailId.slice(accountId.length + 1)
@@ -188,18 +167,13 @@ export function makeTestEmails(
   const now = Date.now();
   const { mail, count: baseCount, self, allRead } = FOLDER_MAIL[folder];
 
-  // Vary volume, cadence, and ordering per account so two inboxes never look
-  // cloned. Everything is derived from the account seed, so it stays stable
-  // across renders while differing clearly between accounts.
-  // Cap the spread so high-volume folders (inbox) stay full — accounts still
-  // differ by up to ~20 messages, but a 120-row inbox never dips below 100.
+  // Seed-derived spread keeps each account distinct without cloning; capped so high-volume folders stay full.
   const spread = Math.min(20, Math.max(1, Math.round(baseCount * 0.2)));
   const count = Math.max(self ? 2 : 3, baseCount - ((seed * 7) % (spread + 1)));
 
-  let minutesAgo = (seed * 11) % 23; // each account starts at a different time
+  let minutesAgo = (seed * 11) % 23;
   return Array.from({ length: count }, (_, i) => {
-    // Non-uniform gaps (28–80 min) keyed off account + index, so timestamps
-    // don't line up row-for-row between panes.
+    // Non-uniform gaps keyed off account + index so timestamps don't align row-for-row between panes.
     minutesAgo += 28 + ((seed * 17 + i * 13) % 53);
     const [name, subject, snippet] = mail[(seed * 5 + i) % mail.length];
     const from = self

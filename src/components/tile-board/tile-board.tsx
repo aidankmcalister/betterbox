@@ -25,14 +25,6 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 
-/**
- * TileBoard — the inbox's drag-to-swap / resizable split board, extracted as a
- * reusable component. Give it a flat list of `paneIds` and a `renderPane`; it
- * owns the recursive split tree, drag-and-drop rearranging, resize handles, and
- * persistence (via the injected `storage`). Pane content starts a drag with the
- * `useTileDrag()` hook on its header.
- */
-
 const DRAG_THRESHOLD_PX = 6;
 
 type DragState = {
@@ -61,14 +53,10 @@ function useBoard(): BoardCtx {
   return ctx;
 }
 
-/** Pane content calls this on its header to start a drag (skips buttons). */
 export function useTileDrag() {
   return useBoard().beginHeaderDrag;
 }
 
-// ── drop-zone hit testing ────────────────────────────────────────────────────
-
-/** Central box swaps; otherwise the nearest edge wins. */
 function zoneWithinPane(rect: DOMRect, x: number, y: number): DropZone {
   const dx = x - (rect.left + rect.width / 2);
   const dy = y - (rect.top + rect.height / 2);
@@ -96,8 +84,6 @@ function findDropTarget(
   return { paneId, zone: zoneWithinPane(paneEl.getBoundingClientRect(), x, y) };
 }
 
-// ── board ────────────────────────────────────────────────────────────────────
-
 export function TileBoard({
   paneIds,
   renderPane,
@@ -109,9 +95,7 @@ export function TileBoard({
   paneIds: string[];
   renderPane: (paneId: string) => ReactNode;
   storage: TileStorage;
-  /** Floating label shown next to the cursor while dragging a pane. */
   renderDragLabel?: (paneId: string) => ReactNode;
-  /** Window event name that resets the board to the default layout. */
   resetEvent?: string;
   emptyLabel?: string;
 }) {
@@ -124,7 +108,6 @@ export function TileBoard({
   const renderPaneRef = useRef(renderPane);
   renderPaneRef.current = renderPane;
 
-  /* Hydrate from storage once, then revalidate whenever panes change. */
   useEffect(() => {
     setTree((current) => {
       const base = hydratedRef.current ? current : storageRef.current.load();
@@ -240,8 +223,6 @@ export function TileBoard({
     </BoardContext.Provider>
   );
 }
-
-// ── recursive rendering ──────────────────────────────────────────────────────
 
 const childKey = (child: LayoutNode) =>
   child.type === "pane" ? child.accountId : child.id;

@@ -90,14 +90,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 const STORAGE_KEY = "bm.tiles-layout";
-/** Below this pane width the header shows the short handle, not the email. */
 const FULL_EMAIL_MIN_WIDTH = 330;
 
-/** The open message — URL-driven in shared mode (/email/$id?account=…), or
- *  board-local state in split mode. */
 export type Reading = { accountId: string; emailId: string };
 
-/** Split-mode reader pane id for an account (one reader docked per account). */
 const splitReaderId = (accountId: string) => `${READER_PANE_ID}:${accountId}`;
 
 type TilesCtx = {
@@ -105,14 +101,10 @@ type TilesCtx = {
   removable: boolean;
   onRemovePane: (accountId: string) => void;
   folder: Folder;
-  /** Open an email — shared mode routes via the URL, split mode via board state. */
   openEmail: (accountId: string, emailId: string) => void;
-  /** Which email is open in this account's reader, if any. */
   getOpenEmail: (accountId: string) => string | null;
-  /* Per-account search lives here (not in the pane) so it survives the pane
-     remounts that happen when the layout changes — e.g. docking the reader. An
-     account present in the map has its search bar open; the value is the query
-     (possibly ""). Absent = closed. */
+  /* Per-account search lives here (not in the pane) so it survives pane
+     remounts when the layout changes — e.g. docking the reader. Absent = closed. */
   paneSearch: Record<string, string>;
   openSearch: (accountId: string) => void;
   setSearch: (accountId: string, query: string) => void;
@@ -125,8 +117,6 @@ function useTiles(): TilesCtx {
   if (!ctx) throw new Error("Tile components must render inside InboxTiles");
   return ctx;
 }
-
-// ── Persistence ──────────────────────────────────────────────────────────────
 
 function loadStoredTree(): LayoutNode | null {
   try {
@@ -147,8 +137,6 @@ function persistTree(tree: LayoutNode | null) {
     // storage unavailable — layout just won't persist
   }
 }
-
-// ── Board ────────────────────────────────────────────────────────────────────
 
 export function InboxTiles({
   accounts,
@@ -173,8 +161,6 @@ export function InboxTiles({
 
   const { readerMode } = useSettings();
 
-  /* Split mode keeps a reader open per account in board-local state; shared mode
-     uses the single URL-driven `reading`. */
   const [openEmails, setOpenEmails] = useState<Record<string, string>>({});
   const split = readerMode === "split";
 
@@ -207,8 +193,6 @@ export function InboxTiles({
     [split, onCloseReader],
   );
 
-  /* Reader panes join the layout tree (they dock right and drag like any pane).
-     Shared: one __reader__. Split: __reader__:<accountId> per open email. */
   const readerIds = split
     ? ids.filter((id) => openEmails[id]).map(splitReaderId)
     : reading
@@ -216,7 +200,6 @@ export function InboxTiles({
       : [];
   const paneIds = [...ids, ...readerIds];
 
-  /* Drop readers for accounts that left the view. */
   useEffect(() => {
     if (split) {
       setOpenEmails((current) => {
@@ -232,8 +215,6 @@ export function InboxTiles({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idsKey, split]);
 
-  /* Per-account search state, owned by the board so it persists across pane
-     remounts. Stays until explicitly cleared (the search bar's ×). */
   const [paneSearch, setPaneSearch] = useState<Record<string, string>>({});
   const openSearch = useCallback(
     (accountId: string) =>
@@ -257,7 +238,6 @@ export function InboxTiles({
     [],
   );
 
-  /* ⌘K "Search in …" drives the panes from afar (accountId "all" = every one). */
   useEffect(() => {
     const onSearch = (event: Event) => {
       const { accountId, query } = (event as CustomEvent<SearchInboxDetail>)
@@ -352,8 +332,6 @@ export function InboxTiles({
   );
 }
 
-// ── Pane ─────────────────────────────────────────────────────────────────────
-
 function AccountPane({
   accountId,
 }: {
@@ -376,9 +354,9 @@ function AccountPane({
     return () => observer.disconnect();
   }, []);
 
-  /* Search state is owned by the board (persists across remounts). Presence in
-     the map = open. Debounce the fetch locally, seeded from the persisted query
-     so a remount re-queries immediately rather than clearing. */
+  /* Search state is owned by the board (persists across remounts). Debounce the
+     fetch locally, seeded from the persisted query so a remount re-queries
+     immediately rather than clearing. */
   const search = paneSearch[accountId];
   const searchOpen = search !== undefined;
   const [debounced, setDebounced] = useState(search ?? "");
@@ -407,14 +385,12 @@ function AccountPane({
   );
 }
 
-/** "Jane <jane@x.com>" → { name: "Jane", address: "jane@x.com" }. */
 function parseAddress(from: string): { name: string; address: string } {
   const match = from.match(/^\s*"?([^"<]*)"?\s*<([^>]+)>/);
   if (match) return { name: match[1].trim() || match[2], address: match[2] };
   return { name: from, address: from };
 }
 
-/** The message viewer — an ordinary pane in the tree (drag it like an inbox). */
 function ReaderPane({
   paneId,
   accountId,
@@ -449,7 +425,6 @@ function ReaderPane({
 
   const tags = useTagActions(accountId, email);
 
-  /* The whole conversation. Until it loads, show the opened message alone. */
   const threadQuery = useThreadQuery(accountId, email?.threadId);
   const thread = threadQuery.data;
   const messages = thread && thread.length > 0 ? thread : email ? [email] : [];
@@ -466,13 +441,11 @@ function ReaderPane({
     });
 
   useEffect(() => setStarred(email?.starred ?? false), [email?.id, email?.starred]);
-  /* Reset the inline reply when the open message changes. */
   useEffect(() => {
     setReplyOpen(false);
     setReplyBody("");
     setReplySent(false);
   }, [email?.id]);
-  /* Default-expand the opened message + the latest; collapse the rest. */
   useEffect(() => {
     if (messages.length === 0) return;
     const ids = new Set<string>();
@@ -482,7 +455,6 @@ function ReaderPane({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [email?.threadId, thread]);
 
-  /* Mark an unread message read after the configured delay (Settings → Inbox). */
   useEffect(() => {
     if (!email || !email.unread) return;
     const delay = MARK_READ_MS[markRead];
@@ -512,8 +484,6 @@ function ReaderPane({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [email?.id, email?.unread, markRead, accountId]);
 
-  /* Reply happens inline at the foot of the message (it stays in the pane and
-     threads under the original), not in the docked composer. */
   const startReply = () => {
     if (!email) return;
     setReplySent(false);
@@ -544,7 +514,6 @@ function ReaderPane({
       setReplyOpen(false);
       setReplyBody("");
       setReplySent(true);
-      // Pull the just-sent message into the visible conversation.
       queryClient.invalidateQueries({
         queryKey: ["thread", accountId, target.threadId],
       });
@@ -553,8 +522,6 @@ function ReaderPane({
     }
   };
 
-  /* archive/trash drop the message from the inbox and close the reader; star
-     just toggles. Optimistic — Gmail confirms in the background. */
   const runAction = async (action: MessageAction) => {
     if (!email || busy) return;
     setBusy(true);
@@ -583,7 +550,6 @@ function ReaderPane({
     }
   };
 
-  /* Reader-scoped keys: Esc closes · ⌥R toggles Raw · R replies. */
   useEffect(() => {
     const typing = (target: EventTarget | null) =>
       target instanceof HTMLElement &&
@@ -607,8 +573,6 @@ function ReaderPane({
 
   return (
     <div className="flex h-full min-w-0 flex-col bg-background">
-      {/* Title strip — context + quiet management, draggable like any pane.
-          The action buttons live in the floating bar, not up here. */}
       <div
         onPointerDown={(event) => beginHeaderDrag(event, paneId)}
         className="flex h-9 shrink-0 cursor-grab touch-none items-center gap-[9px] border-b px-2.5 select-none active:cursor-grabbing"
@@ -692,8 +656,6 @@ function ReaderPane({
             onReconnect={() => linkGoogle()}
           />
         ) : !email || !sender ? (
-          /* Mirrors the real article: subject, sender row (avatar + meta), body.
-             Same padding/sizes so the layout doesn't jump when it fills in. */
           <div className="mx-auto max-w-[720px] animate-pulse px-[34px] pt-[22px] pb-24">
             <div className="h-[26px] w-3/4 rounded bg-accent" />
             <div className="mt-3 border-b pb-4">
@@ -746,7 +708,6 @@ function ReaderPane({
               ))}
             </div>
 
-            {/* Inline reply — stays in the pane and threads under this message. */}
             <div ref={replyRef}>
               {replyOpen ? (
                 <div className="mt-6 rounded-lg border bg-secondary p-3">
@@ -812,7 +773,6 @@ function ReaderPane({
         )}
       </div>
 
-      {/* Floating action bar — over both views, only when a message is open. */}
       {email && (
         <div className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-[3px] rounded-[10px] border bg-popover p-1 shadow-2xl">
           <button type="button" onClick={startReply} className={FBTN_PRIMARY}>
@@ -890,7 +850,6 @@ function ReaderPane({
   );
 }
 
-/** One message in the conversation — a collapsed one-liner or the full body. */
 function ThreadMessage({
   message,
   expanded,
@@ -1007,8 +966,6 @@ function ThreadMessage({
   );
 }
 
-/* Floating-bar button recipes (local compositions — the pill's transparent,
-   mono, teal-when-active styling doesn't map onto a stock Button variant). */
 const FBTN_PRIMARY =
   "inline-flex h-[30px] cursor-pointer items-center gap-[7px] rounded-[7px] bg-primary px-[13px] text-[12.5px] font-medium text-on-primary transition-colors hover:bg-primary-hover [&_svg]:size-3.5";
 const FBTN_ICON =
@@ -1023,7 +980,6 @@ const isoDate = (raw: string) => {
   return Number.isNaN(date.getTime()) ? raw : date.toISOString();
 };
 
-/** Reader timestamp: "YYYY-MM-DD · 8:22 PM" (or 24h) — full ISO is the title. */
 const shortDate = (raw: string, hour12: boolean) => {
   const date = new Date(raw);
   if (Number.isNaN(date.getTime())) return raw;
@@ -1037,7 +993,6 @@ const shortDate = (raw: string, hour12: boolean) => {
   return `${ymd} · ${time}`;
 };
 
-/** Click-to-insert Gmail search operators shown under the pane search box. */
 const SEARCH_OPERATORS: { token: string; hint: string }[] = [
   { token: "is:unread", hint: "Unread only" },
   { token: "is:starred", hint: "Starred only" },
@@ -1080,7 +1035,6 @@ function PaneHeader({
       ? account.email || account.accountId
       : account.email.split("@")[0] || account.accountId;
 
-  /* Whichever list is live in this pane — the folder, or the active search. */
   const activeKey = emailsQueryKey(account.accountId, folder, activeQuery);
   const refreshing = useIsFetching({ queryKey: activeKey }) > 0;
   const refresh = () => {
@@ -1091,14 +1045,11 @@ function PaneHeader({
   const iconButton =
     "inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground/70 hover:bg-muted hover:text-foreground disabled:cursor-default disabled:hover:bg-transparent";
 
-  /* Search mode — not draggable, so the input stays focusable. Below the input,
-     a row of Gmail operator chips ("intellisense") you can click to insert. */
   if (searchOpen) {
     const insertOperator = (token: string) => {
       const base = search.trim();
       const next = (base ? `${base} ` : "") + token;
-      // Value operators (from:, to:, …) leave the cursor ready for the value;
-      // complete ones (is:unread) get a trailing space.
+      // Value operators (from:, to:, …) need trailing cursor; complete tokens get a space.
       onSearchChange(token.endsWith(":") ? next : `${next} `);
       searchInputRef.current?.focus();
     };
@@ -1208,7 +1159,6 @@ function PaneBody({
   const emails = flattenEmails(query.data);
   const searching = search.trim().length > 0;
 
-  /* Infinite scroll: pull the next page as the bottom sentinel nears view. */
   const scrollRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   useEffect(() => {

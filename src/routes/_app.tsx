@@ -32,7 +32,6 @@ export const Route = createFileRoute("/_app")({
   component: AppShell,
 });
 
-/** Folders are sibling paths under the shell layout. */
 const FOLDER_PATH = {
   inbox: "/",
   labeled: "/labeled",
@@ -53,8 +52,6 @@ const PATH_FOLDER: Record<string, Folder> = {
   "/trash": "trash",
 };
 
-// Full-page developer routes that render in place of the inbox tiles. Rules is
-// live (and linked from the sidebar); the rest are "Soon" pages reachable by URL.
 const DEV_PATHS = new Set(["/pull-requests", "/webhooks", "/rules", "/api"]);
 
 function AppShell() {
@@ -76,21 +73,12 @@ function AppShell() {
     ]);
   }, []);
 
-  // Owners can flip dev affordances (test accounts) on from Settings → Owner
-  // tools; the role gates whether the toggle is even reachable. Everyone else
-  // never sees them. Gated on role + opt-in, not import.meta.env.DEV.
   const isOwner = session?.user.role === "OWNER";
   const onAddTestAccount = isOwner && devTools ? addTestAccount : undefined;
 
-  /* Demo mode (Owner tools): hide real accounts entirely and run on a fixed
-     demo set so nothing private shows while recording. Test accounts already
-     route every query/search/read through generated mail.
-
-     Gated on demoMode alone — NOT isOwner. The toggle is only reachable from
-     the owner-only settings page, and reading session role here would flip the
-     view back to real mail for the split second useSession() re-pends during
-     navigation (the flicker). The demo set is memoized once so real-account
-     refetches can't churn the panes either. */
+  /* Gated on demoMode alone — NOT isOwner. The toggle is only reachable from
+     the owner-only settings page, but reading session role here would flip back
+     to real mail for the split second useSession() re-pends (the flicker). */
   const demoAccounts = useMemo(() => makeDemoAccounts(), []);
   const demo = demoMode;
   const allAccounts = useMemo(() => {
@@ -102,8 +90,6 @@ function AppShell() {
     [allAccounts],
   );
   const { scopeIds, allOn, toggle, only } = useAccountScope(accountIds);
-  /* Palette search covers the accounts whose panes are on screen — the
-     reader can only open messages for panes in scope. */
   const scopedAccounts = useMemo(
     () => (allAccounts ?? []).filter((a) => scopeIds.includes(a.accountId)),
     [allAccounts, scopeIds],
@@ -120,8 +106,6 @@ function AppShell() {
       : null;
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  /* Folders are real paths (/trash, /sent, …). When the reader is open it
-     carries the folder in its search so the panes behind keep their folder. */
   const folder: Folder = emailMatch
     ? toFolder(search.folder)
     : (PATH_FOLDER[location.pathname] ?? "inbox");
@@ -153,8 +137,6 @@ function AppShell() {
   const [composeOpen, setComposeOpen] = useState(false);
   const openCompose = useCallback(() => setComposeOpen(true), []);
 
-  /* Mark every unread message in one account read (server pages all is:unread),
-     flip its cached rows optimistically, then refresh the sidebar counts. */
   const markAccountRead = useCallback(
     async (accountId: string) => {
       await markAllAccountRead(accountId);
@@ -204,10 +186,7 @@ function AppShell() {
     return () => document.removeEventListener("keydown", down);
   }, [accountIds, only, toggle, openCompose]);
 
-  // Only the splash needs a full takeover, and only once we KNOW there's no
-  // session. While the session is still pending we render the (static) shell
-  // and skeleton just the account/user blocks — so the sidebar never shows up
-  // late. `booting` covers both the session fetch and the first accounts load.
+  // While session is pending render the static shell and skeleton account/user blocks (sidebar never shows up late). `booting` covers session fetch + first accounts load.
   const booting = isPending || allAccounts === null;
 
   if (!isPending && !session) {
@@ -299,8 +278,6 @@ function AppShell() {
               onRemovePane={toggle}
             />
           )}
-          {/* Folder + reader routes render null (they drive URL state); the
-              developer "Soon" routes render their page here. */}
           <Outlet />
         </div>
       </SidebarInset>
@@ -308,8 +285,7 @@ function AppShell() {
   );
 }
 
-/** Centered, branded loading state. `fill` fits a parent container (sidebar
- *  already shown); otherwise it covers the viewport. */
+// `fill` fits a parent container; otherwise covers the viewport.
 function LoadingScreen({
   label = "Loading",
   fill = false,
@@ -335,7 +311,6 @@ function LoadingScreen({
   );
 }
 
-/** Monochrome Google "G", tinted by the button's text color. */
 function GoogleIcon() {
   return (
     <svg viewBox="0 0 24 24" className="size-4" aria-hidden="true">

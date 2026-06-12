@@ -8,8 +8,7 @@ export type Email = {
   date: string;
   snippet?: string;
   unread?: boolean;
-  /** Gmail label ids on the message — the client intersects with the user's
-   *  labels to render tags. Never persisted. */
+  /** Never persisted. */
   labelIds?: string[];
 };
 
@@ -20,7 +19,6 @@ export type GmailLabel = {
   color?: { backgroundColor?: string; textColor?: string };
 };
 
-/** All labels on the account (system + user). Tags = the `user` ones. */
 export async function listLabels(accessToken: string): Promise<GmailLabel[]> {
   const res = await gmailFetch(accessToken, "/labels");
   if (!res.ok) throw new Error(`Gmail labels list failed (${res.status})`);
@@ -28,7 +26,6 @@ export async function listLabels(accessToken: string): Promise<GmailLabel[]> {
   return labels;
 }
 
-/** Create a new user label (a tag). Gmail assigns the id. */
 export async function createLabel(
   accessToken: string,
   name: string,
@@ -46,7 +43,6 @@ export async function createLabel(
   return (await res.json()) as GmailLabel;
 }
 
-/** Rename a label (PATCH only the name). */
 export async function renameLabel(
   accessToken: string,
   id: string,
@@ -61,7 +57,7 @@ export async function renameLabel(
   return (await res.json()) as GmailLabel;
 }
 
-/** Delete a label — Gmail also strips it from every message. */
+/** Deleting a label also strips it from every message (Gmail API side-effect). */
 export async function deleteLabel(
   accessToken: string,
   id: string,
@@ -72,7 +68,6 @@ export async function deleteLabel(
   if (!res.ok) throw new Error(`Gmail label delete failed (${res.status})`);
 }
 
-/** Add/remove labels on a message (tag/untag). */
 export async function modifyMessageLabels(
   accessToken: string,
   id: string,
@@ -87,7 +82,6 @@ export async function modifyMessageLabels(
   if (!res.ok) throw new Error(`Gmail modify labels failed (${res.status})`);
 }
 
-/** The Gmail address this token belongs to (handy for labeling accounts). */
 export async function getEmailAddress(accessToken: string): Promise<string> {
   const res = await gmailFetch(accessToken, "/profile");
   if (!res.ok) return "";
@@ -95,7 +89,6 @@ export async function getEmailAddress(accessToken: string): Promise<string> {
   return emailAddress ?? "";
 }
 
-/** Number of unread messages in this account's inbox. */
 export async function getInboxUnread(accessToken: string): Promise<number> {
   const res = await gmailFetch(accessToken, "/labels/INBOX");
   if (!res.ok) return 0;
@@ -103,8 +96,6 @@ export async function getInboxUnread(accessToken: string): Promise<number> {
   return messagesUnread ?? 0;
 }
 
-/** One page of recent messages with subject/from/date metadata, filtered by a
- *  Gmail query (the mailbox folder). */
 export async function listRecentEmails(
   accessToken: string,
   max = 50,
@@ -121,7 +112,6 @@ export async function listRecentEmails(
   return { emails, nextPageToken };
 }
 
-/** Gmail full-text search (messages.list q=) as metadata rows. */
 export async function searchEmails(
   accessToken: string,
   q: string,
@@ -188,7 +178,7 @@ async function fetchEmail(accessToken: string, id: string): Promise<Email> {
 export type FullEmail = Email & {
   to: string;
   messageId: string;
-  /** Gmail thread id + References chain — used to thread replies. */
+  /** Used to thread replies. */
   threadId: string;
   references: string;
   starred: boolean;
@@ -211,7 +201,6 @@ type RawMessage = {
   payload?: MessagePart & { headers?: { name: string; value: string }[] };
 };
 
-/** Parse one Gmail message resource (format=full) into a FullEmail. */
 function parseMessage(message: RawMessage): FullEmail {
   const header = (name: string) =>
     message.payload?.headers?.find(
@@ -235,7 +224,6 @@ function parseMessage(message: RawMessage): FullEmail {
   };
 }
 
-/** One full message: headers + plain-text and HTML bodies (format=full). */
 export async function getFullEmail(
   accessToken: string,
   id: string,
@@ -245,7 +233,6 @@ export async function getFullEmail(
   return parseMessage(await res.json());
 }
 
-/** Every message in a conversation, oldest first (threads.get?format=full). */
 export async function getThread(
   accessToken: string,
   threadId: string,
@@ -256,7 +243,6 @@ export async function getThread(
   return (data.messages ?? []).map(parseMessage);
 }
 
-/** Plain text (exports, fallback) plus the HTML part when one exists. */
 function extractBody(payload?: MessagePart): {
   body: string;
   bodyHtml?: string;
@@ -308,7 +294,6 @@ function stripHtml(html: string): string {
     .trim();
 }
 
-/** Full RFC 822 source of one message (format=raw, decoded). */
 export async function getRawEmail(
   accessToken: string,
   id: string,
@@ -361,10 +346,8 @@ export async function sendEmail(
   if (!res.ok) throw new Error(`Gmail send failed (${res.status})`);
 }
 
-/** A single-message action: archive (un-inbox), trash, or toggle star. */
 export type MessageAction = "archive" | "trash" | "star" | "unstar";
 
-/** Apply a message action via messages.modify / messages.trash. */
 export async function actOnEmail(
   accessToken: string,
   id: string,
@@ -400,7 +383,7 @@ function encodeSubject(subject: string): string {
     : `=?UTF-8?B?${Buffer.from(subject).toString("base64")}?=`;
 }
 
-/** Remove the UNREAD label from up to 1000 messages (batchModify). */
+/** batchModify caps at 1000 ids. */
 export async function markEmailsRead(
   accessToken: string,
   ids: string[],
@@ -414,8 +397,7 @@ export async function markEmailsRead(
   if (!res.ok) throw new Error(`Gmail batchModify failed (${res.status})`);
 }
 
-/** Mark the whole account read: page through every is:unread message and
- *  batchModify it (capped so a runaway mailbox can't hang the request). */
+/** Pages through all is:unread messages; capped at 10 000 to avoid hanging on a large mailbox. */
 export async function markAccountRead(accessToken: string): Promise<number> {
   let total = 0;
   let pageToken: string | undefined;
@@ -461,7 +443,6 @@ async function gmailFetchOk(
   return res;
 }
 
-/** Async map with bounded concurrency — don't fire 50 gets at once. */
 async function mapPool<T, R>(
   items: T[],
   limit: number,

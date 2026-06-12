@@ -159,8 +159,6 @@ export function SettingsDialog({
   );
 }
 
-// ── Pages ────────────────────────────────────────────────────────────────────
-
 function AccountsPage({ accounts }: { accounts: Account[] }) {
   const { data: session } = useSession();
   const { accountColors } = useSettings();
@@ -236,12 +234,9 @@ function AccountsPage({ accounts }: { accounts: Account[] }) {
   );
 }
 
-/** Which preview rows start unread (drives the accent dots in the mockup). */
 const PREVIEW_UNREAD = [true, false, true, false, false];
 
-/** A tiny, non-interactive, skeleton-style mockup of the app. Reflects density,
- *  accent, and per-row avatars via abstract bars (no real text/times/labels) —
- *  built from theme tokens so it tracks light/dark. */
+/** Non-interactive mockup using abstract bars — reflects density/accent/avatars via theme tokens. */
 function InterfacePreview() {
   const { density, accent, inboxAvatars } = useSettings();
   const color = ACCENTS[accent].base;
@@ -270,7 +265,6 @@ function InterfacePreview() {
   return (
     <div className="pointer-events-none overflow-hidden rounded-xl border bg-card select-none">
       <div className="flex h-[188px]">
-        {/* Mini sidebar */}
         <div className="flex w-[92px] shrink-0 flex-col gap-2 border-r bg-sidebar p-2">
           <div className="flex items-center gap-1.5">
             <span
@@ -289,7 +283,6 @@ function InterfacePreview() {
           </div>
         </div>
 
-        {/* Mini inbox pane */}
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex h-6 shrink-0 items-center gap-1.5 border-b px-2">
             {dot(true)}
@@ -367,8 +360,6 @@ function AppearancePage() {
     </Page>
   );
 }
-
-// ── appearance controls ──────────────────────────────────────────────────────
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -459,9 +450,6 @@ function AccentDots() {
   );
 }
 
-/** Sidebar visibility as toggle chips, grouped by section and auto-populated
- *  from the real sidebar nav (NAV_SECTIONS). Click to hide/show; fixed items
- *  (Inbox) can't be hidden. */
 function SidebarChips() {
   const { hiddenNav } = useSettings();
   const toggle = (id: string, show: boolean) =>
@@ -735,8 +723,6 @@ function KeyboardPage() {
     </Page>
   );
 }
-
-// ── Building blocks ──────────────────────────────────────────────────────────
 
 function Page({
   title,

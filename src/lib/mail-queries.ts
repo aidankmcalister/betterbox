@@ -25,25 +25,18 @@ export type FullEmail = ThreadRowEmail & {
 
 export type MessageAction = "archive" | "trash" | "star" | "unstar";
 
-/** A tag — a Gmail user label. Nothing about it is stored by BetterBox. */
+// Never stored by BetterBox — only held in TanStack Query cache.
 export type Label = {
   id: string;
   name: string;
   color?: { backgroundColor?: string; textColor?: string };
 };
 
-/** Preset tags for test/demo accounts (no Gmail backend). */
 const TEST_LABELS: Label[] = [
   { id: "Label_vip", name: "VIP" },
   { id: "Label_receipts", name: "Receipts" },
   { id: "Label_followup", name: "Follow up" },
 ];
-
-/**
- * TanStack Query layer over the mail API. Caching means panes repaint
- * instantly when tiles are rearranged or accounts toggled back into view,
- * instead of replaying 1 list + 50 metadata calls per pane.
- */
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init);
@@ -74,8 +67,7 @@ export function useAccountsQuery(enabled: boolean) {
   });
 }
 
-/** Folder listing vs. an in-pane search are cached under separate keys so
- *  toggling search doesn't clobber the folder list (and vice-versa). */
+// Folder listing and in-pane search use separate cache keys so toggling search doesn't clobber the folder list.
 export const emailsQueryKey = (
   accountId: string,
   folder: Folder = "inbox",
@@ -91,12 +83,7 @@ export type EmailsData = InfiniteData<EmailsPage>;
 export const flattenEmails = (data: EmailsData | undefined) =>
   data?.pages.flatMap((page) => page.emails);
 
-/**
- * One inbox pane's emails — paged 50 at a time via Gmail's pageToken. With a
- * `q` it becomes an in-pane Gmail search (server-side, full text + operators
- * like `in:important`), scoped to the CURRENT folder (the folder's Gmail query
- * is AND-ed with the user's query, e.g. `in:drafts github`).
- */
+// Search is scoped to the current folder: FOLDER_QUERY[folder] is AND-ed with the user's q.
 export function useEmailsQuery(
   accountId: string,
   folder: Folder = "inbox",
@@ -124,7 +111,6 @@ export function useEmailsQuery(
       const pageQuery = pageParam
         ? `&pageToken=${encodeURIComponent(pageParam)}`
         : "";
-      // Scope the search to the folder: AND the folder query with the user's.
       const scope = search
         ? `&q=${encodeURIComponent(`${FOLDER_QUERY[folder]} ${search}`)}`
         : `&folder=${folder}`;
@@ -140,7 +126,6 @@ export function useEmailsQuery(
   });
 }
 
-/** Messages carrying one tag — for the Labeled view's accordions (`label:`). */
 export function useLabelEmailsQuery(
   accountId: string,
   labelName: string,
@@ -154,7 +139,6 @@ export function useLabelEmailsQuery(
     queryFn: async ({ pageParam }): Promise<EmailsPage> => {
       if (isTestAccount(accountId)) {
         await sleep(READ_LATENCY_MS);
-        // Demo stand-in: a few inbox messages represent the tagged set.
         return { emails: makeTestEmails(accountId, "inbox").slice(0, 5) };
       }
       const pageQuery = pageParam
@@ -176,7 +160,6 @@ export function useLabelEmailsQuery(
   });
 }
 
-/** One full message for the reader pane. */
 export function useFullEmailQuery(accountId: string, emailId: string | null) {
   return useQuery({
     queryKey: ["email", accountId, emailId],
@@ -194,7 +177,6 @@ export function useFullEmailQuery(accountId: string, emailId: string | null) {
   });
 }
 
-/** Every message in the open conversation, oldest first (threads.get). */
 export function useThreadQuery(
   accountId: string,
   threadId: string | null | undefined,
@@ -215,7 +197,6 @@ export function useThreadQuery(
   });
 }
 
-/** Raw RFC 822 source for the reader's Raw toggle. */
 export function useRawEmailQuery(
   accountId: string,
   emailId: string | null,
@@ -237,12 +218,9 @@ export function useRawEmailQuery(
   });
 }
 
-// ── Tags (Gmail user labels) ─────────────────────────────────────────────────
-
 export const labelsQueryKey = (accountId: string) =>
   ["labels", accountId] as const;
 
-/** The account's tags — Gmail user labels (system labels filtered out). */
 export function useLabelsQuery(accountId: string) {
   return useQuery({
     queryKey: labelsQueryKey(accountId),
@@ -258,7 +236,6 @@ export function useLabelsQuery(accountId: string) {
   });
 }
 
-/** Create a tag (Gmail label). Test accounts mint a local-only id. */
 export async function createLabel(
   accountId: string,
   name: string,
@@ -274,7 +251,6 @@ export async function createLabel(
   return data.label;
 }
 
-/** Rename a tag (no-op for test accounts — caller updates the cache). */
 export async function renameLabel(
   accountId: string,
   labelId: string,
@@ -288,7 +264,6 @@ export async function renameLabel(
   });
 }
 
-/** Delete a tag (no-op for test accounts — caller updates the cache). */
 export async function deleteLabel(accountId: string, labelId: string) {
   if (isTestAccount(accountId)) return;
   await fetchJson("/api/labels", {
@@ -298,7 +273,6 @@ export async function deleteLabel(accountId: string, labelId: string) {
   });
 }
 
-/** Tag / untag a message (no-op for test accounts — caller updates the cache). */
 export async function setEmailLabel(
   accountId: string,
   id: string,
@@ -318,8 +292,6 @@ export async function setEmailLabel(
   });
 }
 
-/** Send a plain-text message (test accounts pretend-send). Pass the threading
- *  fields to nest it under the original conversation as a real reply. */
 export async function sendNewEmail(options: {
   accountId: string;
   to: string;
@@ -337,7 +309,6 @@ export async function sendNewEmail(options: {
   });
 }
 
-/** Archive / trash / star a single message (no-op for test accounts). */
 export async function actOnEmail(
   accountId: string,
   id: string,
@@ -351,7 +322,6 @@ export async function actOnEmail(
   });
 }
 
-/** Remove the UNREAD label from the given messages (no-op for test accounts). */
 export async function markEmailsRead(accountId: string, ids: string[]) {
   if (isTestAccount(accountId) || ids.length === 0) return;
   await fetchJson(`/api/emails`, {
@@ -361,7 +331,6 @@ export async function markEmailsRead(accountId: string, ids: string[]) {
   });
 }
 
-/** Mark every unread message in an account read (server pages is:unread). */
 export async function markAllAccountRead(accountId: string) {
   if (isTestAccount(accountId)) return;
   await fetchJson(`/api/emails`, {

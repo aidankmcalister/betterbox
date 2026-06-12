@@ -24,9 +24,7 @@ const TWO_LEVEL_TLDS = new Set([
   "co.in",
 ]);
 
-/** Registrable domain: mg.polyphia.com → polyphia.com, e.foo.co.uk → foo.co.uk.
- *  Senders mail from subdomains whose favicons resolve to a generic globe; the
- *  root domain carries the real brand mark. */
+// Subdomains return generic-globe favicons; strip to root domain for the real brand mark.
 function rootDomain(domain: string): string {
   const parts = domain.split(".");
   if (parts.length <= 2) return domain;
@@ -36,13 +34,7 @@ function rootDomain(domain: string): string {
     : parts.slice(-2).join(".");
 }
 
-/**
- * Sender avatar derived from the email: the brand's favicon, then colored
- * initials. Loaded DIRECTLY in the browser (the server-side proxy fetch fails
- * in some envs). DuckDuckGo first — it returns the real favicon far more often
- * than Google's service, which falls back to a generic globe for unresolved
- * domains (and for sending subdomains, which is why we use the root domain).
- */
+// DuckDuckGo first — returns the real favicon more often; Google falls back to a generic globe.
 export function SenderAvatar({
   name,
   address,
@@ -63,7 +55,6 @@ export function SenderAvatar({
       ]
     : [];
 
-  // Walk the sources on error; once we run out, render initials.
   const [index, setIndex] = useState(0);
   useEffect(() => setIndex(0), [root]);
   const src = sources[index];
@@ -77,9 +68,7 @@ export function SenderAvatar({
         loading="lazy"
         referrerPolicy="no-referrer"
         onError={() => setIndex((current) => current + 1)}
-        // White plate (like Gmail) so favicons with transparent backgrounds —
-        // e.g. a black logo — stay visible in dark mode. Slight inset keeps the
-        // mark off the edge.
+        // White plate so transparent-background favicons (e.g. black logos) stay visible in dark mode.
         className={cn(
           "size-9 shrink-0 rounded-full border border-input bg-white object-contain",
           className,

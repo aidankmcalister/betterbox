@@ -1,14 +1,9 @@
 import DOMPurify from "dompurify";
 import { useEffect, useRef, useState } from "react";
 
-/**
- * Sanitize an HTML email body. DOMPurify needs a real DOM, so this is a
- * no-op during SSR (the iframe fills in after the component mounts on the
- * client). The img hook routes every remote image through our proxy:
- * tracker blockers kill direct requests to sender CDNs (licdn.com et al.),
- * and proxying keeps the reader's IP out of tracking pixels. srcset goes —
- * candidates would each need the same rewrite and emails don't rely on it.
- */
+// DOMPurify needs a real DOM; no-op during SSR. The img hook proxies remote
+// images to block tracker pixels and prevent CDN-side IP tracking; srcset is
+// stripped because each candidate would need the same rewrite.
 let hookRegistered = false;
 function sanitizeEmail(html: string): string {
   if (typeof window === "undefined") return "";
@@ -29,12 +24,8 @@ function sanitizeEmail(html: string): string {
   return DOMPurify.sanitize(html, { WHOLE_DOCUMENT: true });
 }
 
-/**
- * Sanitized HTML email body in a sandboxed iframe so message markup and CSS
- * can't leak into (or inherit from) the app. The sandbox omits allow-scripts,
- * which makes allow-same-origin safe — we only use it to inject a
- * `<base target="_blank">` and keep the iframe height fitted to its content.
- */
+// Sandboxed iframe: email markup/CSS can't leak into the app. allow-scripts is
+// omitted intentionally, which makes allow-same-origin safe for DOM injection.
 export function HtmlBody({ html }: { html: string }) {
   const ref = useRef<HTMLIFrameElement>(null);
   const observerRef = useRef<ResizeObserver | null>(null);
@@ -62,8 +53,7 @@ export function HtmlBody({ html }: { html: string }) {
       "img{max-width:100%;height:auto}";
     idoc.head.appendChild(style);
 
-    // Fit to the body's content height, guarded so identical measurements
-    // don't churn the observer into a resize loop.
+    // Guard against resize-observer feedback loops by skipping identical heights.
     let last = 0;
     const fit = () => {
       const height = idoc.body.scrollHeight;
@@ -77,10 +67,7 @@ export function HtmlBody({ html }: { html: string }) {
     observerRef.current.observe(idoc.body);
     fit();
 
-    // The iframe is sized to its full content height (no inner vertical
-    // scroll), but it still swallows wheel events — so scrolling over the
-    // email body wouldn't move the reader. Forward vertical wheel to the
-    // reader's scroll container.
+    // iframe swallows wheel events even with no inner scroll; forward to the reader pane.
     idoc.addEventListener(
       "wheel",
       (event) => {
@@ -103,7 +90,6 @@ export function HtmlBody({ html }: { html: string }) {
   );
 }
 
-/** Nearest vertically-scrollable ancestor of the iframe (the reader pane). */
 function scrollParent(el: HTMLElement): HTMLElement | null {
   let node = el.parentElement;
   while (node) {
