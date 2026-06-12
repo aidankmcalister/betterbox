@@ -5,11 +5,17 @@ import type { Density } from "@/components/thread-row";
 import type { Folder } from "@/lib/folders";
 
 /** Loading: skeleton rows fading down. */
-export function SkeletonRows({ density = "comfortable" }: { density?: Density }) {
+export function SkeletonRows({
+  density = "comfortable",
+  count = 9,
+}: {
+  density?: Density;
+  count?: number;
+}) {
   const height = density === "compact" ? "h-[34px]" : "h-[52px]";
   return (
     <div aria-label="Loading messages">
-      {Array.from({ length: 9 }).map((_, i) => (
+      {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
           className={`flex items-center gap-2.5 border-b border-border px-3.5 ${height}`}

@@ -111,7 +111,7 @@ function LabelAccordion({
 
       {open &&
         (!emails ? (
-          <SkeletonRows density={density} />
+          <SkeletonRows density={density} count={1} />
         ) : emails.length === 0 ? (
           <p className="px-9 py-3 text-[12.5px] text-muted-foreground">
             No messages with this tag.
