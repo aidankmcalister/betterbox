@@ -6,6 +6,16 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Hide the scrollbar but keep scrolling (cross-browser). Already referenced by
+   the command palette and sidebar; this is its definition. */
+@utility no-scrollbar {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* old Edge */
+  &::-webkit-scrollbar {
+    display: none; /* Chrome / Safari */
+  }
+}
+
 /* Better Mail design tokens (Component Spec.html — Linear-derived dark palette).
    Static constants: the design is dark-only; light mode keeps shadcn defaults
    via the semantic tokens below. */

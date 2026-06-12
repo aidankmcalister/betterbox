@@ -1037,7 +1037,7 @@ function PaneHeader({
             </button>
           </Hint>
         </div>
-        <div className="flex items-center gap-1 overflow-x-auto px-2.5 pb-1.5 [&::-webkit-scrollbar]:hidden">
+        <div className="no-scrollbar flex items-center gap-1 overflow-x-auto px-2.5 pb-1.5">
           <span className="mr-0.5 shrink-0 font-mono text-[9px] tracking-wide text-muted-foreground/50 uppercase">
             try
           </span>
