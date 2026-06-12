@@ -1,31 +1,47 @@
 import DOMPurify from "dompurify";
 import { useEffect, useRef, useState } from "react";
 
-// DOMPurify needs a real DOM; no-op during SSR. The img hook proxies remote
-// images to block tracker pixels and prevent CDN-side IP tracking; srcset is
-// stripped because each candidate would need the same rewrite.
+// DOMPurify needs a real DOM; no-op during SSR.
+//
+// Privacy/fidelity trade-off: <img> sources are proxied through our endpoint to
+// block tracker pixels and CDN-side IP logging. Remote stylesheets, web fonts,
+// and media are allowed through so marketing emails render with their real
+// fonts, colors, and layout (they looked broken otherwise) — these can still
+// phone home, which is the cost of rendering them faithfully.
 let hookRegistered = false;
 function sanitizeEmail(html: string): string {
   if (typeof window === "undefined") return "";
   if (!hookRegistered) {
     DOMPurify.addHook("afterSanitizeAttributes", (node) => {
-      if (node.tagName !== "IMG") return;
-      node.removeAttribute("srcset");
-      const src = node.getAttribute("src");
-      if (src && /^https?:\/\//i.test(src)) {
-        node.setAttribute(
-          "src",
-          `/api/image-proxy?url=${encodeURIComponent(src)}`,
-        );
+      if (node.tagName === "IMG") {
+        node.removeAttribute("srcset");
+        const src = node.getAttribute("src");
+        if (src && /^https?:\/\//i.test(src)) {
+          node.setAttribute("src", `/api/image-proxy?url=${encodeURIComponent(src)}`);
+        }
+      }
+      // Any link that leaves the message opens in a new tab.
+      if (node.tagName === "A" && node.getAttribute("href")) {
+        node.setAttribute("target", "_blank");
+        node.setAttribute("rel", "noopener noreferrer");
       }
     });
     hookRegistered = true;
   }
-  return DOMPurify.sanitize(html, { WHOLE_DOCUMENT: true });
+  return DOMPurify.sanitize(html, {
+    WHOLE_DOCUMENT: true,
+    // Let real email styling render: external stylesheets + web fonts, plus
+    // common media wrappers. <style>/inline styles are allowed by default.
+    ADD_TAGS: ["link", "style", "video", "audio", "source", "picture"],
+    ADD_ATTR: ["rel", "href", "media", "type", "target", "controls", "poster", "srcset", "sizes"],
+  });
 }
 
-// Sandboxed iframe: email markup/CSS can't leak into the app. allow-scripts is
-// omitted intentionally, which makes allow-same-origin safe for DOM injection.
+/**
+ * Sandboxed HTML email body. Renders seamlessly into the reader (no visible
+ * frame, no inner scrollbars) and auto-sizes to its content height like Gmail.
+ * allow-scripts is intentionally omitted so allow-same-origin stays safe.
+ */
 export function HtmlBody({ html }: { html: string }) {
   const ref = useRef<HTMLIFrameElement>(null);
   const observerRef = useRef<ResizeObserver | null>(null);
@@ -45,18 +61,20 @@ export function HtmlBody({ html }: { html: string }) {
     // HTML emails assume a light canvas regardless of the app theme.
     idoc.documentElement.style.colorScheme = "light";
     // Force the root to auto height so the email's height:100% / min-height
-    // chains don't feed back off the iframe height we set (the cause of the
-    // box growing forever), and keep wide images from scrolling sideways.
+    // chains don't feed back off the iframe height we set (the cause of the box
+    // growing forever); suppress the horizontal scrollbar and keep wide media
+    // from overflowing the pane width.
     const style = idoc.createElement("style");
     style.textContent =
-      "html,body{height:auto!important;min-height:0!important;margin:0}" +
-      "img{max-width:100%;height:auto}";
+      "html,body{height:auto!important;min-height:0!important;margin:0!important;padding:0;overflow-x:hidden!important}" +
+      "img,video,table{max-width:100%!important}" +
+      "img,video{height:auto}";
     idoc.head.appendChild(style);
 
     // Guard against resize-observer feedback loops by skipping identical heights.
     let last = 0;
     const fit = () => {
-      const height = idoc.body.scrollHeight;
+      const height = Math.ceil(idoc.body.scrollHeight);
       if (height && height !== last) {
         last = height;
         iframe.style.height = `${height}px`;
@@ -66,6 +84,9 @@ export function HtmlBody({ html }: { html: string }) {
     observerRef.current = new ResizeObserver(fit);
     observerRef.current.observe(idoc.body);
     fit();
+    // Remote fonts/images can land after first paint and grow the body; re-fit.
+    idoc.querySelectorAll("img").forEach((img) => img.addEventListener("load", fit));
+    if (idoc.fonts?.ready) idoc.fonts.ready.then(fit).catch(() => {});
 
     // iframe swallows wheel events even with no inner scroll; forward to the reader pane.
     idoc.addEventListener(
@@ -82,10 +103,11 @@ export function HtmlBody({ html }: { html: string }) {
     <iframe
       ref={ref}
       title="Message body"
+      scrolling="no"
       sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
       srcDoc={doc}
       onLoad={onLoad}
-      className="block w-full overflow-x-auto rounded-lg border bg-white"
+      className="block w-full overflow-hidden rounded-lg bg-white"
     />
   );
 }
