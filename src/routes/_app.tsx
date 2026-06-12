@@ -19,6 +19,7 @@ import {
 import { toFolder, type Folder } from "@/lib/folders";
 import { makeDemoAccounts, makeTestAccount } from "@/lib/test-account";
 import { useSession } from "../lib/auth-client";
+import { fetchSession } from "@/lib/auth-session";
 import { AppSidebar } from "@/components/app-sidebar";
 import { CommandMenu } from "@/components/command-menu";
 import { Composer } from "@/components/composer";
@@ -28,6 +29,9 @@ import { SettingsDialog } from "@/components/settings-dialog";
 import { SidebarInset } from "@/components/ui/sidebar";
 
 export const Route = createFileRoute("/_app")({
+  // Resolve the session on the server so the first paint already knows whether
+  // to show the app or the landing — no authenticated-content flash.
+  beforeLoad: async () => ({ session: await fetchSession() }),
   component: AppShell,
 });
 
@@ -56,7 +60,11 @@ const DEV_PATHS = new Set(["/pull-requests", "/webhooks", "/rules", "/api"]);
 function AppShell() {
   useApplyAccent();
   const { devTools, demoMode } = useSettings();
-  const { data: session, isPending } = useSession();
+  // The server already resolved the session (beforeLoad); use it until the
+  // client query settles so the auth branch is correct on the very first paint.
+  const { session: serverSession } = Route.useRouteContext();
+  const { data: clientSession, isPending } = useSession();
+  const session = isPending ? serverSession : clientSession;
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const matchRoute = useMatchRoute();
@@ -202,7 +210,7 @@ function AppShell() {
   // While session is pending render the static shell and skeleton account/user blocks (sidebar never shows up late). `booting` covers session fetch + first accounts load.
   const booting = isPending || allAccounts === null;
 
-  if (!isPending && !session) {
+  if (!session) {
     return <LandingPage />;
   }
 
