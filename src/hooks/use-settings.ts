@@ -12,6 +12,8 @@ export type ExportFormat = "md" | "json" | "txt";
 export type Clock = "12h" | "24h";
 /** Delay before an opened message is marked read ("off" disables it). */
 export type MarkRead = "off" | "instant" | "1s" | "5s";
+/** One shared reading pane, or a separate reader docked per account. */
+export type ReaderMode = "shared" | "split";
 
 export type Settings = {
   density: Density;
@@ -28,6 +30,8 @@ export type Settings = {
   exportFormat: ExportFormat;
   clock: Clock;
   markRead: MarkRead;
+  /** Shared reading pane vs. a separate reader pane per account. */
+  readerMode: ReaderMode;
   /** Show a small sender avatar at the start of every inbox row (off by
    *  default — the account dot already carries the account color). */
   inboxAvatars: boolean;
@@ -53,6 +57,7 @@ const DEFAULT_SETTINGS: Settings = {
   exportFormat: "md",
   clock: "12h",
   markRead: "1s",
+  readerMode: "shared",
   inboxAvatars: false,
   hiddenNav: [],
   devTools: false,

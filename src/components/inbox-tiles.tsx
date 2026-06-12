@@ -144,17 +144,22 @@ function TagChip({ label, onRemove }: { label: Label; onRemove?: () => void }) {
   );
 }
 
-/** The open message — now URL-driven (/email/$id?account=…) by the layout. */
+/** The open message — URL-driven in shared mode (/email/$id?account=…), or
+ *  board-local state in split mode. */
 export type Reading = { accountId: string; emailId: string };
+
+/** Split-mode reader pane id for an account (one reader docked per account). */
+const splitReaderId = (accountId: string) => `${READER_PANE_ID}:${accountId}`;
 
 type TilesCtx = {
   accounts: Account[];
   removable: boolean;
   onRemovePane: (accountId: string) => void;
   folder: Folder;
-  reading: Reading | null;
+  /** Open an email — shared mode routes via the URL, split mode via board state. */
   openEmail: (accountId: string, emailId: string) => void;
-  closeReader: () => void;
+  /** Which email is open in this account's reader, if any. */
+  getOpenEmail: (accountId: string) => string | null;
   /* Per-account search lives here (not in the pane) so it survives the pane
      remounts that happen when the layout changes — e.g. docking the reader. An
      account present in the map has its search bar open; the value is the query
@@ -217,14 +222,66 @@ export function InboxTiles({
   const ids = scoped.map((a) => a.accountId);
   const idsKey = ids.join(",");
 
-  /* The open message is URL state; while set, the reader pane is part of the
-     layout tree (it docks right by default and drags/swaps like any pane). */
-  const paneIds = reading ? [...ids, READER_PANE_ID] : ids;
+  const { readerMode } = useSettings();
 
+  /* Split mode keeps a reader open per account in board-local state; shared mode
+     uses the single URL-driven `reading`. */
+  const [openEmails, setOpenEmails] = useState<Record<string, string>>({});
+  const split = readerMode === "split";
+
+  const openEmail = useCallback(
+    (accountId: string, emailId: string) => {
+      if (split) setOpenEmails((current) => ({ ...current, [accountId]: emailId }));
+      else onOpenEmail(accountId, emailId);
+    },
+    [split, onOpenEmail],
+  );
+  const getOpenEmail = useCallback(
+    (accountId: string) =>
+      split
+        ? (openEmails[accountId] ?? null)
+        : reading?.accountId === accountId
+          ? reading.emailId
+          : null,
+    [split, openEmails, reading],
+  );
+  const closeReaderFor = useCallback(
+    (accountId: string) => {
+      if (split) {
+        setOpenEmails((current) => {
+          const next = { ...current };
+          delete next[accountId];
+          return next;
+        });
+      } else onCloseReader();
+    },
+    [split, onCloseReader],
+  );
+
+  /* Reader panes join the layout tree (they dock right and drag like any pane).
+     Shared: one __reader__. Split: __reader__:<accountId> per open email. */
+  const readerIds = split
+    ? ids.filter((id) => openEmails[id]).map(splitReaderId)
+    : reading
+      ? [READER_PANE_ID]
+      : [];
+  const paneIds = [...ids, ...readerIds];
+
+  /* Drop readers for accounts that left the view. */
   useEffect(() => {
-    if (reading && !ids.includes(reading.accountId)) onCloseReader();
+    if (split) {
+      setOpenEmails((current) => {
+        const next: Record<string, string> = {};
+        for (const id of ids) if (current[id]) next[id] = current[id];
+        return Object.keys(next).length === Object.keys(current).length
+          ? current
+          : next;
+      });
+    } else if (reading && !ids.includes(reading.accountId)) {
+      onCloseReader();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [idsKey]);
+  }, [idsKey, split]);
 
   /* Per-account search state, owned by the board so it persists across pane
      remounts. Stays until explicitly cleared (the search bar's ×). */
@@ -275,9 +332,8 @@ export function InboxTiles({
     removable: scoped.length > 1,
     onRemovePane,
     folder,
-    reading,
-    openEmail: onOpenEmail,
-    closeReader: onCloseReader,
+    openEmail,
+    getOpenEmail,
     paneSearch,
     openSearch,
     setSearch,
@@ -286,15 +342,33 @@ export function InboxTiles({
 
   const storage: TileStorage = { load: loadStoredTree, save: persistTree };
 
-  const renderPane = (paneId: string) =>
-    paneId === READER_PANE_ID ? (
-      <ReaderPane />
-    ) : (
-      <AccountPane accountId={paneId} />
-    );
+  const renderPane = (paneId: string) => {
+    if (paneId === READER_PANE_ID && reading) {
+      return (
+        <ReaderPane
+          paneId={paneId}
+          accountId={reading.accountId}
+          emailId={reading.emailId}
+          onClose={() => closeReaderFor(reading.accountId)}
+        />
+      );
+    }
+    if (paneId.startsWith(`${READER_PANE_ID}:`)) {
+      const acc = paneId.slice(READER_PANE_ID.length + 1);
+      return (
+        <ReaderPane
+          paneId={paneId}
+          accountId={acc}
+          emailId={openEmails[acc] ?? null}
+          onClose={() => closeReaderFor(acc)}
+        />
+      );
+    }
+    return <AccountPane accountId={paneId} />;
+  };
 
   const renderDragLabel = (paneId: string) => {
-    if (paneId === READER_PANE_ID) {
+    if (paneId === READER_PANE_ID || paneId.startsWith(`${READER_PANE_ID}:`)) {
       return (
         <>
           <MailOpenIcon className="size-3.5 text-muted-foreground" />
@@ -392,8 +466,18 @@ function parseAddress(from: string): { name: string; address: string } {
 }
 
 /** The message viewer — an ordinary pane in the tree (drag it like an inbox). */
-function ReaderPane() {
-  const { reading, accounts, closeReader, folder } = useTiles();
+function ReaderPane({
+  paneId,
+  accountId,
+  emailId,
+  onClose,
+}: {
+  paneId: string;
+  accountId: string;
+  emailId: string | null;
+  onClose: () => void;
+}) {
+  const { accounts, folder } = useTiles();
   const beginHeaderDrag = useTileDrag();
   const { showTechnicalMetadata, clock, markRead, tagColors } = useSettings();
   const queryClient = useQueryClient();
@@ -406,8 +490,6 @@ function ReaderPane() {
   const [replySent, setReplySent] = useState(false);
   const replyRef = useRef<HTMLDivElement>(null);
 
-  const accountId = reading?.accountId ?? "";
-  const emailId = reading?.emailId ?? null;
   const fullQuery = useFullEmailQuery(accountId, emailId);
   const rawQuery = useRawEmailQuery(accountId, emailId, raw);
 
@@ -693,7 +775,7 @@ function ReaderPane() {
           },
       );
       queryClient.invalidateQueries({ queryKey: accountsQueryKey });
-      closeReader();
+      onClose();
     } catch {
       setBusy(false);
     }
@@ -707,7 +789,7 @@ function ReaderPane() {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         if (replyOpen) setReplyOpen(false);
-        else closeReader();
+        else onClose();
         return;
       }
       if (typing(event.target) || event.metaKey || event.ctrlKey) return;
@@ -719,14 +801,14 @@ function ReaderPane() {
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [closeReader, email, sender, replyOpen]);
+  }, [onClose, email, sender, replyOpen]);
 
   return (
     <div className="flex h-full min-w-0 flex-col bg-background">
       {/* Title strip — context + quiet management, draggable like any pane.
           The action buttons live in the floating bar, not up here. */}
       <div
-        onPointerDown={(event) => beginHeaderDrag(event, READER_PANE_ID)}
+        onPointerDown={(event) => beginHeaderDrag(event, paneId)}
         className="flex h-9 shrink-0 cursor-grab touch-none items-center gap-[9px] border-b px-2.5 select-none active:cursor-grabbing"
       >
         <GripVerticalIcon className="size-3.5 shrink-0 text-muted-foreground/70" />
@@ -937,7 +1019,7 @@ function ReaderPane() {
         <Hint label="Close (Esc)">
           <button
             type="button"
-            onClick={closeReader}
+            onClick={onClose}
             className="inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
           >
             <XIcon className="size-[15px]" />
@@ -1485,7 +1567,7 @@ function PaneBody({
   dotIndex: number;
   search: string;
 }) {
-  const { reading, openEmail, folder } = useTiles();
+  const { getOpenEmail, openEmail, folder } = useTiles();
   const { density } = useSettings();
   const query = useEmailsQuery(account.accountId, folder, search);
   const { error, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } =
@@ -1546,10 +1628,7 @@ function PaneBody({
               density={density}
               dotIndex={dotIndex}
               accountId={account.accountId}
-              selected={
-                reading?.accountId === account.accountId &&
-                reading.emailId === email.id
-              }
+              selected={getOpenEmail(account.accountId) === email.id}
               onClick={() => openEmail(account.accountId, email.id)}
             />
           ))}

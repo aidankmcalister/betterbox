@@ -541,6 +541,19 @@ function InboxPage() {
 
       <PageSection title="Multi-account">
         <SettingRow
+          label="Reading pane"
+          description="One shared reader, or a separate reader docked per account"
+        >
+          <SegmentedButtons
+            options={[
+              { value: "shared", label: "Shared" },
+              { value: "split", label: "Per account" },
+            ]}
+            value={settings.readerMode}
+            onChange={(readerMode) => updateSettings({ readerMode })}
+          />
+        </SettingRow>
+        <SettingRow
           label="Layout"
           description="Arrange the inbox tiles by dragging pane headers"
         >
