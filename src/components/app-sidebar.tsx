@@ -1,7 +1,9 @@
 import {
   Archive,
-  BarChart3,
+  GitBranch,
+  Braces,
   FileText,
+  GitPullRequest,
   Inbox,
   MailIcon,
   PenLine,
@@ -44,20 +46,31 @@ const mailbox: { id: Folder; title: string; icon: typeof Inbox }[] = [
 ];
 
 const developer = [
+  { id: "pull_requests", title: "PRs", icon: GitPullRequest },
   { id: "webhooks", title: "Webhooks", icon: Webhook },
-  { id: "analytics", title: "Analytics", icon: BarChart3 },
+  { id: "rules", title: "Rules", icon: GitBranch },
+  { id: "api", title: "API", icon: Braces },
 ];
 
-/** Nav items the user may hide in Settings → Appearance (Inbox is never
- *  hideable). Exported so the settings toggles stay in sync with the sidebar. */
-export const HIDEABLE_NAV: { id: string; title: string }[] = [
-  { id: "sent", title: "Sent" },
-  { id: "drafts", title: "Drafts" },
-  { id: "archived", title: "Archived" },
-  { id: "spam", title: "Spam" },
-  { id: "trash", title: "Trash" },
-  { id: "webhooks", title: "Webhooks" },
-  { id: "analytics", title: "Analytics" },
+/** Sidebar nav grouped by section, derived straight from the arrays above so
+ *  Settings → Appearance always mirrors the real sidebar. `fixed` items (Inbox)
+ *  can't be hidden. Exported for the Appearance show/hide toggles. */
+export const NAV_SECTIONS: {
+  section: string;
+  items: { id: string; title: string; fixed?: boolean }[];
+}[] = [
+  {
+    section: "Mailbox",
+    items: mailbox.map((item) => ({
+      id: item.id,
+      title: item.title,
+      fixed: item.id === "inbox",
+    })),
+  },
+  {
+    section: "Developer",
+    items: developer.map((item) => ({ id: item.id, title: item.title })),
+  },
 ];
 
 const groupLabel =

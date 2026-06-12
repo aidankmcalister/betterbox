@@ -25,7 +25,7 @@ import {
   type AccentId,
 } from "@/hooks/use-settings";
 import { ACCOUNT_COLORS } from "@/components/account-dot";
-import { HIDEABLE_NAV } from "@/components/app-sidebar";
+import { NAV_SECTIONS } from "@/components/app-sidebar";
 import { useTheme } from "@/components/theme-provider";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -459,7 +459,9 @@ function AccentDots() {
   );
 }
 
-/** Sidebar visibility as toggle chips — click to hide/show (Inbox is fixed). */
+/** Sidebar visibility as toggle chips, grouped by section and auto-populated
+ *  from the real sidebar nav (NAV_SECTIONS). Click to hide/show; fixed items
+ *  (Inbox) can't be hidden. */
 function SidebarChips() {
   const { hiddenNav } = useSettings();
   const toggle = (id: string, show: boolean) =>
@@ -469,29 +471,45 @@ function SidebarChips() {
         : [...hiddenNav, id],
     });
   return (
-    <div className="flex flex-wrap gap-1.5">
-      <span className="inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-1 text-[11.5px] text-muted-foreground/70">
-        Inbox
-      </span>
-      {HIDEABLE_NAV.map((item) => {
-        const shown = !hiddenNav.includes(item.id);
-        return (
-          <button
-            key={item.id}
-            type="button"
-            aria-pressed={shown}
-            onClick={() => toggle(item.id, !shown)}
-            className={cn(
-              "inline-flex items-center rounded-full border px-2.5 py-1 text-[11.5px] transition-colors",
-              shown
-                ? "border-primary/40 bg-primary/10 text-foreground hover:bg-primary/15"
-                : "border-border text-muted-foreground/50 hover:text-muted-foreground",
-            )}
-          >
-            {item.title}
-          </button>
-        );
-      })}
+    <div className="flex flex-col gap-3.5">
+      {NAV_SECTIONS.map((group) => (
+        <div key={group.section}>
+          <span className="mb-2 block font-mono text-[10px] font-medium tracking-[0.5px] text-muted-foreground/70 uppercase">
+            {group.section}
+          </span>
+          <div className="flex flex-wrap gap-1.5">
+            {group.items.map((item) => {
+              if (item.fixed) {
+                return (
+                  <span
+                    key={item.id}
+                    className="inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-1 text-[11.5px] text-muted-foreground/70"
+                  >
+                    {item.title}
+                  </span>
+                );
+              }
+              const shown = !hiddenNav.includes(item.id);
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  aria-pressed={shown}
+                  onClick={() => toggle(item.id, !shown)}
+                  className={cn(
+                    "inline-flex items-center rounded-full border px-2.5 py-1 text-[11.5px] transition-colors",
+                    shown
+                      ? "border-primary/40 bg-primary/10 text-foreground hover:bg-primary/15"
+                      : "border-border text-muted-foreground/50 hover:text-muted-foreground",
+                  )}
+                >
+                  {item.title}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
