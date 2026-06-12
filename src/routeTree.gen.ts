@@ -17,11 +17,15 @@ import { Route as ApiMessageRouteImport } from './routes/api/message'
 import { Route as ApiImageProxyRouteImport } from './routes/api/image-proxy'
 import { Route as ApiEmailsRouteImport } from './routes/api/emails'
 import { Route as ApiAccountsRouteImport } from './routes/api/accounts'
+import { Route as AppWebhooksRouteImport } from './routes/_app/webhooks'
 import { Route as AppTrashRouteImport } from './routes/_app/trash'
 import { Route as AppSpamRouteImport } from './routes/_app/spam'
 import { Route as AppSentRouteImport } from './routes/_app/sent'
+import { Route as AppRulesRouteImport } from './routes/_app/rules'
+import { Route as AppPullRequestsRouteImport } from './routes/_app/pull-requests'
 import { Route as AppDraftsRouteImport } from './routes/_app/drafts'
 import { Route as AppArchivedRouteImport } from './routes/_app/archived'
+import { Route as AppApiRouteImport } from './routes/_app/api'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AppEmailIdRouteImport } from './routes/_app/email.$id'
 
@@ -64,6 +68,11 @@ const ApiAccountsRoute = ApiAccountsRouteImport.update({
   path: '/api/accounts',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppWebhooksRoute = AppWebhooksRouteImport.update({
+  id: '/webhooks',
+  path: '/webhooks',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppTrashRoute = AppTrashRouteImport.update({
   id: '/trash',
   path: '/trash',
@@ -79,6 +88,16 @@ const AppSentRoute = AppSentRouteImport.update({
   path: '/sent',
   getParentRoute: () => AppRoute,
 } as any)
+const AppRulesRoute = AppRulesRouteImport.update({
+  id: '/rules',
+  path: '/rules',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPullRequestsRoute = AppPullRequestsRouteImport.update({
+  id: '/pull-requests',
+  path: '/pull-requests',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppDraftsRoute = AppDraftsRouteImport.update({
   id: '/drafts',
   path: '/drafts',
@@ -87,6 +106,11 @@ const AppDraftsRoute = AppDraftsRouteImport.update({
 const AppArchivedRoute = AppArchivedRouteImport.update({
   id: '/archived',
   path: '/archived',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppApiRoute = AppApiRouteImport.update({
+  id: '/api',
+  path: '/api',
   getParentRoute: () => AppRoute,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
@@ -103,11 +127,15 @@ const AppEmailIdRoute = AppEmailIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/privacy': typeof PrivacyRoute
+  '/api': typeof AppApiRoute
   '/archived': typeof AppArchivedRoute
   '/drafts': typeof AppDraftsRoute
+  '/pull-requests': typeof AppPullRequestsRoute
+  '/rules': typeof AppRulesRoute
   '/sent': typeof AppSentRoute
   '/spam': typeof AppSpamRoute
   '/trash': typeof AppTrashRoute
+  '/webhooks': typeof AppWebhooksRoute
   '/api/accounts': typeof ApiAccountsRoute
   '/api/emails': typeof ApiEmailsRoute
   '/api/image-proxy': typeof ApiImageProxyRoute
@@ -118,11 +146,15 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
+  '/api': typeof AppApiRoute
   '/archived': typeof AppArchivedRoute
   '/drafts': typeof AppDraftsRoute
+  '/pull-requests': typeof AppPullRequestsRoute
+  '/rules': typeof AppRulesRoute
   '/sent': typeof AppSentRoute
   '/spam': typeof AppSpamRoute
   '/trash': typeof AppTrashRoute
+  '/webhooks': typeof AppWebhooksRoute
   '/api/accounts': typeof ApiAccountsRoute
   '/api/emails': typeof ApiEmailsRoute
   '/api/image-proxy': typeof ApiImageProxyRoute
@@ -136,11 +168,15 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
   '/privacy': typeof PrivacyRoute
+  '/_app/api': typeof AppApiRoute
   '/_app/archived': typeof AppArchivedRoute
   '/_app/drafts': typeof AppDraftsRoute
+  '/_app/pull-requests': typeof AppPullRequestsRoute
+  '/_app/rules': typeof AppRulesRoute
   '/_app/sent': typeof AppSentRoute
   '/_app/spam': typeof AppSpamRoute
   '/_app/trash': typeof AppTrashRoute
+  '/_app/webhooks': typeof AppWebhooksRoute
   '/api/accounts': typeof ApiAccountsRoute
   '/api/emails': typeof ApiEmailsRoute
   '/api/image-proxy': typeof ApiImageProxyRoute
@@ -155,11 +191,15 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/privacy'
+    | '/api'
     | '/archived'
     | '/drafts'
+    | '/pull-requests'
+    | '/rules'
     | '/sent'
     | '/spam'
     | '/trash'
+    | '/webhooks'
     | '/api/accounts'
     | '/api/emails'
     | '/api/image-proxy'
@@ -170,11 +210,15 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/privacy'
+    | '/api'
     | '/archived'
     | '/drafts'
+    | '/pull-requests'
+    | '/rules'
     | '/sent'
     | '/spam'
     | '/trash'
+    | '/webhooks'
     | '/api/accounts'
     | '/api/emails'
     | '/api/image-proxy'
@@ -187,11 +231,15 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_app'
     | '/privacy'
+    | '/_app/api'
     | '/_app/archived'
     | '/_app/drafts'
+    | '/_app/pull-requests'
+    | '/_app/rules'
     | '/_app/sent'
     | '/_app/spam'
     | '/_app/trash'
+    | '/_app/webhooks'
     | '/api/accounts'
     | '/api/emails'
     | '/api/image-proxy'
@@ -271,6 +319,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAccountsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/webhooks': {
+      id: '/_app/webhooks'
+      path: '/webhooks'
+      fullPath: '/webhooks'
+      preLoaderRoute: typeof AppWebhooksRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/trash': {
       id: '/_app/trash'
       path: '/trash'
@@ -292,6 +347,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSentRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/rules': {
+      id: '/_app/rules'
+      path: '/rules'
+      fullPath: '/rules'
+      preLoaderRoute: typeof AppRulesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/pull-requests': {
+      id: '/_app/pull-requests'
+      path: '/pull-requests'
+      fullPath: '/pull-requests'
+      preLoaderRoute: typeof AppPullRequestsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/drafts': {
       id: '/_app/drafts'
       path: '/drafts'
@@ -304,6 +373,13 @@ declare module '@tanstack/react-router' {
       path: '/archived'
       fullPath: '/archived'
       preLoaderRoute: typeof AppArchivedRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/api': {
+      id: '/_app/api'
+      path: '/api'
+      fullPath: '/api'
+      preLoaderRoute: typeof AppApiRouteImport
       parentRoute: typeof AppRoute
     }
     '/api/auth/$': {
@@ -324,21 +400,29 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppRouteChildren {
+  AppApiRoute: typeof AppApiRoute
   AppArchivedRoute: typeof AppArchivedRoute
   AppDraftsRoute: typeof AppDraftsRoute
+  AppPullRequestsRoute: typeof AppPullRequestsRoute
+  AppRulesRoute: typeof AppRulesRoute
   AppSentRoute: typeof AppSentRoute
   AppSpamRoute: typeof AppSpamRoute
   AppTrashRoute: typeof AppTrashRoute
+  AppWebhooksRoute: typeof AppWebhooksRoute
   AppIndexRoute: typeof AppIndexRoute
   AppEmailIdRoute: typeof AppEmailIdRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppApiRoute: AppApiRoute,
   AppArchivedRoute: AppArchivedRoute,
   AppDraftsRoute: AppDraftsRoute,
+  AppPullRequestsRoute: AppPullRequestsRoute,
+  AppRulesRoute: AppRulesRoute,
   AppSentRoute: AppSentRoute,
   AppSpamRoute: AppSpamRoute,
   AppTrashRoute: AppTrashRoute,
+  AppWebhooksRoute: AppWebhooksRoute,
   AppIndexRoute: AppIndexRoute,
   AppEmailIdRoute: AppEmailIdRoute,
 }

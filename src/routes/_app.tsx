@@ -51,6 +51,14 @@ const PATH_FOLDER: Record<string, Folder> = {
   "/trash": "trash",
 };
 
+/** Developer "Soon" pages — rendered in place of the inbox tiles. */
+const DEV_PATHS = new Set([
+  "/pull-requests",
+  "/webhooks",
+  "/rules",
+  "/api",
+]);
+
 function AppShell() {
   useApplyAccent();
   const { devTools, demoMode } = useSettings();
@@ -121,6 +129,13 @@ function AppShell() {
     : (PATH_FOLDER[location.pathname] ?? "inbox");
   const folderSearch = folder === "inbox" ? {} : { folder };
 
+  /* Developer "Soon" pages (Webhooks, Rules, API, PRs) render in place of the
+     inbox tiles. activeDeveloperId maps the path back to the sidebar item id. */
+  const onDevPage = DEV_PATHS.has(location.pathname);
+  const activeDeveloperId = onDevPage
+    ? location.pathname.slice(1).replace(/-/g, "_")
+    : null;
+
   const openEmail = useCallback(
     (accountId: string, emailId: string) =>
       navigate({
@@ -138,6 +153,25 @@ function AppShell() {
   );
   const openFolder = useCallback(
     (next: Folder) => navigate({ to: FOLDER_PATH[next] }),
+    [navigate],
+  );
+  const openDeveloper = useCallback(
+    (id: string) => {
+      switch (id) {
+        case "pull_requests":
+          navigate({ to: "/pull-requests" });
+          break;
+        case "webhooks":
+          navigate({ to: "/webhooks" });
+          break;
+        case "rules":
+          navigate({ to: "/rules" });
+          break;
+        case "api":
+          navigate({ to: "/api" });
+          break;
+      }
+    },
     [navigate],
   );
   const openSettings = useCallback(() => setSettingsOpen(true), []);
@@ -270,6 +304,8 @@ function AppShell() {
         allOn={allOn}
         folder={folder}
         onFolder={openFolder}
+        onDeveloper={openDeveloper}
+        activeDeveloperId={activeDeveloperId}
         onToggleScope={toggle}
         onOpenCommand={() => setCmdOpen(true)}
         onOpenSettings={openSettings}
@@ -279,7 +315,7 @@ function AppShell() {
       />
       <SidebarInset className="min-w-0">
         <div className="h-svh min-h-0 w-full max-w-full overflow-hidden">
-          {allAccounts === null ? (
+          {onDevPage ? null : allAccounts === null ? (
             <LoadingScreen label="Loading accounts" fill />
           ) : (
             <InboxTiles
@@ -292,11 +328,11 @@ function AppShell() {
               onRemovePane={toggle}
             />
           )}
+          {/* Folder + reader routes render null (they drive URL state); the
+              developer "Soon" routes render their page here. */}
+          <Outlet />
         </div>
       </SidebarInset>
-      {/* Folder + reader child routes (/, /sent, /email/$id, …) carry no UI of
-          their own — they drive folder/reader state via the URL. */}
-      <Outlet />
     </>
   );
 }
