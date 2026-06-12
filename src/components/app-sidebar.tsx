@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 import { linkGoogle } from "@/lib/auth-client";
+import { useSettings } from "@/hooks/use-settings";
 import { formatCount } from "@/lib/format";
 import { NavUser } from "@/components/nav-user";
 import { ViewCard, ViewCardSkeleton } from "@/components/view-card";
@@ -43,8 +44,20 @@ const mailbox: { id: Folder; title: string; icon: typeof Inbox }[] = [
 ];
 
 const developer = [
-  { title: "Webhooks", icon: Webhook },
-  { title: "Analytics", icon: BarChart3 },
+  { id: "webhooks", title: "Webhooks", icon: Webhook },
+  { id: "analytics", title: "Analytics", icon: BarChart3 },
+];
+
+/** Nav items the user may hide in Settings → Appearance (Inbox is never
+ *  hideable). Exported so the settings toggles stay in sync with the sidebar. */
+export const HIDEABLE_NAV: { id: string; title: string }[] = [
+  { id: "sent", title: "Sent" },
+  { id: "drafts", title: "Drafts" },
+  { id: "archived", title: "Archived" },
+  { id: "spam", title: "Spam" },
+  { id: "trash", title: "Trash" },
+  { id: "webhooks", title: "Webhooks" },
+  { id: "analytics", title: "Analytics" },
 ];
 
 const groupLabel =
@@ -83,9 +96,18 @@ export function AppSidebar({
   /** Session/accounts still booting — skeleton the account + profile blocks. */
   loading?: boolean;
 }) {
+  const { hiddenNav } = useSettings();
   const scopedUnread = accounts
     .filter((account) => scopeIds.includes(account.accountId))
     .reduce((sum, account) => sum + account.unread, 0);
+
+  // Inbox is never hideable; everything else respects the Appearance toggles.
+  const visibleMailbox = mailbox.filter(
+    (item) => item.id === "inbox" || !hiddenNav.includes(item.id),
+  );
+  const visibleDeveloper = developer.filter(
+    (item) => !hiddenNav.includes(item.id),
+  );
 
   return (
     <Sidebar
@@ -123,7 +145,7 @@ export function AppSidebar({
           <SidebarGroupLabel className={groupLabel}>Mailbox</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="gap-px">
-              {mailbox.map((item) => (
+              {visibleMailbox.map((item) => (
                 <SidebarMenuItem key={item.id}>
                   <SidebarMenuButton
                     isActive={folder === item.id}
@@ -144,26 +166,28 @@ export function AppSidebar({
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup className="p-0">
-          <SidebarGroupLabel className={groupLabel}>
-            Developer
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu className="gap-px">
-              {developer.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton disabled className={soonButton}>
-                    <item.icon />
-                    <span>{item.title}</span>
-                  </SidebarMenuButton>
-                  <SidebarMenuBadge className={soonBadge}>
-                    Soon
-                  </SidebarMenuBadge>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {visibleDeveloper.length > 0 && (
+          <SidebarGroup className="p-0">
+            <SidebarGroupLabel className={groupLabel}>
+              Developer
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu className="gap-px">
+                {visibleDeveloper.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton disabled className={soonButton}>
+                      <item.icon />
+                      <span>{item.title}</span>
+                    </SidebarMenuButton>
+                    <SidebarMenuBadge className={soonBadge}>
+                      Soon
+                    </SidebarMenuBadge>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         <SidebarGroup className="mt-auto p-0 pb-3">
           <SidebarGroupContent>

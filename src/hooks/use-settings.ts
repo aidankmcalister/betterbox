@@ -25,6 +25,11 @@ export type Settings = {
   exportFormat: ExportFormat;
   clock: Clock;
   markRead: MarkRead;
+  /** Show a small sender avatar at the start of every inbox row (off by
+   *  default — the account dot already carries the account color). */
+  inboxAvatars: boolean;
+  /** Sidebar nav item ids the user has hidden (Inbox can never be hidden). */
+  hiddenNav: string[];
   /** Owner-only: surfaces dev affordances (test accounts) across the app. The
    *  role check still gates whether this toggle is even reachable. */
   devTools: boolean;
@@ -44,6 +49,8 @@ const DEFAULT_SETTINGS: Settings = {
   exportFormat: "md",
   clock: "12h",
   markRead: "1s",
+  inboxAvatars: false,
+  hiddenNav: [],
   devTools: false,
   demoMode: false,
 };

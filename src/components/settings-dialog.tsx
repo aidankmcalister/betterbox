@@ -25,6 +25,7 @@ import {
   type AccentId,
 } from "@/hooks/use-settings";
 import { ACCOUNT_COLORS } from "@/components/account-dot";
+import { HIDEABLE_NAV } from "@/components/app-sidebar";
 import { useTheme } from "@/components/theme-provider";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -235,12 +236,124 @@ function AccountsPage({ accounts }: { accounts: Account[] }) {
   );
 }
 
+/** Which preview rows start unread (drives the accent dots in the mockup). */
+const PREVIEW_UNREAD = [true, false, true, false, false];
+
+/** A tiny, non-interactive mockup of the app that reacts live to the appearance
+ *  settings — density, accent, and per-row avatars — so changes are visible
+ *  without leaving Settings. Built from theme tokens, so it tracks light/dark. */
+function InterfacePreview() {
+  const { density, accent, inboxAvatars } = useSettings();
+  const color = ACCENTS[accent].base;
+  const rows = PREVIEW_UNREAD.slice(0, density === "compact" ? 5 : 3);
+
+  const dot = (unread: boolean) => (
+    <span
+      className="size-1.5 shrink-0 rounded-full"
+      style={
+        unread
+          ? { background: color }
+          : { boxShadow: `inset 0 0 0 1.5px ${color}`, opacity: 0.5 }
+      }
+    />
+  );
+  const bar = (unread: boolean, width: number) => (
+    <span
+      className={cn(
+        "h-1.5 shrink-0 rounded",
+        unread ? "bg-foreground/70" : "bg-muted-foreground/40",
+      )}
+      style={{ width }}
+    />
+  );
+
+  return (
+    <div className="pointer-events-none overflow-hidden rounded-xl border bg-card select-none">
+      <div className="flex h-[188px]">
+        {/* Mini sidebar */}
+        <div className="flex w-[92px] shrink-0 flex-col gap-2 border-r bg-sidebar p-2">
+          <div className="flex items-center gap-1.5">
+            <span
+              className="size-3 rounded-[3px]"
+              style={{ background: color }}
+            />
+            <span className="h-1.5 w-9 rounded bg-foreground/30" />
+          </div>
+          <span className="h-4 rounded-[5px]" style={{ background: color }} />
+          <span className="h-3.5 rounded border bg-card" />
+          <div className="mt-1 flex flex-col gap-1.5">
+            <span className="h-1.5 w-12 rounded bg-foreground/40" />
+            <span className="h-1.5 w-10 rounded bg-muted-foreground/40" />
+            <span className="h-1.5 w-11 rounded bg-muted-foreground/40" />
+            <span className="h-1.5 w-8 rounded bg-muted-foreground/40" />
+          </div>
+        </div>
+
+        {/* Mini inbox pane */}
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div className="flex h-6 shrink-0 items-center gap-1.5 border-b px-2">
+            {dot(true)}
+            <span className="h-1.5 w-16 rounded bg-foreground/40" />
+            <span
+              className="ml-auto h-1.5 w-6 rounded"
+              style={{ background: color, opacity: 0.75 }}
+            />
+          </div>
+          <div className="flex min-w-0 flex-1 flex-col">
+            {rows.map((unread, i) =>
+              density === "compact" ? (
+                <div
+                  key={i}
+                  className="flex h-[22px] items-center gap-1.5 border-b border-border/60 px-2"
+                >
+                  {dot(unread)}
+                  {inboxAvatars && (
+                    <span className="size-3 shrink-0 rounded-full border border-border bg-muted" />
+                  )}
+                  {bar(unread, 44)}
+                  <span className="ml-auto h-1.5 w-4 rounded bg-muted-foreground/30" />
+                </div>
+              ) : (
+                <div
+                  key={i}
+                  className="flex gap-1.5 border-b border-border/60 px-2 py-1.5"
+                >
+                  <span className="pt-0.5">{dot(unread)}</span>
+                  {inboxAvatars && (
+                    <span className="size-4 shrink-0 rounded-full border border-border bg-muted" />
+                  )}
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <div className="flex items-center gap-2">
+                      {bar(unread, 52)}
+                      <span className="ml-auto h-1.5 w-5 rounded bg-muted-foreground/30" />
+                    </div>
+                    <span className="h-1.5 w-3/4 rounded bg-muted-foreground/25" />
+                  </div>
+                </div>
+              ),
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AppearancePage() {
   const settings = useSettings();
   const { theme, setTheme } = useTheme();
 
+  const toggleNav = (id: string, show: boolean) =>
+    updateSettings({
+      hiddenNav: show
+        ? settings.hiddenNav.filter((item) => item !== id)
+        : [...settings.hiddenNav, id],
+    });
+
   return (
     <Page title="Appearance" description="Choose how BetterBox looks">
+      <InterfacePreview />
+
       <PageSection title="Theme">
         <SettingRow
           label="Theme"
@@ -303,19 +416,11 @@ function AppearancePage() {
           />
         </SettingRow>
       </PageSection>
-    </Page>
-  );
-}
 
-function InboxPage() {
-  const settings = useSettings();
-
-  return (
-    <Page title="Inbox" description="Density, layout, and reading behavior">
-      <PageSection title="Rows">
+      <PageSection title="Inbox rows">
         <SettingRow
           label="Density"
-          description="Dense fits more rows per screen; comfortable adds the snippet line"
+          description="Dense fits more rows per screen; comfortable adds a snippet line"
         >
           <SegmentedButtons
             options={[
@@ -326,6 +431,42 @@ function InboxPage() {
             onChange={(density) => updateSettings({ density })}
           />
         </SettingRow>
+        <SettingRow
+          label="Profile icons"
+          description="Show each sender's avatar on every inbox row"
+        >
+          <Switch
+            checked={settings.inboxAvatars}
+            onCheckedChange={(inboxAvatars) => updateSettings({ inboxAvatars })}
+          />
+        </SettingRow>
+      </PageSection>
+
+      <PageSection title="Sidebar">
+        <p className="-mt-2 text-xs text-muted-foreground">
+          Choose which items appear in the sidebar. Inbox always stays.
+        </p>
+        <div className="flex flex-col gap-3.5">
+          {HIDEABLE_NAV.map((item) => (
+            <SettingRow key={item.id} label={item.title}>
+              <Switch
+                checked={!settings.hiddenNav.includes(item.id)}
+                onCheckedChange={(show) => toggleNav(item.id, show)}
+              />
+            </SettingRow>
+          ))}
+        </div>
+      </PageSection>
+    </Page>
+  );
+}
+
+function InboxPage() {
+  const settings = useSettings();
+
+  return (
+    <Page title="Inbox" description="Density, layout, and reading behavior">
+      <PageSection title="Rows">
         <SettingRow label="Show snippets">
           <Switch
             checked={settings.showSnippets}

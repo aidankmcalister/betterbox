@@ -1,4 +1,5 @@
-import { AccountDot } from "@/components/account-dot";
+import { AccountDot, useAccountColor } from "@/components/account-dot";
+import { SenderAvatar } from "@/components/sender-avatar";
 import { useSettings } from "@/hooks/use-settings";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +19,11 @@ function senderName(from: string): string {
   const match = from.match(/^\s*"?([^"<]*)"?\s*</);
   const name = match?.[1]?.trim();
   return name || from.replace(/[<>]/g, "").trim();
+}
+
+/** "Jane Doe <jane@x.com>" → "jane@x.com"; bare addresses pass through. */
+function senderAddress(from: string): string {
+  return from.match(/<([^>]+)>/)?.[1]?.trim() || from.trim();
 }
 
 /** Short mono time column: today → 2:05 PM, this year → Jun 5, else Dec 2024. */
@@ -53,9 +59,22 @@ export function ThreadRow({
   accountId?: string;
   onClick?: () => void;
 }) {
-  const { snippetFont, showSnippets, clock } = useSettings();
+  const { snippetFont, showSnippets, clock, inboxAvatars } = useSettings();
+  const accountColor = useAccountColor(dotIndex, accountId);
   const unread = email.unread ?? false;
   const subject = email.subject || "(no subject)";
+
+  /** Optional per-row sender avatar (Settings → Appearance). The account dot
+   *  stays as the account-color signal; this rides alongside it. */
+  const avatar = (size: string) =>
+    inboxAvatars ? (
+      <SenderAvatar
+        name={senderName(email.from)}
+        address={senderAddress(email.from)}
+        color={accountColor}
+        className={cn("shrink-0", size)}
+      />
+    ) : null;
   // The selected accent is an inset box-shadow, not a left border — a real
   // border-left miters against border-b and leaves a diagonal notch at the
   // bottom-left corner of every row.
@@ -110,6 +129,7 @@ export function ThreadRow({
         className={cn(rowClass, "flex h-[34px] items-center gap-[9px] px-3.5")}
       >
         <AccountDot colorIndex={dotIndex} accountId={accountId} unread={unread} />
+        {avatar("size-[18px]")}
         <span className="flex w-28 shrink-0 text-[12.5px]">{sender}</span>
         {subjectSnippet}
         <span className="min-w-[54px] shrink-0 text-right">{time}</span>
@@ -124,9 +144,16 @@ export function ThreadRow({
       onClick={onClick}
       className={cn(rowClass, "flex gap-2.5 px-3.5 py-[7px]")}
     >
-      <span className="pt-[5px]">
-        <AccountDot colorIndex={dotIndex} accountId={accountId} unread={unread} />
-      </span>
+      {inboxAvatars ? (
+        <span className="flex items-center gap-2 pt-[3px]">
+          <AccountDot colorIndex={dotIndex} accountId={accountId} unread={unread} />
+          {avatar("size-7")}
+        </span>
+      ) : (
+        <span className="pt-[5px]">
+          <AccountDot colorIndex={dotIndex} accountId={accountId} unread={unread} />
+        </span>
+      )}
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="flex items-baseline gap-2 text-[13px]">
           <span className="min-w-0 flex-1 truncate text-left">{sender}</span>
