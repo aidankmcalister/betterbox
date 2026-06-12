@@ -25,12 +25,7 @@ import {
   SEARCH_INBOX_EVENT,
   type SearchInboxDetail,
 } from "@/lib/layout-tree";
-import {
-  ACCENTS,
-  updateSettings,
-  useSettings,
-  type AccentId,
-} from "@/hooks/use-settings";
+import { updateSettings, useSettings } from "@/hooks/use-settings";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/components/theme-provider";
 import {
@@ -195,17 +190,6 @@ export function CommandMenu({
           icon: <AlignLeft />,
           action: () => updateSettings({ showSnippets: !settings.showSnippets }),
         },
-        ...(Object.keys(ACCENTS) as AccentId[]).map((id) => ({
-          label: `Accent · ${ACCENTS[id].label}`,
-          icon: (
-            <span
-              className="size-3.5 shrink-0 rounded-full"
-              style={{ background: ACCENTS[id].base }}
-            />
-          ),
-          action: () => updateSettings({ accent: id }),
-          ...current(settings.accent === id),
-        })),
       ],
     },
     {
