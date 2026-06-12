@@ -2,82 +2,112 @@
 
 A web-based Gmail client for developers — a faster, denser UI on top of the Gmail API. It is **not** a new email service; it reads and acts on existing Gmail accounts. Lives at [betterbox.dev](https://betterbox.dev).
 
-> Status: major checkpoint. Multi-account reading, HTML message rendering, full-text search, compose/send, a full reading pane (raw MIME + export), and a privacy policy for Google verification all work. True reply threading, thread grouping, mobile, and billing are still ahead.
+> Status: major checkpoint. Multi-account tiling inbox, all standard folders, HTML message rendering, threaded reading with inline reply, full-text search, compose/send, tags (Gmail labels), a rule builder, OAuth tokens encrypted at rest, and a privacy policy for Google verification all work. The rule **background runner**, forwarding, attachments, and mobile are still ahead.
 
 ## What it does today
 
-- **Sign in with Google** (OAuth via Better Auth).
+- **Sign in with Google** (OAuth via Better Auth). Refresh tokens are
+  **encrypted at rest** in Postgres (XChaCha20-Poly1305).
 - **Multiple Gmail accounts** linked to one user; every inbox usable at once.
 - **Tiling inbox:** each account is a pane you arrange like a tiling window
   manager — drag headers to swap/split, drag seams to resize, and the layout
   persists.
-- **Dense thread list:** unread weighting, snippets, account-colored dots, the
-  50 most recent messages per account, and load-more pagination.
-- **Reading pane:** a movable pane with a slim title strip and a floating action
-  bar. Renders HTML email bodies in a **sanitized, sandboxed iframe** (DOMPurify,
-  no scripts), with remote images **proxied through the app** so tracker blockers
-  don't break them and the sender's pixels never see your IP. Falls back to
-  plain text, and offers a **raw MIME source view** (syntax-highlighted).
-- **Export:** any message to Markdown / JSON / plain text, plus copy message-ID.
-- **⌘K command palette** that also runs **Gmail full-text search** across the
-  accounts on screen — select a hit to open it in the reader.
+- **All the folders:** Inbox, Labeled, Sent, Drafts, Archived, Spam, Trash.
+- **Dense thread list:** unread weighting, snippets, account-colored dots, and
+  lazy infinite scroll (no "load more" button).
+- **Reading pane:** a movable pane that renders the **whole conversation**
+  (thread grouping) with an **inline reply** — shared across panes or split
+  per-account (a Settings toggle). HTML bodies render in a **sanitized,
+  sandboxed iframe** (DOMPurify, no scripts), with remote images **proxied
+  through the app** so tracker blockers don't break them and the sender's pixels
+  never see your IP. Falls back to plain text, and offers a **raw MIME source
+  view** (syntax-highlighted).
+- **Tags = Gmail labels:** create, apply, rename, recolor, and delete tags on a
+  message. Nothing about a tag is stored by BetterBox — it's a Gmail user label
+  (`gmail.modify`). The **Labeled** folder groups mail into per-tag accordions.
+- **Rules (builder):** set a condition (`from`/`to`/`subject`/`has attachment`)
+  and actions (apply label, archive, star, mark read, trash, forward) per
+  account or across all. Rules are saved to the DB and a **read-only preview**
+  shows what each would catch. The engine runs entirely on the `gmail.modify`
+  scope we already hold — no Gmail filter API. *(The background runner that
+  fires rules on every new message is the next step; see Roadmap.)*
+- **Search:** per-pane Gmail full-text search from the pane header (scoped to the
+  current folder), plus **⌘K** to fire a search across the accounts on screen.
 - **Compose & send:** docked composer with an account-aware From selector.
-  (Reply prefills the recipient and subject — see *Known limitations*.)
-- **Mark all as read** (Gmail `batchModify`) from the palette.
-- **Keyboard:** `G I` to inbox, `⌥1–9` to switch account, and in the reader
-  `Esc` to close, `⌥R` for raw, `R` to reply.
-- **Settings:** theme, accent color, per-account colors, row density, snippets,
-  technical metadata, and a link to the privacy policy.
+  **Reply is a real threaded reply** (`In-Reply-To` / `References` + Gmail
+  `threadId`).
+- **Star, archive, trash** (`messages.modify` / `messages.trash`) and **mark all
+  as read** (`batchModify`).
+- **Export:** any message to Markdown / JSON / plain text, plus copy message-ID.
+- **Keyboard:** `⌘K` palette, `G I` to inbox, `⌥1–9` to switch account, and in
+  the reader `Esc` to close, `⌥R` for raw, `R` to reply.
+- **Settings:** theme, accent, per-account colors, row density, snippets, clock
+  (12/24h), profile icons, shared vs. split reading pane, and which sidebar
+  items show. Most are also single-action toggles in ⌘K.
+- **Owner tools:** an `OWNER` role unlocks test accounts and a **demo mode**
+  (swaps to generated mail so nothing private shows while recording). Gated on
+  role + opt-in — invisible to everyone else.
 - **Privacy policy** at `/privacy`, written to match the real data practices
-  (Google sign-in, `gmail.modify` scope, tokens in Postgres, no server-side
-  email storage, no analytics) with the Google API Services **Limited Use**
+  (Google sign-in, `gmail.modify` scope, encrypted tokens, **no server-side
+  email storage**, no analytics) with the Google API Services **Limited Use**
   affirmation required for restricted-scope verification.
 - **Client-side caching** via TanStack Query — panes repaint instantly on
   rearrange instead of refetching.
 
+## Privacy model
+
+Mail is fetched live from Gmail and held only in the browser cache — never
+persisted. The database holds the four Better Auth tables (`User`, `Session`,
+`Account`, `Verification`) plus a `role` and a `Rule` table. **Rules store
+automation config (a condition + actions), not message content** — that's the
+one deliberate, user-facing persistence decision, and it's what lets the engine
+run server-side. OAuth tokens in the `Account` table are encrypted at rest.
+
 ## Known limitations
 
-- **Reply isn't a real reply yet.** It opens the composer prefilled with the
-  sender and a `Re:` subject, but sends a brand-new message rather than a
-  threaded one — there's no `In-Reply-To` / `References` header, so Gmail shows
-  it as a separate conversation. Proper threading is the next item on the
-  roadmap.
-- Email contents are fetched live from Gmail and held only in the browser —
-  nothing is stored or synced server-side. No thread grouping, no incremental
-  sync, no offline.
+- **Rules don't auto-run yet.** You can author, save, enable, and preview them,
+  but the background runner (History API poll / `users.watch` + Pub/Sub) that
+  executes them on every new message is the next step.
+- **Forward** is selectable as a rule action but isn't wired to send yet.
+- **No mobile / responsive layout** — the tiling pane UI is desktop-only.
+- Mail is fetched live and held only in the browser. No incremental sync, no
+  offline.
 
 ## Roadmap
 
 Done:
 
 - [x] Reading pane (movable, title strip + floating action bar)
+- [x] Thread grouping (`threads.get`) + inline reply in the reader
 - [x] HTML email rendering (sanitized, sandboxed iframe) + same-origin image proxy
 - [x] Raw MIME source view (`format=raw`, syntax-highlighted)
-- [x] Pagination / load-more (lift the 50-message cap)
-- [x] Search (Gmail full-text via ⌘K, across on-screen accounts)
+- [x] Lazy infinite scroll (lift the 50-message cap)
+- [x] Search (per-pane Gmail full-text, folder-scoped, + ⌘K)
 - [x] Export (Markdown / JSON / plain text + copy message-ID)
 - [x] Compose & send (docked composer, account-aware From)
+- [x] Reply threading (`In-Reply-To` / `References` + Gmail `threadId`)
+- [x] Star, archive, trash (`messages.modify` / `messages.trash`)
 - [x] Mark as read (`batchModify`)
+- [x] All folders (Sent / Drafts / Archived / Spam / Trash / Labeled)
+- [x] Tags = Gmail labels (create / apply / rename / recolor / delete) + Labeled folder
+- [x] Rules builder + engine (own `gmail.modify` engine, dry-run preview)
+- [x] OAuth tokens encrypted at rest
 - [x] Local caching / data layer (TanStack Query)
 - [x] Keyboard shortcuts + command palette
 - [x] Error / empty / loading states
 - [x] Privacy policy + Google OAuth verification prep
-- [x] Reply threading (`In-Reply-To` / `References` + Gmail `threadId`)
-- [x] Star, archive, trash (`messages.modify` / `messages.trash`)
 
 Next — **mail features:**
 
-- [ ] Forward
-- [ ] Thread grouping (`threads.get`) + inline reply in the reader (Gmail-style conversation)
+- [ ] Forward (`messages.send`)
 - [ ] Right-click context menu on rows (mark read, reply, trash, hide, copy message-ID, …)
-- [ ] Labels
 - [ ] Attachments (view + download)
-- [ ] URL-addressable state (`/email/:id`, `/settings`, …)
 - [ ] Mobile / responsive layout (the tiling pane UI is desktop-only today)
 
-Next — **sync & reliability:**
+Next — **rules & sync:**
 
-- [ ] Incremental sync (History API) and push (`users.watch` + Pub/Sub)
+- [ ] Rule background runner (History API poll / `users.watch` + Pub/Sub) so rules fire on new mail
+- [ ] Webhook action + apply-rule-to-existing-mail (shares the runner)
 - [ ] Gmail API quota tracking + backoff (our calls to Google)
 
 Next — **business:** (i dont want to go broke)
@@ -91,9 +121,10 @@ Next — **business:** (i dont want to go broke)
 - **Framework:** TanStack Start (React 19, SSR, file-based routing)
 - **Language:** TypeScript
 - **Styling:** Tailwind CSS v4 + shadcn/ui (`base-nova` style, built on `@base-ui/react` — not Radix)
-- **Auth:** Better Auth (Google OAuth, multi-account linking)
+- **Auth:** Better Auth (Google OAuth, multi-account linking, encrypted tokens)
 - **Database:** PostgreSQL via Prisma 7 (`@prisma/adapter-pg`)
 - **Email rendering:** DOMPurify sanitization inside a sandboxed iframe, with a same-origin image proxy
+- **Testing:** Bun's built-in test runner (`bun test`)
 - **Build / deploy:** Nitro (Vercel preset) via the Vite plugin
 - **Runtime / package manager:** Bun
 
@@ -110,6 +141,7 @@ Next — **business:** (i dont want to go broke)
    ```dotenv
    DATABASE_URL=postgresql://...
    BETTER_AUTH_URL=http://localhost:3000
+   BETTER_AUTH_SECRET=...   # also the OAuth-token encryption key
    GOOGLE_CLIENT_ID=...
    GOOGLE_CLIENT_SECRET=...
    ```
@@ -124,25 +156,39 @@ Next — **business:** (i dont want to go broke)
    bun run dev
    ```
 
+4. (Optional) Make yourself an owner to unlock test accounts + demo mode:
+
+   ```bash
+   bun run set-owner you@example.com
+   ```
+
 ## Scripts
 
 - `bun run dev` — start the dev server (port 3000)
 - `bun run build` — build for production
 - `bun run preview` — preview the production build
 - `bun run typecheck` — run TypeScript checks
+- `bun test` — run the test suite
 - `bun run db:generate` — regenerate the Prisma client
 - `bun run db:push` — push schema changes without a migration
 - `bun run db:migrate` — create and apply a migration
+- `bun run db:studio` — open Prisma Studio
+- `bun run set-owner <email>` — grant the `OWNER` role
+- `bun run encrypt-tokens` — backfill encryption over existing OAuth tokens
 
 ## Project layout
 
 - `src/routes/` — pages and API routes
-  - `index.tsx` (signed-out home + app), `privacy.tsx` (privacy policy)
+  - `_app.tsx` (app shell), `_app/` (folder pages, `email.$id`, developer pages),
+    `index.tsx` (signed-out home), `privacy.tsx`
   - `api/` — `auth`, `accounts`, `emails` (list/search/mark-read), `message`
-    (full + raw), `send`, `image-proxy`
+    (full + raw), `send`, `labels`, `rules`, `image-proxy`
 - `src/lib/auth.ts`, `src/lib/auth-client.ts` — Better Auth config
 - `src/lib/gmail/` — Gmail API calls and per-account token resolution
 - `src/lib/mail-queries.ts` — TanStack Query layer over the mail API
-- `src/components/` — inbox tiles, reader, composer, command menu, settings
+- `src/lib/rules.ts` — pure rule engine (matching + descriptions)
+- `src/components/` — inbox tiles, reader, composer, command menu, settings,
+  tag picker, labeled view, tile board
 - `src/components/ui/` — shadcn components
-- `prisma/schema.prisma` — `User`, `Session`, `Account`, `Verification`
+- `scripts/` — `set-owner`, `encrypt-oauth-tokens`
+- `prisma/schema.prisma` — `User` (+ `Role`), `Session`, `Account`, `Verification`, `Rule`
