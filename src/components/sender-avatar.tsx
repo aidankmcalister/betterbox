@@ -10,16 +10,12 @@ const initials = (name: string) =>
     .join("")
     .toUpperCase();
 
-const proxied = (url: string) =>
-  `/api/image-proxy?url=${encodeURIComponent(url)}`;
-
 /**
- * Sender avatar derived from the email, the way Gmail does it: try unavatar
- * (which resolves a Gravatar photo, then the brand's logo/favicon), then fall
- * back to the domain favicon, then to colored initials. Everything is proxied
- * through /api/image-proxy so tracker blockers don't drop it and the lookup
- * stays off the user's IP. `?fallback=false` makes unavatar 404 (not return a
- * mystery-person) when it finds nothing, so we land on our own initials.
+ * Sender avatar derived from the email: the sender domain's favicon, then
+ * colored initials. We load the favicon DIRECTLY in the browser first — it's
+ * fast, reliable, and renders even when the server-side image proxy can't reach
+ * the upstream (VPN/dev fetch, rate limits). The proxied copy is only a fallback
+ * for when a tracker blocker kills the direct request.
  */
 export function SenderAvatar({
   name,
@@ -32,18 +28,17 @@ export function SenderAvatar({
   color: string;
   className?: string;
 }) {
-  const lookup = address.trim().toLowerCase();
-  const domain = lookup.split("@")[1];
-  const sources = [
-    lookup && `https://unavatar.io/${encodeURIComponent(lookup)}?fallback=false`,
-    domain && `https://www.google.com/s2/favicons?domain=${domain}&sz=128`,
-  ]
-    .filter((url): url is string => Boolean(url))
-    .map(proxied);
+  const domain = address.trim().toLowerCase().split("@")[1];
+  const favicon = domain
+    ? `https://www.google.com/s2/favicons?domain=${domain}&sz=128`
+    : null;
+  const sources = favicon
+    ? [favicon, `/api/image-proxy?url=${encodeURIComponent(favicon)}`]
+    : [];
 
   // Walk the sources on error; once we run out, render initials.
   const [index, setIndex] = useState(0);
-  useEffect(() => setIndex(0), [lookup]);
+  useEffect(() => setIndex(0), [domain]);
   const src = sources[index];
 
   if (src) {
@@ -53,6 +48,7 @@ export function SenderAvatar({
         src={src}
         alt=""
         loading="lazy"
+        referrerPolicy="no-referrer"
         onError={() => setIndex((current) => current + 1)}
         className={cn(
           "size-9 shrink-0 rounded-full border border-input bg-muted object-cover",
