@@ -103,15 +103,16 @@ function AppShell() {
     [allAccounts, scopeIds],
   );
 
-  /* Reader + settings are URL state. /email/$id?account=… opens the reader;
-     /settings opens the settings dialog over the shell. */
+  /* The reader is URL state (/email/$id?account=… — deep-linkable, docks as a
+     pane). Settings is just a local overlay: routing it would change the path,
+     reset the folder to inbox, and close the reader, so it stays off the URL. */
   const emailMatch = matchRoute({ to: "/email/$id" });
   const search = location.search as { account?: string; folder?: string };
   const reading: Reading | null =
     emailMatch && search.account
       ? { accountId: search.account, emailId: emailMatch.id }
       : null;
-  const settingsOpen = Boolean(matchRoute({ to: "/settings" }));
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   /* Folders are real paths (/trash, /sent, …). When the reader is open it
      carries the folder in its search so the panes behind keep their folder. */
@@ -139,10 +140,7 @@ function AppShell() {
     (next: Folder) => navigate({ to: FOLDER_PATH[next] }),
     [navigate],
   );
-  const openSettings = useCallback(
-    () => navigate({ to: "/settings" }),
-    [navigate],
-  );
+  const openSettings = useCallback(() => setSettingsOpen(true), []);
 
   const [composeOpen, setComposeOpen] = useState(false);
   const openCompose = useCallback(() => setComposeOpen(true), []);
@@ -258,9 +256,7 @@ function AppShell() {
       />
       <SettingsDialog
         open={settingsOpen}
-        onOpenChange={(next) => {
-          if (!next) closeReader();
-        }}
+        onOpenChange={setSettingsOpen}
         accounts={allAccounts ?? []}
       />
       <Composer
@@ -298,8 +294,8 @@ function AppShell() {
           )}
         </div>
       </SidebarInset>
-      {/* Child routes (/, /email/$id, /settings) carry no UI of their own —
-          they drive reader/settings open-state via the URL. */}
+      {/* Folder + reader child routes (/, /sent, /email/$id, …) carry no UI of
+          their own — they drive folder/reader state via the URL. */}
       <Outlet />
     </>
   );

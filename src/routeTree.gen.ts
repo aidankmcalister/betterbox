@@ -19,7 +19,6 @@ import { Route as ApiEmailsRouteImport } from './routes/api/emails'
 import { Route as ApiAccountsRouteImport } from './routes/api/accounts'
 import { Route as AppTrashRouteImport } from './routes/_app/trash'
 import { Route as AppSpamRouteImport } from './routes/_app/spam'
-import { Route as AppSettingsRouteImport } from './routes/_app/settings'
 import { Route as AppSentRouteImport } from './routes/_app/sent'
 import { Route as AppDraftsRouteImport } from './routes/_app/drafts'
 import { Route as AppArchivedRouteImport } from './routes/_app/archived'
@@ -75,11 +74,6 @@ const AppSpamRoute = AppSpamRouteImport.update({
   path: '/spam',
   getParentRoute: () => AppRoute,
 } as any)
-const AppSettingsRoute = AppSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppSentRoute = AppSentRouteImport.update({
   id: '/sent',
   path: '/sent',
@@ -112,7 +106,6 @@ export interface FileRoutesByFullPath {
   '/archived': typeof AppArchivedRoute
   '/drafts': typeof AppDraftsRoute
   '/sent': typeof AppSentRoute
-  '/settings': typeof AppSettingsRoute
   '/spam': typeof AppSpamRoute
   '/trash': typeof AppTrashRoute
   '/api/accounts': typeof ApiAccountsRoute
@@ -128,7 +121,6 @@ export interface FileRoutesByTo {
   '/archived': typeof AppArchivedRoute
   '/drafts': typeof AppDraftsRoute
   '/sent': typeof AppSentRoute
-  '/settings': typeof AppSettingsRoute
   '/spam': typeof AppSpamRoute
   '/trash': typeof AppTrashRoute
   '/api/accounts': typeof ApiAccountsRoute
@@ -147,7 +139,6 @@ export interface FileRoutesById {
   '/_app/archived': typeof AppArchivedRoute
   '/_app/drafts': typeof AppDraftsRoute
   '/_app/sent': typeof AppSentRoute
-  '/_app/settings': typeof AppSettingsRoute
   '/_app/spam': typeof AppSpamRoute
   '/_app/trash': typeof AppTrashRoute
   '/api/accounts': typeof ApiAccountsRoute
@@ -167,7 +158,6 @@ export interface FileRouteTypes {
     | '/archived'
     | '/drafts'
     | '/sent'
-    | '/settings'
     | '/spam'
     | '/trash'
     | '/api/accounts'
@@ -183,7 +173,6 @@ export interface FileRouteTypes {
     | '/archived'
     | '/drafts'
     | '/sent'
-    | '/settings'
     | '/spam'
     | '/trash'
     | '/api/accounts'
@@ -201,7 +190,6 @@ export interface FileRouteTypes {
     | '/_app/archived'
     | '/_app/drafts'
     | '/_app/sent'
-    | '/_app/settings'
     | '/_app/spam'
     | '/_app/trash'
     | '/api/accounts'
@@ -297,13 +285,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSpamRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/settings': {
-      id: '/_app/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof AppSettingsRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/sent': {
       id: '/_app/sent'
       path: '/sent'
@@ -346,7 +327,6 @@ interface AppRouteChildren {
   AppArchivedRoute: typeof AppArchivedRoute
   AppDraftsRoute: typeof AppDraftsRoute
   AppSentRoute: typeof AppSentRoute
-  AppSettingsRoute: typeof AppSettingsRoute
   AppSpamRoute: typeof AppSpamRoute
   AppTrashRoute: typeof AppTrashRoute
   AppIndexRoute: typeof AppIndexRoute
@@ -357,7 +337,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppArchivedRoute: AppArchivedRoute,
   AppDraftsRoute: AppDraftsRoute,
   AppSentRoute: AppSentRoute,
-  AppSettingsRoute: AppSettingsRoute,
   AppSpamRoute: AppSpamRoute,
   AppTrashRoute: AppTrashRoute,
   AppIndexRoute: AppIndexRoute,
