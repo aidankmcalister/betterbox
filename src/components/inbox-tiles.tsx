@@ -6,12 +6,10 @@ import {
   useRef,
   useState,
 } from "react";
-import { createPortal } from "react-dom";
 import {
   ArchiveIcon,
   BadgeCheckIcon,
   BracesIcon,
-  ChevronLeftIcon,
   CheckIcon,
   ChevronUpIcon,
   ClipboardIcon,
@@ -22,14 +20,12 @@ import {
   GripVerticalIcon,
   HashIcon,
   MailOpenIcon,
-  PencilIcon,
   RefreshCwIcon,
   ReplyAllIcon,
   SearchIcon,
   ReplyIcon,
   SendIcon,
   StarIcon,
-  TagIcon,
   Trash2Icon,
   XIcon,
 } from "lucide-react";
@@ -55,26 +51,20 @@ import { useIsFetching, useQueryClient } from "@tanstack/react-query";
 import {
   accountsQueryKey,
   actOnEmail,
-  createLabel,
-  deleteLabel,
   emailsQueryKey,
   flattenEmails,
-  labelsQueryKey,
   markEmailsRead,
-  renameLabel,
   sendNewEmail,
-  setEmailLabel,
   useEmailsQuery,
   useFullEmailQuery,
-  useLabelsQuery,
   useRawEmailQuery,
   useThreadQuery,
   type EmailsData,
   type FullEmail,
-  type Label,
   type MessageAction,
 } from "@/lib/mail-queries";
-import { MARK_READ_MS, setTagColor, useSettings } from "@/hooks/use-settings";
+import { MARK_READ_MS, useSettings } from "@/hooks/use-settings";
+import { AppliedTags, TagPicker, useTagActions } from "@/components/tag-picker";
 import type { Folder } from "@/lib/folders";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -101,48 +91,6 @@ import {
 const STORAGE_KEY = "bm.tiles-layout";
 /** Below this pane width the header shows the short handle, not the email. */
 const FULL_EMAIL_MIN_WIDTH = 330;
-
-/** Tag color palette. A tag's color is the user's override (Settings, by label
- *  id) or a stable default derived from the name. No mail data is stored. */
-const TAG_COLORS = [
-  "--color-label-blue",
-  "--color-label-green",
-  "--color-label-purple",
-  "--color-label-red",
-  "--color-label-yellow",
-  "--color-label-orange",
-];
-const tagColorIndex = (label: Label, overrides: Record<string, number>) =>
-  overrides[label.id] ??
-  [...label.name].reduce((total, ch) => total + ch.charCodeAt(0), 0) %
-    TAG_COLORS.length;
-const tagColorVar = (index: number) => `var(${TAG_COLORS[index % TAG_COLORS.length]})`;
-
-/** A tag pill. `onRemove` adds an × (reader); omit it for read-only row chips. */
-function TagChip({ label, onRemove }: { label: Label; onRemove?: () => void }) {
-  const { tagColors } = useSettings();
-  const color = tagColorVar(tagColorIndex(label, tagColors));
-  return (
-    <span
-      className="inline-flex items-center gap-1 rounded-full py-0.5 pr-1.5 pl-2 text-[11px] font-medium"
-      style={{
-        background: `color-mix(in srgb, ${color} 16%, var(--background))`,
-        color,
-      }}
-    >
-      <span className="truncate">{label.name}</span>
-      {onRemove && (
-        <button
-          type="button"
-          onClick={onRemove}
-          className="inline-flex size-3.5 shrink-0 items-center justify-center rounded-full hover:bg-foreground/10"
-        >
-          <XIcon className="size-2.5" />
-        </button>
-      )}
-    </span>
-  );
-}
 
 /** The open message — URL-driven in shared mode (/email/$id?account=…), or
  *  board-local state in split mode. */
@@ -479,7 +427,7 @@ function ReaderPane({
 }) {
   const { accounts, folder } = useTiles();
   const beginHeaderDrag = useTileDrag();
-  const { showTechnicalMetadata, clock, markRead, tagColors } = useSettings();
+  const { showTechnicalMetadata, clock, markRead } = useSettings();
   const queryClient = useQueryClient();
   const [raw, setRaw] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -498,154 +446,7 @@ function ReaderPane({
   const accountColor = useAccountColor(Math.max(dotIndex, 0), accountId);
   const sender = email ? parseAddress(email.from) : null;
 
-  // ── Tags (Gmail labels) ──────────────────────────────────────────────────
-  const labels = useLabelsQuery(accountId).data ?? [];
-  const appliedIds = email?.labelIds ?? [];
-  const appliedTags = labels.filter((label) => appliedIds.includes(label.id));
-  const [tagPickerOpen, setTagPickerOpen] = useState(false);
-  const [newTag, setNewTag] = useState("");
-  /* The picker is portalled to <body> (fixed-positioned off the button) so the
-     tile panes' stacking/overflow can't clip it or render over it. */
-  const tagButtonRef = useRef<HTMLButtonElement>(null);
-  const tagPickerRef = useRef<HTMLDivElement>(null);
-  const [pickerPos, setPickerPos] = useState<{ top: number; right: number }>();
-  const openTagPicker = () => {
-    const rect = tagButtonRef.current?.getBoundingClientRect();
-    if (rect) {
-      setPickerPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
-    }
-    setTagPickerOpen(true);
-  };
-
-  useEffect(() => {
-    if (!tagPickerOpen) return;
-    const onDown = (event: PointerEvent) => {
-      const target = event.target as Node;
-      if (tagButtonRef.current?.contains(target)) return;
-      if (tagPickerRef.current?.contains(target)) return;
-      setTagPickerOpen(false);
-    };
-    document.addEventListener("pointerdown", onDown);
-    return () => document.removeEventListener("pointerdown", onDown);
-  }, [tagPickerOpen]);
-
-  /* Optimistically patch the reader + every cached row list for this account. */
-  const patchLabels = useCallback(
-    (messageId: string, labelId: string, on: boolean) => {
-      const upd = (ids: string[] = []) =>
-        on ? Array.from(new Set([...ids, labelId])) : ids.filter((id) => id !== labelId);
-      queryClient.setQueryData<FullEmail>(["email", accountId, messageId], (e) =>
-        e ? { ...e, labelIds: upd(e.labelIds) } : e,
-      );
-      const patch = (data?: EmailsData) =>
-        data && {
-          ...data,
-          pages: data.pages.map((page) => ({
-            ...page,
-            emails: page.emails.map((e) =>
-              e.id === messageId ? { ...e, labelIds: upd(e.labelIds) } : e,
-            ),
-          })),
-        };
-      queryClient.setQueriesData<EmailsData>({ queryKey: ["emails", accountId] }, patch);
-      queryClient.setQueriesData<EmailsData>(
-        { queryKey: ["emails-search", accountId] },
-        patch,
-      );
-    },
-    [accountId, queryClient],
-  );
-
-  const toggleTag = useCallback(
-    async (label: Label) => {
-      if (!email) return;
-      const on = !(email.labelIds ?? []).includes(label.id);
-      patchLabels(email.id, label.id, on);
-      try {
-        await setEmailLabel(accountId, email.id, label.id, on);
-      } catch {
-        patchLabels(email.id, label.id, !on); // revert
-      }
-    },
-    [accountId, email, patchLabels],
-  );
-
-  const createTag = useCallback(async () => {
-    const name = newTag.trim();
-    if (!email || !name) return;
-    setNewTag("");
-    const label = await createLabel(accountId, name);
-    queryClient.setQueryData<Label[]>(labelsQueryKey(accountId), (current) =>
-      (current ?? []).some((l) => l.id === label.id)
-        ? current
-        : [...(current ?? []), label],
-    );
-    patchLabels(email.id, label.id, true);
-    try {
-      await setEmailLabel(accountId, email.id, label.id, true);
-    } catch {
-      patchLabels(email.id, label.id, false);
-    }
-  }, [accountId, email, newTag, patchLabels, queryClient]);
-
-  // ── Tag editing (rename / recolor / delete) ──────────────────────────────
-  const [editingTag, setEditingTag] = useState<Label | null>(null);
-  const [editName, setEditName] = useState("");
-
-  const renameTag = useCallback(async () => {
-    if (!editingTag) return;
-    const tag = editingTag;
-    const name = editName.trim();
-    setEditingTag(null);
-    if (!name || name === tag.name) return;
-    queryClient.setQueryData<Label[]>(labelsQueryKey(accountId), (current) =>
-      (current ?? []).map((l) => (l.id === tag.id ? { ...l, name } : l)),
-    );
-    try {
-      await renameLabel(accountId, tag.id, name);
-    } catch {
-      /* leave the optimistic name; a refetch will reconcile */
-    }
-  }, [accountId, editingTag, editName, queryClient]);
-
-  const deleteTag = useCallback(
-    async (tag: Label) => {
-      setEditingTag(null);
-      setTagPickerOpen(false);
-      // Drop it from the labels list and strip it off every cached message.
-      queryClient.setQueryData<Label[]>(labelsQueryKey(accountId), (current) =>
-        (current ?? []).filter((l) => l.id !== tag.id),
-      );
-      const strip = (data?: EmailsData) =>
-        data && {
-          ...data,
-          pages: data.pages.map((page) => ({
-            ...page,
-            emails: page.emails.map((e) =>
-              e.labelIds?.includes(tag.id)
-                ? { ...e, labelIds: e.labelIds.filter((id) => id !== tag.id) }
-                : e,
-            ),
-          })),
-        };
-      queryClient.setQueriesData<EmailsData>({ queryKey: ["emails", accountId] }, strip);
-      queryClient.setQueriesData<EmailsData>(
-        { queryKey: ["emails-search", accountId] },
-        strip,
-      );
-      queryClient.setQueriesData<FullEmail>({ queryKey: ["email", accountId] }, (e) =>
-        e && e.labelIds?.includes(tag.id)
-          ? { ...e, labelIds: e.labelIds.filter((id) => id !== tag.id) }
-          : e,
-      );
-      try {
-        await deleteLabel(accountId, tag.id);
-      } catch {
-        /* optimistic removal stands */
-      }
-    },
-    [accountId, queryClient],
-  );
+  const tags = useTagActions(accountId, email);
 
   /* The whole conversation. Until it loads, show the opened message alone. */
   const threadQuery = useThreadQuery(accountId, email?.threadId);
@@ -816,166 +617,7 @@ function ReaderPane({
         <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold">
           {email?.subject || "Reading"}
         </span>
-        <Hint label="Tags">
-          <button
-            ref={tagButtonRef}
-            type="button"
-            disabled={!email || busy}
-            aria-pressed={tagPickerOpen}
-            onPointerDown={(event) => event.stopPropagation()}
-            onClick={() => (tagPickerOpen ? setTagPickerOpen(false) : openTagPicker())}
-            className={cn(
-              "inline-flex size-7 shrink-0 items-center justify-center rounded-md hover:bg-muted disabled:opacity-40 disabled:hover:bg-transparent",
-              appliedTags.length > 0
-                ? "text-accent-2-hover"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            <TagIcon className="size-[15px]" />
-          </button>
-        </Hint>
-        {tagPickerOpen &&
-          email &&
-          pickerPos &&
-          createPortal(
-            <div
-              ref={tagPickerRef}
-              style={{
-                position: "fixed",
-                top: pickerPos.top,
-                right: pickerPos.right,
-              }}
-              className="z-[100] w-60 overflow-hidden rounded-lg border bg-popover shadow-2xl"
-            >
-              {editingTag ? (
-                <div className="p-2">
-                  <div className="mb-2 flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => setEditingTag(null)}
-                      className="inline-flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
-                    >
-                      <ChevronLeftIcon className="size-4" />
-                    </button>
-                    <span className="text-[12px] font-medium">Edit tag</span>
-                    <button
-                      type="button"
-                      onClick={() => void deleteTag(editingTag)}
-                      className="ml-auto inline-flex items-center gap-1 rounded px-1.5 py-1 text-[11px] text-label-red hover:bg-label-red/10"
-                    >
-                      <Trash2Icon className="size-3" /> Delete
-                    </button>
-                  </div>
-                  <input
-                    autoFocus
-                    value={editName}
-                    onChange={(event) => setEditName(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        event.preventDefault();
-                        void renameTag();
-                      }
-                    }}
-                    placeholder="Tag name"
-                    className="w-full rounded-md bg-background/60 px-2 py-1 text-[12.5px] outline-none placeholder:text-muted-foreground/60"
-                  />
-                  <div className="mt-2 flex items-center gap-1.5">
-                    {TAG_COLORS.map((_, index) => {
-                      const active = tagColorIndex(editingTag, tagColors) === index;
-                      return (
-                        <button
-                          key={index}
-                          type="button"
-                          aria-pressed={active}
-                          onClick={() => setTagColor(editingTag.id, index)}
-                          className={cn(
-                            "size-5 rounded-full transition-shadow",
-                            active &&
-                              "ring-2 ring-foreground ring-offset-2 ring-offset-popover",
-                          )}
-                          style={{ background: tagColorVar(index) }}
-                        />
-                      );
-                    })}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => void renameTag()}
-                    className="mt-2.5 w-full rounded-md bg-primary py-1 text-[12px] font-medium text-on-primary hover:bg-primary-hover"
-                  >
-                    Save
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <div className="no-scrollbar max-h-56 overflow-y-auto p-1">
-                    {labels.length === 0 ? (
-                      <p className="px-2 py-2 text-[12px] text-muted-foreground">
-                        No tags yet — create one below.
-                      </p>
-                    ) : (
-                      labels.map((label) => {
-                        const on = appliedIds.includes(label.id);
-                        return (
-                          <div
-                            key={label.id}
-                            className="group/tag flex items-center gap-2 rounded-md px-2 py-1.5 text-[12.5px] hover:bg-muted"
-                          >
-                            <button
-                              type="button"
-                              onClick={() => toggleTag(label)}
-                              className="flex min-w-0 flex-1 items-center gap-2 text-left"
-                            >
-                              <span
-                                className="size-2 shrink-0 rounded-full"
-                                style={{
-                                  background: tagColorVar(
-                                    tagColorIndex(label, tagColors),
-                                  ),
-                                }}
-                              />
-                              <span className="min-w-0 flex-1 truncate">
-                                {label.name}
-                              </span>
-                            </button>
-                            {on && (
-                              <CheckIcon className="size-3.5 shrink-0 text-accent-2-hover" />
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEditingTag(label);
-                                setEditName(label.name);
-                              }}
-                              className="inline-flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground/60 opacity-0 group-hover/tag:opacity-100 hover:bg-foreground/10 hover:text-foreground"
-                            >
-                              <PencilIcon className="size-3" />
-                            </button>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                  <div className="border-t p-1.5">
-                    <input
-                      autoFocus
-                      value={newTag}
-                      onChange={(event) => setNewTag(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") {
-                          event.preventDefault();
-                          void createTag();
-                        }
-                      }}
-                      placeholder="Create tag…"
-                      className="w-full rounded-md bg-background/60 px-2 py-1 text-[12.5px] outline-none placeholder:text-muted-foreground/60"
-                    />
-                  </div>
-                </>
-              )}
-            </div>,
-            document.body,
-          )}
+        <TagPicker tags={tags} disabled={!email || busy} />
         <Hint label={starred ? "Unstar" : "Star"}>
           <button
             type="button"
@@ -1082,17 +724,7 @@ function ReaderPane({
               {email.subject || "(no subject)"}
             </h2>
 
-            {appliedTags.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {appliedTags.map((label) => (
-                  <TagChip
-                    key={label.id}
-                    label={label}
-                    onRemove={() => toggleTag(label)}
-                  />
-                ))}
-              </div>
-            )}
+            <AppliedTags tags={tags} />
 
             {messages.length > 1 && (
               <p className="mt-1 font-mono text-[11px] text-muted-foreground/70">
