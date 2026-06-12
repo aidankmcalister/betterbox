@@ -396,130 +396,342 @@ function InterfacePreview() {
   );
 }
 
-function AppearancePage() {
-  const settings = useSettings();
-  const { theme, setTheme } = useTheme();
+type AppearanceLayout = "split" | "pickers" | "calm";
 
-  const toggleNav = (id: string, show: boolean) =>
-    updateSettings({
-      hiddenNav: show
-        ? settings.hiddenNav.filter((item) => item !== id)
-        : [...settings.hiddenNav, id],
-    });
+function AppearancePage() {
+  // Temporary: three mockups to compare in place. Once a direction is picked,
+  // this switcher goes away and only the chosen layout remains.
+  const [mockup, setMockup] = useState<AppearanceLayout>("split");
 
   return (
     <Page title="Appearance" description="Choose how BetterBox looks">
-      {/* Sticky so it stays visible while scrolling the controls below. The
-          -mx-6/px-6 bleeds the cover bg to the scroll container's padding so
-          rows pass cleanly underneath; bg-popover matches the dialog surface. */}
-      <div className="sticky top-0 z-10 -mx-6 -mt-2 bg-popover px-6 pt-2 pb-4">
-        <InterfacePreview />
+      <div className="flex items-center gap-2 border-b pb-4">
+        <span className="font-mono text-[10px] font-medium tracking-[0.5px] text-muted-foreground/70 uppercase">
+          Mockup
+        </span>
+        <SegmentedButtons
+          options={[
+            { value: "split", label: "Split" },
+            { value: "pickers", label: "Pickers" },
+            { value: "calm", label: "Calm" },
+          ]}
+          value={mockup}
+          onChange={setMockup}
+        />
       </div>
 
-      <PageSection title="Theme">
-        <SettingRow
-          label="Theme"
-          description="BetterBox ships dark-first; light is for the brave"
-        >
-          <SegmentedButtons
-            options={[
-              { value: "light", label: "Light" },
-              { value: "dark", label: "Dark" },
-              { value: "system", label: "System" },
-            ]}
-            value={theme}
-            onChange={setTheme}
-          />
-        </SettingRow>
-        <SettingRow
-          label="Accent color"
-          description="Buttons, focus rings, unread markers"
-        >
-          <div role="group" aria-label="Accent color" className="flex gap-1.5">
-            {(Object.keys(ACCENTS) as AccentId[]).map((id) => (
-              <Hint key={id} label={ACCENTS[id].label}>
-                <button
-                  type="button"
-                  aria-pressed={settings.accent === id}
-                  onClick={() => updateSettings({ accent: id })}
-                  className={cn(
-                    "size-4.5 rounded-full transition-shadow",
-                    settings.accent === id &&
-                      "ring-2 ring-foreground ring-offset-2 ring-offset-background",
-                  )}
-                  style={{ background: ACCENTS[id].base }}
-                />
-              </Hint>
-            ))}
-          </div>
-        </SettingRow>
-        <SettingRow label="Interface font">
-          <SegmentedButtons
-            options={[
-              { value: "roboto", label: "Roboto" },
-              { value: "inter", label: "Inter", disabled: true },
-              { value: "mono", label: "Mono", disabled: true },
-            ]}
-            value="roboto"
-            onChange={() => {}}
-          />
-        </SettingRow>
-        <SettingRow
-          label="Clock"
-          description="How times show in the inbox and reader"
-        >
-          <SegmentedButtons
-            options={[
-              { value: "12h", label: "12-hour" },
-              { value: "24h", label: "24-hour" },
-            ]}
-            value={settings.clock}
-            onChange={(clock) => updateSettings({ clock })}
-          />
-        </SettingRow>
-      </PageSection>
-
-      <PageSection title="Inbox rows">
-        <SettingRow
-          label="Density"
-          description="Dense fits more rows per screen; comfortable adds a snippet line"
-        >
-          <SegmentedButtons
-            options={[
-              { value: "compact", label: "Dense" },
-              { value: "comfortable", label: "Comfortable" },
-            ]}
-            value={settings.density}
-            onChange={(density) => updateSettings({ density })}
-          />
-        </SettingRow>
-        <SettingRow
-          label="Profile icons"
-          description="Show each sender's avatar on every inbox row"
-        >
-          <Switch
-            checked={settings.inboxAvatars}
-            onCheckedChange={(inboxAvatars) => updateSettings({ inboxAvatars })}
-          />
-        </SettingRow>
-      </PageSection>
-
-      <PageSection title="Sidebar">
-        <p className="-mt-2 text-xs text-muted-foreground">
-          Choose which items appear in the sidebar. Inbox always stays.
-        </p>
-        <div className="flex flex-col gap-3.5">
-          {HIDEABLE_NAV.map((item) => (
-            <SettingRow key={item.id} label={item.title}>
-              <Switch
-                checked={!settings.hiddenNav.includes(item.id)}
-                onCheckedChange={(show) => toggleNav(item.id, show)}
-              />
-            </SettingRow>
-          ))}
-        </div>
-      </PageSection>
+      {mockup === "split" && <AppearanceSplit />}
+      {mockup === "pickers" && <AppearancePickers />}
+      {mockup === "calm" && <AppearanceCalm />}
     </Page>
+  );
+}
+
+// ── shared appearance controls ───────────────────────────────────────────────
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <span className="text-[13px]">{label}</span>
+      <div className="shrink-0">{children}</div>
+    </div>
+  );
+}
+
+function BlockLabel({ children }: { children: ReactNode }) {
+  return <span className="mb-2 block text-[13px] font-medium">{children}</span>;
+}
+
+function ThemeSegmented() {
+  const { theme, setTheme } = useTheme();
+  return (
+    <SegmentedButtons
+      options={[
+        { value: "light", label: "Light" },
+        { value: "dark", label: "Dark" },
+        { value: "system", label: "System" },
+      ]}
+      value={theme}
+      onChange={setTheme}
+    />
+  );
+}
+
+function DensitySegmented() {
+  const { density } = useSettings();
+  return (
+    <SegmentedButtons
+      options={[
+        { value: "compact", label: "Dense" },
+        { value: "comfortable", label: "Comfortable" },
+      ]}
+      value={density}
+      onChange={(value) => updateSettings({ density: value })}
+    />
+  );
+}
+
+function ClockSegmented() {
+  const { clock } = useSettings();
+  return (
+    <SegmentedButtons
+      options={[
+        { value: "12h", label: "12-hour" },
+        { value: "24h", label: "24-hour" },
+      ]}
+      value={clock}
+      onChange={(value) => updateSettings({ clock: value })}
+    />
+  );
+}
+
+function AvatarsSwitch() {
+  const { inboxAvatars } = useSettings();
+  return (
+    <Switch
+      checked={inboxAvatars}
+      onCheckedChange={(value) => updateSettings({ inboxAvatars: value })}
+    />
+  );
+}
+
+function AccentDots() {
+  const { accent } = useSettings();
+  return (
+    <div role="group" aria-label="Accent color" className="flex gap-1.5">
+      {(Object.keys(ACCENTS) as AccentId[]).map((id) => (
+        <Hint key={id} label={ACCENTS[id].label}>
+          <button
+            type="button"
+            aria-pressed={accent === id}
+            onClick={() => updateSettings({ accent: id })}
+            className={cn(
+              "size-4.5 rounded-full transition-shadow",
+              accent === id &&
+                "ring-2 ring-foreground ring-offset-2 ring-offset-background",
+            )}
+            style={{ background: ACCENTS[id].base }}
+          />
+        </Hint>
+      ))}
+    </div>
+  );
+}
+
+/** Sidebar visibility as toggle chips — click to hide/show (Inbox is fixed). */
+function SidebarChips() {
+  const { hiddenNav } = useSettings();
+  const toggle = (id: string, show: boolean) =>
+    updateSettings({
+      hiddenNav: show
+        ? hiddenNav.filter((item) => item !== id)
+        : [...hiddenNav, id],
+    });
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      <span className="inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-1 text-[11.5px] text-muted-foreground/70">
+        Inbox
+      </span>
+      {HIDEABLE_NAV.map((item) => {
+        const shown = !hiddenNav.includes(item.id);
+        return (
+          <button
+            key={item.id}
+            type="button"
+            aria-pressed={shown}
+            onClick={() => toggle(item.id, !shown)}
+            className={cn(
+              "inline-flex items-center rounded-full border px-2.5 py-1 text-[11.5px] transition-colors",
+              shown
+                ? "border-primary/40 bg-primary/10 text-foreground hover:bg-primary/15"
+                : "border-border text-muted-foreground/50 hover:text-muted-foreground",
+            )}
+          >
+            {item.title}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function ThemeCards() {
+  const { theme, setTheme } = useTheme();
+  const card = (
+    value: "light" | "dark" | "system",
+    label: string,
+    bg: string,
+    fg: string,
+  ) => (
+    <button
+      type="button"
+      aria-pressed={theme === value}
+      onClick={() => setTheme(value)}
+      className={cn(
+        "flex flex-1 flex-col items-center gap-2 rounded-lg border p-2.5 transition-colors",
+        theme === value
+          ? "border-primary bg-primary/5"
+          : "border-border hover:bg-muted/50",
+      )}
+    >
+      <span
+        className="flex h-10 w-full items-center justify-center rounded-md border border-border"
+        style={{ background: bg }}
+      >
+        <span className="h-2 w-10 rounded-full" style={{ background: fg }} />
+      </span>
+      <span className="text-[12px] font-medium">{label}</span>
+    </button>
+  );
+  return (
+    <div className="flex gap-2">
+      {card("light", "Light", "#ffffff", "#111827")}
+      {card("dark", "Dark", "#0f1011", "#e5e7eb")}
+      {card(
+        "system",
+        "System",
+        "linear-gradient(90deg,#ffffff 50%,#0f1011 50%)",
+        "#9ca3af",
+      )}
+    </div>
+  );
+}
+
+function DensityCards() {
+  const { density } = useSettings();
+  const card = (
+    value: "compact" | "comfortable",
+    label: string,
+    body: ReactNode,
+  ) => (
+    <button
+      type="button"
+      aria-pressed={density === value}
+      onClick={() => updateSettings({ density: value })}
+      className={cn(
+        "flex flex-1 flex-col gap-2.5 rounded-lg border p-3 text-left transition-colors",
+        density === value
+          ? "border-primary bg-primary/5"
+          : "border-border hover:bg-muted/50",
+      )}
+    >
+      <div className="flex flex-col gap-1.5">{body}</div>
+      <span className="text-[12.5px] font-medium">{label}</span>
+    </button>
+  );
+  return (
+    <div className="flex gap-2">
+      {card(
+        "compact",
+        "Dense",
+        Array.from({ length: 5 }).map((_, i) => (
+          <span key={i} className="h-1 rounded bg-muted-foreground/40" />
+        )),
+      )}
+      {card(
+        "comfortable",
+        "Comfortable",
+        Array.from({ length: 2 }).map((_, i) => (
+          <div key={i} className="flex flex-col gap-1">
+            <span className="h-1 w-2/3 rounded bg-muted-foreground/40" />
+            <span className="h-1 w-full rounded bg-muted-foreground/20" />
+          </div>
+        )),
+      )}
+    </div>
+  );
+}
+
+// ── the three mockups ────────────────────────────────────────────────────────
+
+/** 1 · Split — controls left, preview pinned right. */
+function AppearanceSplit() {
+  return (
+    <div className="grid gap-6 sm:grid-cols-[1fr_232px]">
+      <div className="flex flex-col gap-5">
+        <Field label="Theme">
+          <ThemeSegmented />
+        </Field>
+        <Field label="Accent">
+          <AccentDots />
+        </Field>
+        <Field label="Density">
+          <DensitySegmented />
+        </Field>
+        <Field label="Clock">
+          <ClockSegmented />
+        </Field>
+        <Field label="Profile icons">
+          <AvatarsSwitch />
+        </Field>
+        <div>
+          <BlockLabel>Sidebar</BlockLabel>
+          <SidebarChips />
+        </div>
+      </div>
+      <div className="sm:sticky sm:top-0 sm:self-start">
+        <InterfacePreview />
+      </div>
+    </div>
+  );
+}
+
+/** 2 · Pickers — click visual cards instead of toggles. */
+function AppearancePickers() {
+  return (
+    <div className="flex flex-col gap-6">
+      <div>
+        <BlockLabel>Theme</BlockLabel>
+        <ThemeCards />
+      </div>
+      <div>
+        <BlockLabel>Density</BlockLabel>
+        <DensityCards />
+      </div>
+      <Field label="Accent">
+        <AccentDots />
+      </Field>
+      <Field label="Clock">
+        <ClockSegmented />
+      </Field>
+      <Field label="Profile icons">
+        <AvatarsSwitch />
+      </Field>
+      <div>
+        <BlockLabel>Sidebar</BlockLabel>
+        <SidebarChips />
+      </div>
+    </div>
+  );
+}
+
+/** 3 · Calm — hero preview, then a tight two-column grid + chips. */
+function AppearanceCalm() {
+  return (
+    <div className="flex flex-col gap-6">
+      <InterfacePreview />
+      <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+        <Field label="Theme">
+          <ThemeSegmented />
+        </Field>
+        <Field label="Accent">
+          <AccentDots />
+        </Field>
+        <Field label="Density">
+          <DensitySegmented />
+        </Field>
+        <Field label="Clock">
+          <ClockSegmented />
+        </Field>
+        <Field label="Profile icons">
+          <AvatarsSwitch />
+        </Field>
+      </div>
+      <div>
+        <BlockLabel>Sidebar</BlockLabel>
+        <SidebarChips />
+      </div>
+    </div>
   );
 }
 
