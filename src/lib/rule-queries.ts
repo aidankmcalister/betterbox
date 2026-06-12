@@ -3,7 +3,15 @@ import type { Rule } from "@/lib/rules";
 
 export type { Rule } from "@/lib/rules";
 
-export type RuleInput = Omit<Rule, "id" | "enabled">;
+export type RuleInput = {
+  name: string | null;
+  accountIds: string[];
+  match: Rule["match"];
+  conditions: Rule["conditions"];
+  actions: Rule["actions"];
+  applyToExisting: boolean;
+};
+
 export type RulePreview = { matched: number; samples: { from: string; subject: string }[] };
 
 export const rulesQueryKey = ["rules"] as const;
@@ -15,7 +23,7 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   return data as T;
 }
 
-const post = (body: unknown, method = "POST") =>
+const send = (body: unknown, method = "POST") =>
   fetchJson("/api/rules", {
     method,
     headers: { "content-type": "application/json" },
@@ -33,13 +41,14 @@ export function useRulesQuery(enabled: boolean) {
   });
 }
 
-export const createRule = (input: RuleInput) =>
-  post(input) as Promise<{ rule: Rule }>;
+export const createRule = (input: RuleInput) => send(input) as Promise<{ rule: Rule }>;
+
+export const updateRule = (id: string, input: RuleInput) => send({ id, ...input }, "PATCH");
 
 export const setRuleEnabled = (id: string, enabled: boolean) =>
-  post({ id, enabled }, "PATCH");
+  send({ id, enabled }, "PATCH");
 
-export const deleteRule = (id: string) => post({ id }, "DELETE");
+export const deleteRule = (id: string) => send({ id }, "DELETE");
 
 export const previewRule = (input: RuleInput) =>
-  post({ ...input, op: "test" }) as Promise<RulePreview>;
+  send({ ...input, op: "test" }) as Promise<RulePreview>;

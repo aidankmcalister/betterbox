@@ -5,53 +5,36 @@ import prisma from "@/lib/prisma.server";
 import { getGoogleToken } from "@/lib/gmail/accounts.server";
 import { searchEmails } from "@/lib/gmail/api.server";
 import { json } from "@/lib/json-response";
-import { ruleHasAction, ruleToGmailQuery, type RuleField, type RuleOperator } from "@/lib/rules";
+import {
+  isRuleValid,
+  ruleToGmailQuery,
+  type Action,
+  type Condition,
+  type MatchMode,
+} from "@/lib/rules";
 
-const FIELDS: RuleField[] = ["from", "to", "subject", "hasAttachment"];
-const OPERATORS: RuleOperator[] = ["contains", "is"];
-
-type RuleInput = {
-  accountId?: string;
+type RuleBody = {
   name?: string | null;
-  field?: RuleField;
-  operator?: RuleOperator;
-  value?: string;
-  doArchive?: boolean;
-  doMarkRead?: boolean;
-  doStar?: boolean;
-  doTrash?: boolean;
-  labelId?: string | null;
-  forwardTo?: string | null;
+  accountIds?: string[];
+  match?: MatchMode;
+  conditions?: Condition[];
+  actions?: Action[];
+  applyToExisting?: boolean;
 };
 
-function normalize(input: RuleInput) {
-  if (!input.accountId) throw new Error("accountId is required");
-  if (!input.field || !FIELDS.includes(input.field)) throw new Error("invalid field");
-  if (!input.operator || !OPERATORS.includes(input.operator)) throw new Error("invalid operator");
-
-  const value = input.field === "hasAttachment" ? "" : (input.value ?? "").trim();
-  if (input.field !== "hasAttachment" && !value) throw new Error("value is required");
-
-  const actions = {
-    doArchive: Boolean(input.doArchive),
-    doMarkRead: Boolean(input.doMarkRead),
-    doStar: Boolean(input.doStar),
-    doTrash: Boolean(input.doTrash),
-    labelId: input.labelId?.trim() || null,
-    forwardTo: input.forwardTo?.trim() || null,
-  };
-  if (!ruleHasAction(actions)) throw new Error("a rule needs at least one action");
-  if (actions.labelId && input.accountId === "all") {
-    throw new Error("labeling needs a specific account (label ids differ per account)");
+function normalize(body: RuleBody) {
+  const conditions = Array.isArray(body.conditions) ? body.conditions : [];
+  const actions = Array.isArray(body.actions) ? body.actions : [];
+  if (!isRuleValid({ conditions, actions })) {
+    throw new Error("a rule needs a complete condition and at least one action");
   }
-
   return {
-    accountId: input.accountId,
-    name: input.name?.trim() || null,
-    field: input.field,
-    operator: input.operator,
-    value,
-    ...actions,
+    name: body.name?.trim() || null,
+    accountIds: Array.isArray(body.accountIds) ? body.accountIds : [],
+    match: (body.match === "any" ? "any" : "all") as MatchMode,
+    conditions,
+    actions,
+    applyToExisting: Boolean(body.applyToExisting),
   };
 }
 
@@ -68,7 +51,7 @@ export const Route = createFileRoute("/api/rules")({
         if (!userId) return json({ error: "Not signed in" }, 401);
         const rules = await prisma.rule.findMany({
           where: { userId },
-          orderBy: { createdAt: "asc" },
+          orderBy: [{ position: "asc" }, { createdAt: "asc" }],
         });
         return json({ rules });
       },
@@ -78,7 +61,7 @@ export const Route = createFileRoute("/api/rules")({
         if (!userId) return json({ error: "Not signed in" }, 401);
 
         const body = (await request.json().catch(() => null)) as
-          | (RuleInput & { op?: "create" | "test" })
+          | (RuleBody & { op?: "create" | "test" })
           | null;
         if (!body) return json({ error: "Invalid body" }, 400);
 
@@ -86,12 +69,15 @@ export const Route = createFileRoute("/api/rules")({
         try {
           rule = normalize(body);
         } catch (error) {
-          return json({ error: String((error as Error).message) }, 400);
+          return json({ error: (error as Error).message }, 400);
         }
 
         if (body.op === "test") return preview(request, userId, rule);
 
-        const created = await prisma.rule.create({ data: { ...rule, userId } });
+        const position = await prisma.rule.count({ where: { userId } });
+        const created = await prisma.rule.create({
+          data: { ...rule, userId, position },
+        });
         return json({ rule: created });
       },
 
@@ -100,13 +86,20 @@ export const Route = createFileRoute("/api/rules")({
         if (!userId) return json({ error: "Not signed in" }, 401);
 
         const body = (await request.json().catch(() => null)) as
-          | { id?: string; enabled?: boolean }
+          | (RuleBody & { id?: string; enabled?: boolean })
           | null;
         if (!body?.id) return json({ error: "id is required" }, 400);
 
+        // A bare { id, enabled } just toggles; anything else is a full edit.
+        const data =
+          body.conditions === undefined && body.enabled !== undefined
+            ? { enabled: body.enabled }
+            : normalizeOrThrow(body);
+        if (data instanceof Error) return json({ error: data.message }, 400);
+
         const { count } = await prisma.rule.updateMany({
           where: { id: body.id, userId },
-          data: { enabled: body.enabled },
+          data,
         });
         if (count === 0) return json({ error: "Not found" }, 404);
         return json({ ok: true });
@@ -126,12 +119,20 @@ export const Route = createFileRoute("/api/rules")({
   },
 });
 
+function normalizeOrThrow(body: RuleBody) {
+  try {
+    return normalize(body);
+  } catch (error) {
+    return error as Error;
+  }
+}
+
 async function preview(
   request: Request,
   userId: string,
   rule: ReturnType<typeof normalize>,
 ) {
-  const accountId = rule.accountId === "all" ? undefined : rule.accountId;
+  const accountId = rule.accountIds[0];
   const accessToken = await getGoogleToken(request.headers, userId, accountId);
   if (!accessToken) return json({ error: "No Google access token" }, 403);
 

@@ -1,101 +1,99 @@
 import { describe, expect, test } from "bun:test";
 import {
-  describeActions,
-  describeCondition,
+  describeRule,
+  isRuleValid,
   matchesRule,
-  ruleHasAction,
   ruleToGmailQuery,
-  type Rule,
+  type Condition,
   type RuleMessage,
 } from "@/lib/rules";
 
-const base: Rule = {
-  id: "r1",
-  accountId: "all",
-  name: null,
-  enabled: true,
-  field: "from",
+const from = (value: string): Condition => ({ field: "from", operator: "contains", value });
+const subject = (value: string): Condition => ({
+  field: "subject",
   operator: "contains",
-  value: "@github.com",
-  doArchive: false,
-  doMarkRead: false,
-  doStar: false,
-  doTrash: false,
-  labelId: null,
-  forwardTo: null,
-};
+  value,
+});
 
 const msg = (over: Partial<RuleMessage> = {}): RuleMessage => ({
   from: "GitHub <notifications@github.com>",
   to: "me@example.dev",
-  subject: "[scope/api] PR merged",
+  subject: "[CRITICAL] api down",
   hasAttachment: false,
   ...over,
 });
 
 describe("matchesRule", () => {
-  test("from contains domain", () => {
-    expect(matchesRule(base, msg())).toBe(true);
-    expect(matchesRule(base, msg({ from: "Vercel <noreply@vercel.app>" }))).toBe(false);
-  });
-
-  test("subject contains is case-insensitive", () => {
-    const rule = { ...base, field: "subject" as const, value: "pr merged" };
+  test("AND requires every condition", () => {
+    const rule = { match: "all" as const, conditions: [from("@github.com"), subject("api")] };
     expect(matchesRule(rule, msg())).toBe(true);
+    expect(matchesRule(rule, msg({ subject: "hello" }))).toBe(false);
   });
 
-  test("'is' compares the address for from/to, not the display name", () => {
+  test("OR requires any condition", () => {
     const rule = {
-      ...base,
-      field: "to" as const,
-      operator: "is" as const,
-      value: "alerts@myapp.com",
+      match: "any" as const,
+      conditions: [subject("[CRITICAL]"), subject("[SEV1]")],
+    };
+    expect(matchesRule(rule, msg())).toBe(true);
+    expect(matchesRule(rule, msg({ subject: "[SEV1] db" }))).toBe(true);
+    expect(matchesRule(rule, msg({ subject: "all good" }))).toBe(false);
+  });
+
+  test("hasAttachment compares the boolean value", () => {
+    const rule = {
+      match: "all" as const,
+      conditions: [{ field: "hasAttachment" as const, operator: "is" as const, value: "false" }],
+    };
+    expect(matchesRule(rule, msg({ hasAttachment: false }))).toBe(true);
+    expect(matchesRule(rule, msg({ hasAttachment: true }))).toBe(false);
+  });
+
+  test("'is' compares the from/to address, not the display name", () => {
+    const rule = {
+      match: "all" as const,
+      conditions: [{ field: "to" as const, operator: "is" as const, value: "alerts@myapp.com" }],
     };
     expect(matchesRule(rule, msg({ to: "Alerts <alerts@myapp.com>" }))).toBe(true);
     expect(matchesRule(rule, msg({ to: "alerts@other.com" }))).toBe(false);
   });
 
-  test("hasAttachment ignores operator/value", () => {
-    const rule = { ...base, field: "hasAttachment" as const };
-    expect(matchesRule(rule, msg({ hasAttachment: true }))).toBe(true);
-    expect(matchesRule(rule, msg({ hasAttachment: false }))).toBe(false);
-  });
-
-  test("empty value never matches", () => {
-    expect(matchesRule({ ...base, value: "  " }, msg())).toBe(false);
+  test("no conditions never matches", () => {
+    expect(matchesRule({ match: "all", conditions: [] }, msg())).toBe(false);
   });
 });
 
-describe("descriptions & guards", () => {
-  test("ruleHasAction is false until an action is set", () => {
-    expect(ruleHasAction(base)).toBe(false);
-    expect(ruleHasAction({ ...base, doArchive: true })).toBe(true);
-    expect(ruleHasAction({ ...base, labelId: "Label_1" })).toBe(true);
+describe("validation, description, query", () => {
+  test("isRuleValid needs a complete condition and a complete action", () => {
+    expect(isRuleValid({ conditions: [from("@x.com")], actions: [{ type: "archive" }] })).toBe(true);
+    expect(isRuleValid({ conditions: [], actions: [{ type: "archive" }] })).toBe(false);
+    expect(isRuleValid({ conditions: [from("@x.com")], actions: [] })).toBe(false);
+    expect(isRuleValid({ conditions: [from("@x.com")], actions: [{ type: "label" }] })).toBe(false);
+    expect(
+      isRuleValid({ conditions: [from("@x.com")], actions: [{ type: "label", value: "dev" }] }),
+    ).toBe(true);
   });
 
-  test("describeCondition reads as a sentence", () => {
-    expect(describeCondition(base)).toBe("From contains @github.com");
-    expect(describeCondition({ ...base, field: "hasAttachment" })).toBe(
-      "Has an attachment",
-    );
+  test("describeRule reads like the table summary", () => {
+    expect(
+      describeRule({
+        match: "all",
+        conditions: [from("@github.com")],
+        actions: [{ type: "archive" }, { type: "label", value: "dev" }],
+      }),
+    ).toBe("from contains “@github.com” → archive + apply label “dev”");
   });
 
-  test("ruleToGmailQuery maps fields to Gmail operators", () => {
-    expect(ruleToGmailQuery(base)).toBe("from:(@github.com)");
-    expect(ruleToGmailQuery({ ...base, field: "subject", value: "x" })).toBe("subject:(x)");
-    expect(ruleToGmailQuery({ ...base, field: "hasAttachment" })).toBe("has:attachment");
-  });
-
-  test("describeActions lists each action", () => {
-    const actions = describeActions(
-      { ...base, doStar: true, doArchive: true, forwardTo: "a@b.com", labelId: "L" },
-      "dev",
-    );
-    expect(actions).toEqual([
-      'Label "dev"',
-      "Star",
-      "Archive",
-      "Forward to a@b.com",
-    ]);
+  test("ruleToGmailQuery joins OR conditions in a Gmail group", () => {
+    expect(ruleToGmailQuery({ match: "all", conditions: [from("@x.com")] })).toBe("from:(@x.com)");
+    expect(
+      ruleToGmailQuery({ match: "any", conditions: [subject("a"), subject("b")] }),
+    ).toBe("{subject:(a) subject:(b)}");
+    expect(
+      ruleToGmailQuery({
+        match: "all",
+        conditions: [from("@x.com"), { field: "hasAttachment", operator: "is", value: "false" }],
+      }),
+    ).toBe("from:(@x.com) -has:attachment");
   });
 });

@@ -8,3 +8,17 @@ export function formatCount(n: number): string {
   if (n < 1_000_000) return `${compact(n / 1000)}k`;
   return `${compact(n / 1_000_000)}m`;
 }
+
+/** Coarse "time ago" for timestamps: 90s → "1m ago", 7200s → "2h ago". */
+export function formatRelative(iso: string, now = Date.now()): string {
+  const seconds = Math.max(0, Math.round((now - new Date(iso).getTime()) / 1000));
+  const [value, unit] =
+    seconds < 60
+      ? [seconds, "s"]
+      : seconds < 3600
+        ? [Math.floor(seconds / 60), "m"]
+        : seconds < 86400
+          ? [Math.floor(seconds / 3600), "h"]
+          : [Math.floor(seconds / 86400), "d"];
+  return `${value}${unit} ago`;
+}

@@ -25,12 +25,16 @@ A web-based Gmail client for developers — a faster, denser UI on top of the Gm
 - **Tags = Gmail labels:** create, apply, rename, recolor, and delete tags on a
   message. Nothing about a tag is stored by BetterBox — it's a Gmail user label
   (`gmail.modify`). The **Labeled** folder groups mail into per-tag accordions.
-- **Rules (builder):** set a condition (`from`/`to`/`subject`/`has attachment`)
-  and actions (apply label, archive, star, mark read, trash, forward) per
-  account or across all. Rules are saved to the DB and a **read-only preview**
-  shows what each would catch. The engine runs entirely on the `gmail.modify`
-  scope we already hold — no Gmail filter API. *(The background runner that
-  fires rules on every new message is the next step; see Roadmap.)*
+- **Rules (builder):** a rules table + new/edit modal. Each rule applies to one
+  or more accounts, matches on conditions (`from`/`to`/`subject`/`has
+  attachment`) joined with **AND/OR**, and runs an ordered list of actions
+  (apply label, archive, star, mark read, trash, forward, trigger webhook) —
+  optionally against existing inbox mail too. Rules persist to the DB and a
+  **read-only preview** shows what each would catch. The engine runs entirely on
+  the `gmail.modify` scope we already hold — no Gmail filter API. *(The
+  background runner that fires rules on every new message is the next step, so
+  the LAST RUN column reads "never" and webhook/forward/apply-to-existing don't
+  execute yet; see Roadmap.)*
 - **Search:** per-pane Gmail full-text search from the pane header (scoped to the
   current folder), plus **⌘K** to fire a search across the accounts on screen.
 - **Compose & send:** docked composer with an account-aware From selector.
