@@ -17,7 +17,12 @@ function sanitizeEmail(html: string): string {
         node.removeAttribute("srcset");
         const src = node.getAttribute("src");
         if (src && /^https?:\/\//i.test(src)) {
-          node.setAttribute("src", `/api/image-proxy?url=${encodeURIComponent(src)}`);
+          // Absolute origin, not root-relative: inside the srcdoc iframe a
+          // "/api/…" path resolves against about:srcdoc, not the app, and 404s.
+          node.setAttribute(
+            "src",
+            `${window.location.origin}/api/image-proxy?url=${encodeURIComponent(src)}`,
+          );
         }
       }
       // Any link that leaves the message opens in a new tab.

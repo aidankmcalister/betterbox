@@ -63,24 +63,75 @@ const SENDERS = [
   ["Figma", "Comments on BetterBox", "2 new comments on Component Spec"],
 ] as const;
 
+/** A deliberately maximal HTML email — used as the first inbox message on the
+ *  demo/test accounts so the reader's HTML rendering can be eyeballed end to
+ *  end: remote web font + stylesheet, colors, bold/italic/strike/link/code,
+ *  lists, blockquote, proxied remote images, a table-based marketing button,
+ *  and an over-wide table (to confirm no horizontal scrollbar). */
+const FEATURE_TEST = {
+  from: "Betterbox <hello@betterbox.dev>",
+  subject: "Render test — every feature in one email",
+  snippet:
+    "Typography, lists, a blockquote, remote images, a web font, colors, a marketing button, and an over-wide table.",
+  html: `<!doctype html><html><head>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap">
+</head><body style="margin:0;background:#f3f4f6;font-family:'Poppins',Arial,sans-serif;color:#1a1a1a;">
+<div style="max-width:600px;margin:0 auto;">
+  <div style="background:linear-gradient(135deg,#f46a3c,#ff885f);padding:32px;text-align:center;">
+    <img src="https://picsum.photos/seed/betterbox/120/120" width="84" height="84" alt="avatar" style="border-radius:50%;border:3px solid #fff;display:inline-block;">
+    <h1 style="color:#fff;font-size:26px;margin:16px 0 4px;font-weight:700;">Betterbox render test</h1>
+    <p style="color:rgba(255,255,255,.9);margin:0;font-size:15px;">If this uses Poppins, the web font loaded.</p>
+  </div>
+  <div style="background:#fff;padding:28px;">
+    <h2 style="color:#f46a3c;font-size:19px;margin:0 0 8px;">Typography</h2>
+    <p style="line-height:1.6;margin:0 0 14px;">Plain text with <strong>bold</strong>, <em>italic</em>, <s>strikethrough</s>, <a href="https://betterbox.dev" style="color:#4ea7fc;">a link</a>, and <code style="background:#f1f1f1;padding:2px 5px;border-radius:4px;font-family:monospace;">inline code</code>.</p>
+    <p style="color:#27a644;margin:0 0 4px;">This line should be green.</p>
+    <p style="color:#eb5757;margin:0 0 14px;">This line should be red.</p>
+    <h2 style="color:#f46a3c;font-size:19px;margin:18px 0 8px;">Lists &amp; quote</h2>
+    <ul style="line-height:1.6;"><li>Bulleted item one</li><li>Bulleted item two</li></ul>
+    <ol style="line-height:1.6;"><li>Numbered one</li><li>Numbered two</li></ol>
+    <blockquote style="border-left:3px solid #f46a3c;margin:0 0 14px;padding:8px 16px;color:#666;background:#faf6f4;">A blockquote — indented with a colored bar.</blockquote>
+    <h2 style="color:#f46a3c;font-size:19px;margin:18px 0 8px;">Remote image (via proxy)</h2>
+    <img src="https://picsum.photos/seed/betterbox-wide/600/220" width="600" alt="wide" style="width:100%;border-radius:8px;display:block;margin:0 0 18px;">
+    <h2 style="color:#f46a3c;font-size:19px;margin:0 0 8px;">Marketing button</h2>
+    <table cellpadding="0" cellspacing="0" style="margin:0 0 18px;"><tr><td style="background:#f46a3c;border-radius:8px;">
+      <a href="https://betterbox.dev" style="display:inline-block;padding:12px 28px;color:#fff;font-weight:600;text-decoration:none;">Open Betterbox &rarr;</a>
+    </td></tr></table>
+    <h2 style="color:#f46a3c;font-size:19px;margin:0 0 8px;">Over-wide table (no h-scroll?)</h2>
+    <table border="1" cellpadding="8" style="border-collapse:collapse;width:760px;font-size:13px;color:#333;">
+      <tr style="background:#f8f8f8;"><th>One</th><th>Two</th><th>Three</th><th>Four</th><th>Five</th><th>Six</th></tr>
+      <tr><td>alpha</td><td>bravo</td><td>charlie</td><td>delta</td><td>echo</td><td>foxtrot</td></tr>
+    </table>
+    <p style="color:#999;font-size:12px;margin:24px 0 0;border-top:1px solid #eee;padding-top:12px;">You received this because demo mode is on. <a href="#" style="color:#999;">Unsubscribe</a>.</p>
+  </div>
+</div>
+</body></html>`,
+};
+
+function isFeatureTestId(emailId: string): boolean {
+  return emailId.endsWith("-inbox-0");
+}
+
 export function makeTestFullEmail(accountId: string, emailId: string) {
   const row = makeTestEmails(accountId, folderFromId(accountId, emailId)).find(
     (email) => email.id === emailId,
   );
   const index = Number(accountId.replace(TEST_ACCOUNT_PREFIX, "")) || 1;
+  const feature = isFeatureTestId(emailId);
   return {
     id: emailId,
-    from: row?.from ?? "Test <test@example.dev>",
+    from: feature ? FEATURE_TEST.from : (row?.from ?? "Test <test@example.dev>"),
     to: `test${index}@example.dev`,
-    subject: row?.subject ?? "(no subject)",
+    subject: feature ? FEATURE_TEST.subject : (row?.subject ?? "(no subject)"),
     date: row?.date ?? "",
     messageId: `<${emailId}@example.dev>`,
     threadId: emailId,
     references: "",
     starred: false,
-    snippet: row?.snippet,
+    snippet: feature ? FEATURE_TEST.snippet : row?.snippet,
     unread: row?.unread ?? false,
     body: `${row?.snippet ?? ""}\n\nThis is a generated message on a dev test account — there is no real mail behind it. Use it to exercise the reader pane: drag its header to dock it elsewhere, resize the seams, and toggle technical metadata in Settings → Developer.`,
+    bodyHtml: feature ? FEATURE_TEST.html : undefined,
   };
 }
 
@@ -175,17 +226,23 @@ export function makeTestEmails(
   return Array.from({ length: count }, (_, i) => {
     // Non-uniform gaps keyed off account + index so timestamps don't align row-for-row between panes.
     minutesAgo += 28 + ((seed * 17 + i * 13) % 53);
-    const [name, subject, snippet] = mail[(seed * 5 + i) % mail.length];
-    const from = self
-      ? `You <test${seed}@example.dev>`
-      : `${name} <noreply@${name.toLowerCase().replace(/[^a-z0-9]/g, "")}.com>`;
+    // First inbox row is the maximal HTML render-test email.
+    const feature = folder === "inbox" && i === 0;
+    const [name, subject, snippet] = feature
+      ? [FEATURE_TEST.from, FEATURE_TEST.subject, FEATURE_TEST.snippet]
+      : mail[(seed * 5 + i) % mail.length];
+    const from = feature
+      ? FEATURE_TEST.from
+      : self
+        ? `You <test${seed}@example.dev>`
+        : `${name} <noreply@${name.toLowerCase().replace(/[^a-z0-9]/g, "")}.com>`;
     return {
       id: `${accountId}-${folder}-${i}`,
       from,
       subject,
       snippet,
       date: new Date(now - minutesAgo * 60_000).toISOString(),
-      unread: allRead ? false : (seed * 3 + i) % 4 === 0,
+      unread: feature ? true : allRead ? false : (seed * 3 + i) % 4 === 0,
     };
   });
 }
