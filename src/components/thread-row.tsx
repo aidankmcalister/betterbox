@@ -63,6 +63,7 @@ export function ThreadRow({
   dotIndex,
   accountId,
   onClick,
+  portalContainer,
 }: {
   email: ThreadRowEmail;
   density?: Density;
@@ -70,6 +71,9 @@ export function ThreadRow({
   dotIndex: number;
   accountId?: string;
   onClick?: () => void;
+  /** Portal target for the right-click menu — set in the landing demo so it
+   *  stays inside (and scaled with) the demo box instead of escaping to body. */
+  portalContainer?: React.RefObject<HTMLElement | null>;
 }) {
   const runMarkRead = async () => {
     if (!accountId) return;
@@ -204,7 +208,7 @@ export function ThreadRow({
               <span className="min-w-[54px] shrink-0 text-right">{time}</span>
             </button>
           </ContextMenuTrigger>
-          <ContextMenuContent>
+          <ContextMenuContent container={portalContainer}>
             <ContextMenuGroup>
               <ContextMenuItem onClick={runMarkRead}>Mark read</ContextMenuItem>
               <ContextMenuItem onClick={runReply}>Reply</ContextMenuItem>
@@ -259,7 +263,7 @@ export function ThreadRow({
             </span>
           </button>
         </ContextMenuTrigger>
-        <ContextMenuContent>
+        <ContextMenuContent container={portalContainer}>
           <ContextMenuGroup>
             <ContextMenuItem onClick={runMarkRead}>Mark read</ContextMenuItem>
             <ContextMenuItem onClick={runReply}>Reply</ContextMenuItem>

@@ -1,10 +1,10 @@
 [
   {
     "id": "d1",
-    "repo": "betterbox/betterbox",
+    "repo": "acme/web",
     "num": 128,
-    "title": "Parse GitHub notification emails into PR objects",
-    "branch": "feat/pr-parser",
+    "title": "Add a settings page for notifications",
+    "branch": "feat/settings-notifications",
     "base": "main",
     "state": "open",
     "review": "required",
@@ -33,10 +33,10 @@
   },
   {
     "id": "d3",
-    "repo": "betterbox/betterbox",
+    "repo": "acme/web",
     "num": 126,
-    "title": "Add ⌘K account switching to the command palette",
-    "branch": "feat/cmdk-accounts",
+    "title": "Add a ⌘K command palette",
+    "branch": "feat/command-palette",
     "base": "main",
     "state": "open",
     "review": "approved",
@@ -49,7 +49,7 @@
   },
   {
     "id": "d4",
-    "repo": "doghockey/dh-site",
+    "repo": "acme/dashboard",
     "num": 92,
     "title": "Migrate analytics dashboard to server components",
     "branch": "perf/rsc-analytics",
@@ -81,9 +81,9 @@
   },
   {
     "id": "d6",
-    "repo": "doghockey/dh-bot",
+    "repo": "acme/cli",
     "num": 45,
-    "title": "Refactor Discord slash-command registration",
+    "title": "Refactor slash-command registration",
     "branch": "refactor/slash-cmds",
     "base": "main",
     "state": "draft",
@@ -97,7 +97,7 @@
   },
   {
     "id": "d7",
-    "repo": "betterbox/betterbox",
+    "repo": "acme/web",
     "num": 124,
     "title": "Webhook delivery retries with exponential backoff",
     "branch": "feat/webhook-retries",
@@ -129,7 +129,7 @@
   },
   {
     "id": "d9",
-    "repo": "doghockey/dh-site",
+    "repo": "acme/dashboard",
     "num": 90,
     "title": "Bump dependencies + patch CVE-2026-1042",
     "branch": "chore/deps-cve",

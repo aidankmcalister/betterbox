@@ -1,17 +1,17 @@
 {
   "featureTest": {
-    "from": "BetterBox <hello@betterbox.dev>",
+    "from": "Acme <hello@example.com>",
     "subject": "Render test — every feature in one email",
     "snippet": "Typography, lists, a blockquote, remote images, a web font, colors, a marketing button, and an over-wide table.",
-    "html": "<!doctype html><html><head>\n<link rel=\"stylesheet\" href=\"https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap\">\n</head><body style=\"margin:0;background:#f3f4f6;font-family:'Poppins',Arial,sans-serif;color:#1a1a1a;\">\n<div style=\"max-width:600px;margin:0 auto;\">\n  <div style=\"background:linear-gradient(135deg,#f46a3c,#ff885f);padding:32px;text-align:center;\">\n    <img src=\"https://picsum.photos/seed/betterbox/120/120\" width=\"84\" height=\"84\" alt=\"avatar\" style=\"border-radius:50%;border:3px solid #fff;display:inline-block;\">\n    <h1 style=\"color:#fff;font-size:26px;margin:16px 0 4px;font-weight:700;\">BetterBox render test</h1>\n    <p style=\"color:rgba(255,255,255,.9);margin:0;font-size:15px;\">If this uses Poppins, the web font loaded.</p>\n  </div>\n  <div style=\"background:#fff;padding:28px;\">\n    <h2 style=\"color:#f46a3c;font-size:19px;margin:0 0 8px;\">Typography</h2>\n    <p style=\"line-height:1.6;margin:0 0 14px;\">Plain text with <strong>bold</strong>, <em>italic</em>, <s>strikethrough</s>, <a href=\"https://betterbox.dev\" style=\"color:#4ea7fc;\">a link</a>, and <code style=\"background:#f1f1f1;padding:2px 5px;border-radius:4px;font-family:monospace;\">inline code</code>.</p>\n    <p style=\"color:#27a644;margin:0 0 4px;\">This line should be green.</p>\n    <p style=\"color:#eb5757;margin:0 0 14px;\">This line should be red.</p>\n    <h2 style=\"color:#f46a3c;font-size:19px;margin:18px 0 8px;\">Lists &amp; quote</h2>\n    <ul style=\"line-height:1.6;\"><li>Bulleted item one</li><li>Bulleted item two</li></ul>\n    <ol style=\"line-height:1.6;\"><li>Numbered one</li><li>Numbered two</li></ol>\n    <blockquote style=\"border-left:3px solid #f46a3c;margin:0 0 14px;padding:8px 16px;color:#666;background:#faf6f4;\">A blockquote — indented with a colored bar.</blockquote>\n    <h2 style=\"color:#f46a3c;font-size:19px;margin:18px 0 8px;\">Remote image (via proxy)</h2>\n    <img src=\"https://picsum.photos/seed/betterbox-wide/600/220\" width=\"600\" alt=\"wide\" style=\"width:100%;border-radius:8px;display:block;margin:0 0 18px;\">\n    <h2 style=\"color:#f46a3c;font-size:19px;margin:0 0 8px;\">Marketing button</h2>\n    <table cellpadding=\"0\" cellspacing=\"0\" style=\"margin:0 0 18px;\"><tr><td style=\"background:#f46a3c;border-radius:8px;\">\n      <a href=\"https://betterbox.dev\" style=\"display:inline-block;padding:12px 28px;color:#fff;font-weight:600;text-decoration:none;\">Open BetterBox &rarr;</a>\n    </td></tr></table>\n    <h2 style=\"color:#f46a3c;font-size:19px;margin:0 0 8px;\">Over-wide table (no h-scroll?)</h2>\n    <table border=\"1\" cellpadding=\"8\" style=\"border-collapse:collapse;width:760px;font-size:13px;color:#333;\">\n      <tr style=\"background:#f8f8f8;\"><th>One</th><th>Two</th><th>Three</th><th>Four</th><th>Five</th><th>Six</th></tr>\n      <tr><td>alpha</td><td>bravo</td><td>charlie</td><td>delta</td><td>echo</td><td>foxtrot</td></tr>\n    </table>\n    <p style=\"color:#999;font-size:12px;margin:24px 0 0;border-top:1px solid #eee;padding-top:12px;\">You received this because demo mode is on. <a href=\"#\" style=\"color:#999;\">Unsubscribe</a>.</p>\n  </div>\n</div>\n</body></html>"
+    "html": "<!doctype html><html><head>\n<link rel=\"stylesheet\" href=\"https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap\">\n</head><body style=\"margin:0;background:#f3f4f6;font-family:'Poppins',Arial,sans-serif;color:#1a1a1a;\">\n<div style=\"max-width:600px;margin:0 auto;\">\n  <div style=\"background:linear-gradient(135deg,#f46a3c,#ff885f);padding:32px;text-align:center;\">\n    <img src=\"https://picsum.photos/seed/acme/120/120\" width=\"84\" height=\"84\" alt=\"avatar\" style=\"border-radius:50%;border:3px solid #fff;display:inline-block;\">\n    <h1 style=\"color:#fff;font-size:26px;margin:16px 0 4px;font-weight:700;\">Acme render test</h1>\n    <p style=\"color:rgba(255,255,255,.9);margin:0;font-size:15px;\">If this uses Poppins, the web font loaded.</p>\n  </div>\n  <div style=\"background:#fff;padding:28px;\">\n    <h2 style=\"color:#f46a3c;font-size:19px;margin:0 0 8px;\">Typography</h2>\n    <p style=\"line-height:1.6;margin:0 0 14px;\">Plain text with <strong>bold</strong>, <em>italic</em>, <s>strikethrough</s>, <a href=\"https://example.com\" style=\"color:#4ea7fc;\">a link</a>, and <code style=\"background:#f1f1f1;padding:2px 5px;border-radius:4px;font-family:monospace;\">inline code</code>.</p>\n    <p style=\"color:#27a644;margin:0 0 4px;\">This line should be green.</p>\n    <p style=\"color:#eb5757;margin:0 0 14px;\">This line should be red.</p>\n    <h2 style=\"color:#f46a3c;font-size:19px;margin:18px 0 8px;\">Lists &amp; quote</h2>\n    <ul style=\"line-height:1.6;\"><li>Bulleted item one</li><li>Bulleted item two</li></ul>\n    <ol style=\"line-height:1.6;\"><li>Numbered one</li><li>Numbered two</li></ol>\n    <blockquote style=\"border-left:3px solid #f46a3c;margin:0 0 14px;padding:8px 16px;color:#666;background:#faf6f4;\">A blockquote — indented with a colored bar.</blockquote>\n    <h2 style=\"color:#f46a3c;font-size:19px;margin:18px 0 8px;\">Remote image (via proxy)</h2>\n    <img src=\"https://picsum.photos/seed/acme-wide/600/220\" width=\"600\" alt=\"wide\" style=\"width:100%;border-radius:8px;display:block;margin:0 0 18px;\">\n    <h2 style=\"color:#f46a3c;font-size:19px;margin:0 0 8px;\">Marketing button</h2>\n    <table cellpadding=\"0\" cellspacing=\"0\" style=\"margin:0 0 18px;\"><tr><td style=\"background:#f46a3c;border-radius:8px;\">\n      <a href=\"https://example.com\" style=\"display:inline-block;padding:12px 28px;color:#fff;font-weight:600;text-decoration:none;\">Open Acme &rarr;</a>\n    </td></tr></table>\n    <h2 style=\"color:#f46a3c;font-size:19px;margin:0 0 8px;\">Over-wide table (no h-scroll?)</h2>\n    <table border=\"1\" cellpadding=\"8\" style=\"border-collapse:collapse;width:760px;font-size:13px;color:#333;\">\n      <tr style=\"background:#f8f8f8;\"><th>One</th><th>Two</th><th>Three</th><th>Four</th><th>Five</th><th>Six</th></tr>\n      <tr><td>alpha</td><td>bravo</td><td>charlie</td><td>delta</td><td>echo</td><td>foxtrot</td></tr>\n    </table>\n    <p style=\"color:#999;font-size:12px;margin:24px 0 0;border-top:1px solid #eee;padding-top:12px;\">You received this because you're subscribed. <a href=\"#\" style=\"color:#999;\">Unsubscribe</a>.</p>\n  </div>\n</div>\n</body></html>"
   },
   "senders": [
     [
       "GitHub",
-      "[scope/api] PR #214 merged",
+      "[acme/web] PR #214 merged",
       "fix: debounce token refresh on 401"
     ],
-    ["Vercel", "Deployment ready", "betterbox deployed to production in 34s"],
+    ["Vercel", "Deployment ready", "acme-web deployed to production in 34s"],
     [
       "Stripe",
       "Your invoice is available",
@@ -22,24 +22,20 @@
       "Bump vite from 6.0.1 to 6.0.4",
       "CI passed on all 9 checks"
     ],
-    ["npm", "ratchet@2.4.1 published", "Published to the npm registry"],
+    ["npm", "acme-ui@2.4.1 published", "Published to the npm registry"],
     [
       "Linear",
       "3 issues assigned to you",
-      "SCO-114, SCO-118, SCO-121 moved to In Progress"
+      "ACM-114, ACM-118, ACM-121 moved to In Progress"
     ],
-    [
-      "Discord",
-      "2 new mentions in #dev",
-      "@aidan: does the parser expose the AST?"
-    ],
+    ["Discord", "2 new mentions in #dev", "@dev: can we bump the rate limit?"],
     [
       "Google Cloud",
       "Quota warning",
-      "gmail.googleapis.com at 78% of daily quota"
+      "storage.googleapis.com at 78% of daily quota"
     ],
     ["AWS", "Your bill is available", "Estimated charges for June: $4.87"],
-    ["Figma", "Comments on BetterBox", "2 new comments on Component Spec"]
+    ["Figma", "Comments on Design System", "2 new comments on Component Spec"]
   ],
   "archived": [
     ["Notion", "Your weekly digest", "12 pages updated across 3 teamspaces"],
@@ -72,7 +68,7 @@
     [
       "You",
       "Re: 3 issues assigned",
-      "Picking up SCO-118 first, rest by Friday."
+      "Picking up ACM-118 first, rest by Friday."
     ],
     [
       "You",
@@ -81,16 +77,8 @@
     ]
   ],
   "drafts": [
-    [
-      "You",
-      "Re: parser AST question",
-      "Yes — exposeAst() lands next minor, here’s…"
-    ],
-    [
-      "You",
-      "Launch checklist",
-      "1. flip demo mode  2. record  3. ship the cut"
-    ],
+    ["You", "Re: API question", "Yes — that ships in the next minor, here’s…"],
+    ["You", "Launch checklist", "1. final QA  2. tag the release  3. announce"],
     ["You", "(no subject)", ""]
   ],
   "spam": [
@@ -118,7 +106,7 @@
   "trash": [
     ["Old Newsletter", "Weekly roundup #88", "You unsubscribed from this list"],
     ["Calendar", "Event canceled", "Standup on Monday was removed"],
-    ["GitHub", "[scope/api] PR #201 closed", "Closed without merging"],
+    ["GitHub", "[acme/web] PR #201 closed", "Closed without merging"],
     ["Receipts", "Refund processed", "$12.00 refunded to your card"]
   ]
 }

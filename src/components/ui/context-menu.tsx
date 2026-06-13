@@ -39,10 +39,14 @@ function ContextMenuTrigger({
 
 function ContextMenuContent({
   className,
+  container,
   ...props
-}: ContextMenuPrimitive.Popup.Props) {
+}: ContextMenuPrimitive.Popup.Props & {
+  /** Portal target — keeps the menu inside a bounded box (landing demo). */
+  container?: ContextMenuPrimitive.Portal.Props["container"];
+}) {
   return (
-    <ContextMenuPrimitive.Portal>
+    <ContextMenuPrimitive.Portal container={container}>
       <ContextMenuPrimitive.Positioner className="isolate z-50 outline-none">
         <ContextMenuPrimitive.Popup
           data-slot="context-menu-content"

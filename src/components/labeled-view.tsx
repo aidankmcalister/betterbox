@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type RefObject } from "react";
 import { ChevronRightIcon } from "lucide-react";
 
 import {
@@ -16,6 +16,8 @@ import { cn } from "@/lib/utils";
 type RowHandlers = {
   openEmail: (accountId: string, emailId: string) => void;
   getOpenEmail: (accountId: string) => string | null;
+  /** Portal target for row context menus (landing demo). */
+  portalContainer?: RefObject<HTMLElement | null>;
 };
 
 /** The Labeled folder: one collapsible accordion per tag, lazily loading the
@@ -25,6 +27,7 @@ export function LabeledView({
   dotIndex,
   openEmail,
   getOpenEmail,
+  portalContainer,
 }: { accountId: string; dotIndex: number } & RowHandlers) {
   const labels = useLabelsQuery(accountId).data ?? [];
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -60,6 +63,7 @@ export function LabeledView({
           onToggle={() => toggle(label.id)}
           openEmail={openEmail}
           getOpenEmail={getOpenEmail}
+          portalContainer={portalContainer}
         />
       ))}
     </div>
@@ -74,6 +78,7 @@ function LabelAccordion({
   onToggle,
   openEmail,
   getOpenEmail,
+  portalContainer,
 }: {
   accountId: string;
   dotIndex: number;
@@ -126,6 +131,7 @@ function LabelAccordion({
               accountId={accountId}
               selected={getOpenEmail(accountId) === email.id}
               onClick={() => openEmail(accountId, email.id)}
+              portalContainer={portalContainer}
             />
           ))
         ))}

@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Hint } from "@/components/ui/tooltip";
 import { useTheme } from "@/components/theme-provider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { GITHUB_URL, GithubMark } from "@/components/github-mark";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -77,7 +78,7 @@ export function NavUser({
   const user =
     demoUser ??
     (demoMode
-      ? { name: "Demo User", email: "personal@betterbox.dev", image: null }
+      ? { name: "Demo User", email: "personal@example.com", image: null }
       : session!.user);
   const initials = (user.name ?? user.email ?? "?").slice(0, 2).toUpperCase();
 
@@ -179,6 +180,19 @@ export function NavUser({
             >
               <LogOut />
               Sign out
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              render={
+                <a
+                  href={GITHUB_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                />
+              }
+              className="focus:bg-foreground/10 focus:text-foreground"
+            >
+              <GithubMark />
+              GitHub
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

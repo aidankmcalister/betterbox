@@ -122,6 +122,8 @@ type TilesCtx = {
   openSearch: (accountId: string) => void;
   setSearch: (accountId: string, query: string) => void;
   closeSearch: (accountId: string) => void;
+  /** Portal target for row context menus (set in the landing demo). */
+  portalContainer?: React.RefObject<HTMLElement | null>;
 };
 const TilesContext = createContext<TilesCtx | null>(null);
 
@@ -160,6 +162,7 @@ export function InboxTiles({
   onCloseReader,
   onRemovePane,
   onEditDraft,
+  portalContainer,
 }: {
   accounts: Account[];
   scopeIds: string[];
@@ -170,6 +173,9 @@ export function InboxTiles({
   onRemovePane: (accountId: string) => void;
   /** Drafts open in the composer for editing instead of the read-only reader. */
   onEditDraft?: (accountId: string, emailId: string) => void;
+  /** Portal target for row context menus — set in the landing demo so they
+   *  stay inside the scaled box. */
+  portalContainer?: React.RefObject<HTMLElement | null>;
 }) {
   const scoped = accounts.filter((a) => scopeIds.includes(a.accountId));
   const ids = scoped.map((a) => a.accountId);
@@ -289,6 +295,7 @@ export function InboxTiles({
     openSearch,
     setSearch,
     closeSearch,
+    portalContainer,
   };
 
   const storage: TileStorage = { load: loadStoredTree, save: persistTree };
@@ -1335,7 +1342,7 @@ function PaneBody({
   dotIndex: number;
   search: string;
 }) {
-  const { getOpenEmail, openEmail, folder } = useTiles();
+  const { getOpenEmail, openEmail, folder, portalContainer } = useTiles();
   const { density } = useSettings();
   const query = useEmailsQuery(account.accountId, folder, search);
   const { error, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } =
@@ -1370,6 +1377,7 @@ function PaneBody({
           dotIndex={dotIndex}
           openEmail={openEmail}
           getOpenEmail={getOpenEmail}
+          portalContainer={portalContainer}
         />
       ) : error ? (
         <ErrorState
@@ -1404,6 +1412,7 @@ function PaneBody({
               accountId={account.accountId}
               selected={getOpenEmail(account.accountId) === email.id}
               onClick={() => openEmail(account.accountId, email.id)}
+              portalContainer={portalContainer}
             />
           ))}
           {hasNextPage ? (

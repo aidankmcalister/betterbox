@@ -61,8 +61,8 @@ describe("account badges", () => {
 
   test("demo accounts use friendly emails and differ from each other", () => {
     const [a, b] = makeDemoAccounts();
-    expect(a.email).toBe("personal@betterbox.dev");
-    expect(b.email).toBe("work@betterbox.dev");
+    expect(a.email).toBe("personal@example.com");
+    expect(b.email).toBe("work@example.com");
     expect(a.unread).not.toBe(b.unread);
   });
 

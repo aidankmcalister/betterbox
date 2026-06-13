@@ -19,6 +19,7 @@ import { PullRequestsPage } from "@/components/pull-requests";
 import { Button } from "@/components/ui/button";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { Toaster } from "@/components/ui/sonner";
+import { GITHUB_URL, GithubMark } from "@/components/github-mark";
 import { useAccountScope } from "@/hooks/use-account-scope";
 import { fetchFullEmail, isReplyDraft } from "@/lib/mail-queries";
 import type { Folder } from "@/lib/folders";
@@ -237,6 +238,15 @@ function Header() {
         <span className="ml-auto font-mono text-xs text-muted-foreground/60">
           in development
         </span>
+        <a
+          href={GITHUB_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="BetterBox on GitHub"
+          className="inline-flex size-9 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-card hover:text-foreground"
+        >
+          <GithubMark className="size-[18px]" />
+        </a>
         <Button type="button" onClick={toPlan}>
           Join the waitlist
         </Button>
@@ -287,7 +297,7 @@ function Demo() {
   );
 }
 
-const DEMO_USER = { name: "You", email: "personal@betterbox.dev", image: null };
+const DEMO_USER = { name: "You", email: "personal@example.com", image: null };
 const noop = () => {};
 
 /** The demo slot: a fully self-contained copy of the real app — sidebar,
@@ -457,6 +467,7 @@ function LandingDemo() {
             onCloseReader={() => setReading(null)}
             onRemovePane={toggle}
             onEditDraft={editDraft}
+            portalContainer={boxRef}
           />
         )}
       </div>

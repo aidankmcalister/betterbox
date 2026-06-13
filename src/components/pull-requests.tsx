@@ -15,23 +15,10 @@ import {
 import { linkGithub } from "@/lib/auth-client";
 import { usePullRequestsQuery, type PullRequest } from "@/lib/github-queries";
 import demoPullRequests from "@/data/demo-pull-requests.json";
+import { GithubMark } from "@/components/github-mark";
 import { Button } from "@/components/ui/button";
 import { Hint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-
-/** GitHub mark — lucide dropped its brand glyphs, so inline the logo. */
-function GithubMark({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 16 16"
-      fill="currentColor"
-      aria-hidden
-      className={className}
-    >
-      <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z" />
-    </svg>
-  );
-}
 
 function relTime(iso: string, now: number): string {
   const m = Math.round((now - new Date(iso).getTime()) / 60000);
@@ -128,14 +115,17 @@ function DiffStat({ pr }: { pr: PullRequest }) {
 function Row({ pr, now }: { pr: PullRequest; now: number }) {
   const { Icon, cls } = STATE_ICON[pr.state];
   const dim = pr.state === "merged" || pr.state === "closed";
+  // Demo rows carry a placeholder url — keep them inert (no opening GitHub).
+  const navigable = !!pr.url && pr.url !== "#";
   return (
     <a
-      href={pr.url}
-      target="_blank"
+      href={navigable ? pr.url : undefined}
+      target={navigable ? "_blank" : undefined}
       rel="noopener noreferrer"
       className={cn(
         "flex h-[34px] items-center gap-4 border-b border-l-2 border-border px-4 hover:bg-muted/50",
         pr.awaitsYou ? "border-l-primary" : "border-l-transparent",
+        navigable ? "cursor-pointer" : "cursor-default",
       )}
     >
       <Icon className={cn("size-4 flex-none", cls)} />
@@ -150,8 +140,9 @@ function Row({ pr, now }: { pr: PullRequest; now: number }) {
         </span>
       </span>
 
-      {/* title + faint branch */}
-      <span className="min-w-0 flex-1 truncate">
+      {/* title + faint branch — container is gray so a truncating ellipsis
+          matches the branch it's cutting; the title sets its own color. */}
+      <span className="min-w-0 flex-1 truncate text-muted-foreground/60">
         <span
           className={cn(
             "text-[12.5px]",
@@ -338,7 +329,7 @@ export function PullRequestsPage({
   }
 
   const prs = demo ? demoPrs : (query.data?.prs ?? []);
-  const login = demo ? "betterbox" : query.data?.login;
+  const login = demo ? "octocat" : query.data?.login;
   const fetching = !demo && query.isFetching;
   const refresh = () => {
     if (!demo) query.refetch();
@@ -414,7 +405,7 @@ export function PullRequestsPage({
 
       {/* list */}
       <div className="flex-1 overflow-y-auto">
-        <div className="sticky top-0 z-[1] flex h-[30px] items-center gap-4 border-b border-l-2 border-border border-l-transparent bg-background px-4 text-[10.5px] tracking-[0.4px] text-muted-foreground/60 uppercase">
+        <div className="sticky top-0 z-1 flex h-[30px] items-center gap-4 border-b border-l-2 border-border border-l-transparent bg-background px-4 text-[10.5px] tracking-[0.4px] text-muted-foreground/60 uppercase">
           <span className="w-4 flex-none" />
           <span className="w-[152px] flex-none">Repository</span>
           <span className="min-w-0 flex-1 truncate">Pull request</span>
@@ -525,7 +516,7 @@ function ErrorState({
           <XIcon className="size-5 text-label-red" />
         </span>
         <h2 className="text-base font-semibold">Couldn’t load pull requests</h2>
-        <p className="font-mono text-[11.5px] break-words text-muted-foreground/80">
+        <p className="font-mono text-[11.5px] wrap-break-word text-muted-foreground/80">
           {message}
         </p>
         <Button variant="outline" size="sm" onClick={onRetry}>

@@ -187,8 +187,8 @@ export function testInboxUnread(accountId: string): number {
 // Demo mode replaces real Gmail accounts with these so nothing private appears on screen while recording.
 export function makeDemoAccounts() {
   return [
-    { ...makeTestAccount(1), email: "personal@betterbox.dev" },
-    { ...makeTestAccount(2), email: "work@betterbox.dev" },
+    { ...makeTestAccount(1), email: "personal@example.com" },
+    { ...makeTestAccount(2), email: "work@example.com" },
   ];
 }
 

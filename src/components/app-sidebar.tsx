@@ -58,17 +58,17 @@ const developer: {
   disabled?: boolean;
 }[] = [
   {
+    id: "pull_requests",
+    title: "PRs",
+    icon: GitPullRequest,
+    to: "/pull-requests",
+  },
+  {
     id: "rules",
     title: "Rules",
     icon: GitBranch,
     to: "/rules",
     disabled: true,
-  },
-  {
-    id: "pull_requests",
-    title: "PRs",
-    icon: GitPullRequest,
-    to: "/pull-requests",
   },
   { id: "webhooks", title: "Webhooks", icon: Webhook },
 ];
@@ -155,9 +155,11 @@ export function AppSidebar({
   /** Signed-out demo persona for the profile block (landing page). */
   demoUser?: { name: string; email: string; image: string | null };
 }) {
-  const { hiddenNav } = useSettings();
+  const { hiddenNav, demoMode } = useSettings();
   const { data: session } = useSession();
-  const isOwner = session?.user.role === "OWNER";
+  // In demo mode the owner masquerades as a normal user, so owner-only items
+  // (Rules) read as disabled "Soon" like everyone else sees.
+  const isOwner = session?.user.role === "OWNER" && !demoMode;
   const navigate = useNavigate();
   const pathname = useLocation({ select: (location) => location.pathname });
   const onLiveDev = embedded
@@ -257,19 +259,20 @@ export function AppSidebar({
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu className="gap-px">
-                {visibleDeveloper.map((item) =>
-                  item.to && !item.disabled ? (
+                {visibleDeveloper.map((item) => {
+                  // Enabled by default; `to` falls back to /{id}. `disabled`
+                  // is the only thing that turns an item into a "Soon" stub.
+                  const to = item.to ?? `/${item.id}`;
+                  return !item.disabled ? (
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton
                         isActive={
-                          embedded
-                            ? activeDevId === item.id
-                            : pathname === item.to
+                          embedded ? activeDevId === item.id : pathname === to
                         }
                         onClick={() =>
                           embedded && onOpenDevPage
                             ? onOpenDevPage(item.id)
-                            : navigate({ to: item.to as string })
+                            : navigate({ to: to as string })
                         }
                         className={navButton}
                       >
@@ -287,8 +290,8 @@ export function AppSidebar({
                         Soon
                       </SidebarMenuBadge>
                     </SidebarMenuItem>
-                  ),
-                )}
+                  );
+                })}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
