@@ -28,10 +28,6 @@ function relTime(iso: string, now: number): string {
   return `${Math.round(m / 1440)}d`;
 }
 
-// Every metric column (Review, Comments, Changes, CI, Upd) is the same width
-// so the header labels and values line up in an even grid.
-const METRIC_COL = "w-[116px] flex-none";
-
 const STATE_ICON = {
   open: { Icon: GitPullRequestArrowIcon, cls: "text-label-green" },
   draft: { Icon: GitPullRequestDraftIcon, cls: "text-muted-foreground/70" },
@@ -126,7 +122,7 @@ function Row({ pr, now }: { pr: PullRequest; now: number }) {
       target={navigable ? "_blank" : undefined}
       rel="noopener noreferrer"
       className={cn(
-        "flex h-[34px] items-center gap-4 border-b border-l-2 border-border px-4 hover:bg-muted/50",
+        "flex h-[34px] items-center gap-4 border-b border-l-2 border-border px-5 hover:bg-muted/50",
         pr.awaitsYou ? "border-l-primary" : "border-l-transparent",
         navigable ? "cursor-pointer" : "cursor-default",
       )}
@@ -170,16 +166,11 @@ function Row({ pr, now }: { pr: PullRequest; now: number }) {
           </Hint>
         )}
       </span>
-      <span className={cn(METRIC_COL, "flex justify-end")}>
+      <span className="flex w-[104px] flex-none justify-start">
         <ReviewPill pr={pr} />
       </span>
       <Hint label={`${pr.comments} comment${pr.comments === 1 ? "" : "s"}`}>
-        <span
-          className={cn(
-            METRIC_COL,
-            "flex items-center justify-end gap-1 font-mono text-[11px] text-muted-foreground/60",
-          )}
-        >
+        <span className="flex w-[44px] flex-none items-center justify-end gap-1 font-mono text-[11px] text-muted-foreground/60">
           <MessageSquareIcon className="size-3" />
           {pr.comments}
         </span>
@@ -187,23 +178,18 @@ function Row({ pr, now }: { pr: PullRequest; now: number }) {
       <Hint
         label={`+${pr.additions.toLocaleString()} added · −${pr.deletions.toLocaleString()} removed`}
       >
-        <span className={cn(METRIC_COL, "flex justify-end")}>
+        <span className="flex w-[124px] flex-none justify-end">
           <DiffStat pr={pr} />
         </span>
       </Hint>
-      <span className={cn(METRIC_COL, "flex justify-end")}>
+      <span className="flex w-[22px] flex-none justify-center">
         <Hint label={`CI ${pr.ci === "none" ? "not run" : pr.ci}`}>
           <span className="flex">
             <CiDot ci={pr.ci} />
           </span>
         </Hint>
       </span>
-      <span
-        className={cn(
-          METRIC_COL,
-          "text-right font-mono text-[11px] text-muted-foreground/60",
-        )}
-      >
+      <span className="w-[34px] flex-none text-right font-mono text-[11px] text-muted-foreground/60">
         {relTime(pr.updated, now)}
       </span>
     </a>
@@ -222,7 +208,7 @@ function Kpi({
   sub: string;
 }) {
   return (
-    <div className="border-l border-border px-[18px] pt-[9px] pb-2.5 first:border-l-0">
+    <div className="border-l border-border px-5 pt-[9px] pb-2.5 first:border-l-0">
       <div className="mb-1 text-[11px] text-muted-foreground/80">{label}</div>
       <div className="flex items-baseline gap-2">
         <span
@@ -369,7 +355,7 @@ export function PullRequestsPage({
   return (
     <div className="flex h-full min-w-0 flex-col bg-background">
       {/* page header */}
-      <div className="flex h-[52px] flex-none items-center gap-2.5 border-b border-border px-[18px]">
+      <div className="flex h-[52px] flex-none items-center gap-2.5 border-b border-border px-5">
         <h2 className="text-lg font-semibold tracking-[-0.4px] whitespace-nowrap">
           Pull requests
         </h2>
@@ -409,7 +395,7 @@ export function PullRequestsPage({
       </div>
 
       {/* filter bar */}
-      <div className="flex flex-none items-center gap-3 border-b border-border px-[18px] py-[9px]">
+      <div className="flex flex-none items-center gap-3 border-b border-border px-5 py-[9px]">
         <Segmented value={filter} onChange={setFilter} items={items} />
         <span className="ml-auto font-mono text-[10.5px] text-muted-foreground/60">
           {rows.length} shown
@@ -418,16 +404,16 @@ export function PullRequestsPage({
 
       {/* list */}
       <div className="flex-1 overflow-y-auto">
-        <div className="sticky top-0 z-1 flex h-[30px] items-center gap-4 border-b border-l-2 border-border border-l-transparent bg-background px-4 text-[10.5px] tracking-[0.4px] text-muted-foreground/60 uppercase">
+        <div className="sticky top-0 z-1 flex h-[30px] items-center gap-4 border-b border-l-2 border-border border-l-transparent bg-background px-5 text-[10.5px] tracking-[0.4px] text-muted-foreground/60 uppercase">
           <span className="w-4 flex-none" />
           <span className="w-[152px] flex-none">Repository</span>
           <span className="min-w-0 flex-1 truncate">Pull request</span>
           <span className="w-3 flex-none" />
-          <span className={cn(METRIC_COL, "text-right")}>Review</span>
-          <span className={cn(METRIC_COL, "text-right")}>Comments</span>
-          <span className={cn(METRIC_COL, "text-right")}>Changes</span>
-          <span className={cn(METRIC_COL, "text-right")}>CI</span>
-          <span className={cn(METRIC_COL, "text-right")}>Upd.</span>
+          <span className="w-[104px] flex-none">Review</span>
+          <span className="flex w-[44px] flex-none justify-end">Comments</span>
+          <span className="w-[124px] flex-none text-right">Changes</span>
+          <span className="w-[22px] flex-none text-center">CI</span>
+          <span className="w-[34px] flex-none text-right">Upd.</span>
         </div>
 
         {rows.length === 0 ? (
@@ -459,7 +445,7 @@ export function PullRequestsPage({
 function LoadingState() {
   return (
     <div className="flex h-full flex-col bg-background">
-      <div className="flex h-[52px] flex-none items-center gap-2.5 border-b border-border px-[18px]">
+      <div className="flex h-[52px] flex-none items-center gap-2.5 border-b border-border px-5">
         <h2 className="text-lg font-semibold tracking-[-0.4px]">
           Pull requests
         </h2>
@@ -468,7 +454,7 @@ function LoadingState() {
         {Array.from({ length: 4 }).map((_, i) => (
           <div
             key={i}
-            className="border-l border-border px-[18px] py-3 first:border-l-0"
+            className="border-l border-border px-5 py-3 first:border-l-0"
           >
             <div className="mb-2 h-2.5 w-24 animate-pulse rounded bg-muted" />
             <div className="h-5 w-10 animate-pulse rounded bg-muted" />
@@ -477,7 +463,7 @@ function LoadingState() {
       </div>
       <div className="flex-1 space-y-px p-px">
         {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="flex h-[34px] items-center gap-2.5 px-4">
+          <div key={i} className="flex h-[34px] items-center gap-2.5 px-5">
             <div className="size-4 animate-pulse rounded-full bg-muted" />
             <div className="h-3 w-32 animate-pulse rounded bg-muted" />
             <div className="h-3 flex-1 animate-pulse rounded bg-muted/60" />
