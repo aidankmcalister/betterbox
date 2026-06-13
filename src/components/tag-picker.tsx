@@ -322,7 +322,7 @@ export function TagPicker({
           <div
             ref={popoverRef}
             style={{ position: "fixed", top: pos.top, right: pos.right }}
-            className="z-[100] w-60 overflow-hidden rounded-lg border bg-popover shadow-2xl"
+            className="z-100 w-60 overflow-hidden rounded-lg border bg-popover shadow-2xl"
           >
             {editing ? (
               <div className="p-2">

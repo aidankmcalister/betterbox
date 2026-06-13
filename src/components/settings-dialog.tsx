@@ -694,7 +694,7 @@ function OwnerPage() {
           label="Role"
           description="Granted out-of-band; clients can't set their own role"
         >
-          <span className="inline-flex items-center gap-1.5 rounded-md border border-accent-2/40 bg-accent-2/[0.08] px-2 py-1 font-mono text-[11px] font-medium tracking-wide text-accent-2-hover uppercase">
+          <span className="inline-flex items-center gap-1.5 rounded-md border border-accent-2/40 bg-accent-2/8 px-2 py-1 font-mono text-[11px] font-medium tracking-wide text-accent-2-hover uppercase">
             <Wrench className="size-3" />
             {session?.user.role ?? "USER"}
           </span>
@@ -702,7 +702,7 @@ function OwnerPage() {
       </PageSection>
 
       <PageSection title="Recording">
-        <div className="flex items-center justify-between gap-6 rounded-lg border border-accent-2/30 bg-accent-2/[0.05] px-3.5 py-3">
+        <div className="flex items-center justify-between gap-6 rounded-lg border border-accent-2/30 bg-accent-2/5 px-3.5 py-3">
           <div className="flex min-w-0 items-start gap-2.5">
             <Clapperboard className="mt-0.5 size-4 shrink-0 text-accent-2-hover" />
             <div className="min-w-0">

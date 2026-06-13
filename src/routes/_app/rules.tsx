@@ -424,7 +424,7 @@ function RuleRow({
         </div>
       </div>
 
-      <Collapsible.Panel className="h-[var(--collapsible-panel-height)] overflow-hidden transition-[height] duration-200 ease-out data-ending-style:h-0 data-starting-style:h-0">
+      <Collapsible.Panel className="h-(--collapsible-panel-height) overflow-hidden transition-[height] duration-200 ease-out data-ending-style:h-0 data-starting-style:h-0">
         <RuleActivity />
       </Collapsible.Panel>
     </Collapsible.Root>
@@ -873,7 +873,7 @@ function AccountChip({
       className={cn(
         "inline-flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-[12.5px] transition-colors",
         checked
-          ? "border-primary/40 bg-primary/[0.06] text-foreground"
+          ? "border-primary/40 bg-primary/6 text-foreground"
           : "border-border text-muted-foreground hover:bg-muted/50",
       )}
     >

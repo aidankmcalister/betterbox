@@ -161,7 +161,7 @@ export function ViewCard({
             <button
               type="button"
               onClick={onAddTestAccount}
-              className="mt-1 flex w-full items-center gap-[9px] rounded-[5px] border border-dashed border-accent-2/40 bg-accent-2/[0.06] px-1.5 py-[5px] text-left text-accent-2-hover hover:border-accent-2/70 hover:bg-accent-2/10"
+              className="mt-1 flex w-full items-center gap-[9px] rounded-[5px] border border-dashed border-accent-2/40 bg-accent-2/6 px-1.5 py-[5px] text-left text-accent-2-hover hover:border-accent-2/70 hover:bg-accent-2/10"
             >
               <FlaskConicalIcon className="size-3 shrink-0" />
               <span className="flex-1 text-[12.5px]">Add test account</span>

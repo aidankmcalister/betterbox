@@ -45,7 +45,7 @@ export function RawView({ mime }: { mime: string }) {
         className={cn(
           "m-0 px-5 pt-4 pb-14 font-mono text-[12px] leading-[1.7] selection:bg-primary/20",
           wrap
-            ? "break-words whitespace-pre-wrap"
+            ? "wrap-break-word whitespace-pre-wrap"
             : "overflow-x-auto whitespace-pre",
         )}
       >

@@ -520,7 +520,7 @@ function Spec() {
           {SPEC_CELLS.map((cell, i) => (
             <div
               key={i}
-              className="border-t border-l border-border p-5 [&:nth-child(-n+3)]:border-t-0 [&:nth-child(3n+1)]:border-l-0"
+              className="border-t border-l border-border p-5 nth-[-n+3]:border-t-0 nth-[3n+1]:border-l-0"
             >
               <div className="mb-2 flex h-5 items-center font-mono text-xs font-medium tracking-wide text-muted-foreground/60 uppercase">
                 {cell.label}
@@ -628,7 +628,7 @@ function Faq() {
           {FAQ_ITEMS.map((it) => (
             <div
               key={it.q}
-              className="border-t border-l border-border p-6 [&:nth-child(-n+2)]:border-t-0 [&:nth-child(odd)]:border-l-0"
+              className="border-t border-l border-border p-6 odd:border-l-0 nth-[-n+2]:border-t-0"
             >
               <h4 className="mb-2 text-[15px] font-medium tracking-tight text-foreground">
                 {it.q}
