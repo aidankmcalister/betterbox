@@ -13,6 +13,8 @@ import type { Account } from "@/lib/account";
 import { useApplyAccent, useSettings } from "@/hooks/use-settings";
 import {
   accountsQueryKey,
+  fetchFullEmail,
+  isReplyDraft,
   markAllAccountRead,
   useAccountsQuery,
 } from "@/lib/mail-queries";
@@ -27,6 +29,7 @@ import { InboxTiles, type Reading } from "@/components/inbox-tiles";
 import { LandingPage } from "@/components/landing";
 import { SettingsDialog } from "@/components/settings-dialog";
 import { SidebarInset } from "@/components/ui/sidebar";
+import { Toaster } from "@/components/ui/sonner";
 
 export const Route = createFileRoute("/_app")({
   // Resolve the session on the server so the first paint already knows whether
@@ -145,13 +148,42 @@ function AppShell() {
   const [composeDraft, setComposeDraft] = useState<
     { to?: string; subject?: string; body?: string } | undefined
   >(undefined);
-  const openCompose = useCallback(() => setComposeOpen(true), []);
+  // A draft being edited (opened from the Drafts folder), loaded by the composer.
+  const [draftRef, setDraftRef] = useState<{
+    accountId: string;
+    emailId: string;
+  } | null>(null);
+  const openCompose = useCallback(() => {
+    setComposeDraft(undefined);
+    setDraftRef(null);
+    setComposeOpen(true);
+  }, []);
+  const editDraft = useCallback(
+    async (accountId: string, emailId: string) => {
+      // A reply-draft belongs to a thread — open it in the reader (with the
+      // reply at the bottom), not the standalone composer.
+      try {
+        const full = await fetchFullEmail(accountId, emailId);
+        if (isReplyDraft(full)) {
+          openEmail(accountId, emailId);
+          return;
+        }
+      } catch {
+        /* fall through to the composer */
+      }
+      setComposeDraft(undefined);
+      setDraftRef({ accountId, emailId });
+      setComposeOpen(true);
+    },
+    [openEmail],
+  );
   useEffect(() => {
     const onOpenCompose = (e: Event) => {
       const detail = (e as CustomEvent)?.detail as
         | { to?: string; subject?: string; body?: string }
         | undefined;
       setComposeDraft(detail);
+      setDraftRef(null);
       setComposeOpen(true);
     };
     window.addEventListener("open-compose", onOpenCompose);
@@ -237,6 +269,7 @@ function AppShell() {
         onOpenChange={setComposeOpen}
         accounts={allAccounts ?? []}
         initialDraft={composeDraft}
+        draft={draftRef}
       />
       <AppSidebar
         accounts={allAccounts ?? []}
@@ -262,6 +295,7 @@ function AppShell() {
               folder={folder}
               reading={reading}
               onOpenEmail={openEmail}
+              onEditDraft={editDraft}
               onCloseReader={closeReader}
               onRemovePane={toggle}
             />
@@ -269,6 +303,7 @@ function AppShell() {
           <Outlet />
         </div>
       </SidebarInset>
+      <Toaster />
     </>
   );
 }

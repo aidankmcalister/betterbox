@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 
 import { Hint } from "@/components/ui/tooltip";
+import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { cn } from "@/lib/utils";
 
 /**
@@ -130,6 +131,7 @@ function Toolbar({ editor }: { editor: Editor }) {
     <div className="flex flex-wrap items-center gap-0.5 border-b px-1.5 py-1">
       <Btn
         label="Bold"
+        keys={["⌘", "B"]}
         active={editor.isActive("bold")}
         onClick={() => editor.chain().focus().toggleBold().run()}
       >
@@ -137,6 +139,7 @@ function Toolbar({ editor }: { editor: Editor }) {
       </Btn>
       <Btn
         label="Italic"
+        keys={["⌘", "I"]}
         active={editor.isActive("italic")}
         onClick={() => editor.chain().focus().toggleItalic().run()}
       >
@@ -144,6 +147,7 @@ function Toolbar({ editor }: { editor: Editor }) {
       </Btn>
       <Btn
         label="Strikethrough"
+        keys={["⌘", "⇧", "S"]}
         active={editor.isActive("strike")}
         onClick={() => editor.chain().focus().toggleStrike().run()}
       >
@@ -151,6 +155,7 @@ function Toolbar({ editor }: { editor: Editor }) {
       </Btn>
       <Btn
         label="Inline code"
+        keys={["⌘", "E"]}
         active={editor.isActive("code")}
         onClick={() => editor.chain().focus().toggleCode().run()}
       >
@@ -159,6 +164,7 @@ function Toolbar({ editor }: { editor: Editor }) {
       <Divider />
       <Btn
         label="Bullet list"
+        keys={["⌘", "⇧", "8"]}
         active={editor.isActive("bulletList")}
         onClick={() => editor.chain().focus().toggleBulletList().run()}
       >
@@ -166,6 +172,7 @@ function Toolbar({ editor }: { editor: Editor }) {
       </Btn>
       <Btn
         label="Numbered list"
+        keys={["⌘", "⇧", "7"]}
         active={editor.isActive("orderedList")}
         onClick={() => editor.chain().focus().toggleOrderedList().run()}
       >
@@ -173,6 +180,7 @@ function Toolbar({ editor }: { editor: Editor }) {
       </Btn>
       <Btn
         label="Quote"
+        keys={["⌘", "⇧", "B"]}
         active={editor.isActive("blockquote")}
         onClick={() => editor.chain().focus().toggleBlockquote().run()}
       >
@@ -184,6 +192,7 @@ function Toolbar({ editor }: { editor: Editor }) {
       <Divider />
       <Btn
         label="Undo"
+        keys={["⌘", "Z"]}
         disabled={!editor.can().undo()}
         onClick={() => editor.chain().focus().undo().run()}
       >
@@ -191,6 +200,7 @@ function Toolbar({ editor }: { editor: Editor }) {
       </Btn>
       <Btn
         label="Redo"
+        keys={["⌘", "⇧", "Z"]}
         disabled={!editor.can().redo()}
         onClick={() => editor.chain().focus().redo().run()}
       >
@@ -202,19 +212,34 @@ function Toolbar({ editor }: { editor: Editor }) {
 
 function Btn({
   label,
+  keys,
   active,
   disabled,
   onClick,
   children,
 }: {
   label: string;
+  /** Mac keyboard shortcut, shown as chips in the tooltip. */
+  keys?: string[];
   active?: boolean;
   disabled?: boolean;
   onClick: () => void;
   children: React.ReactNode;
 }) {
+  const hint = keys ? (
+    <>
+      {label}
+      <KbdGroup>
+        {keys.map((key) => (
+          <Kbd key={key}>{key}</Kbd>
+        ))}
+      </KbdGroup>
+    </>
+  ) : (
+    label
+  );
   return (
-    <Hint label={label}>
+    <Hint label={hint}>
       <button
         type="button"
         aria-label={label}

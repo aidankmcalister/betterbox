@@ -113,7 +113,10 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-:root {
+/* `.light` mirrors `:root` so a scoped `.light` class (e.g. the landing in
+   system light mode) re-declares the light tokens even under a `.dark` <html>. */
+:root,
+.light {
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);

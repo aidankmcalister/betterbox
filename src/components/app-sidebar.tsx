@@ -55,11 +55,12 @@ const developer: {
   icon: typeof Inbox;
   to?: string;
 }[] = [
-  { id: "rules", title: "Rules", icon: GitBranch },
+  { id: "rules", title: "Rules", icon: GitBranch, to: "/rules" },
   {
     id: "pull_requests",
     title: "PRs",
     icon: GitPullRequest,
+    to: "/pull-requests",
   },
   { id: "webhooks", title: "Webhooks", icon: Webhook },
 ];
@@ -118,6 +119,8 @@ export function AppSidebar({
   onCompose,
   onAddTestAccount,
   loading = false,
+  embedded = false,
+  demoUser,
 }: {
   accounts: Account[];
   scopeIds: string[];
@@ -131,6 +134,11 @@ export function AppSidebar({
   onAddTestAccount?: () => void;
   /** Session/accounts still booting — skeleton the account + profile blocks. */
   loading?: boolean;
+  /** Embedded in a fixed-height container (landing demo) — fill the parent
+   *  instead of pinning to the viewport. */
+  embedded?: boolean;
+  /** Signed-out demo persona for the profile block (landing page). */
+  demoUser?: { name: string; email: string; image: string | null };
 }) {
   const { hiddenNav } = useSettings();
   const navigate = useNavigate();
@@ -158,7 +166,11 @@ export function AppSidebar({
   return (
     <Sidebar
       collapsible="none"
-      className="sticky top-0 h-svh w-64 shrink-0 border-r"
+      className={
+        embedded
+          ? "h-full w-64 shrink-0 border-r"
+          : "sticky top-0 h-svh w-64 shrink-0 border-r"
+      }
     >
       <SidebarHeader className="gap-1.5 p-2.5">
         <div className="flex items-center gap-2 px-1.5 pt-1 pb-2">
@@ -304,7 +316,11 @@ export function AppSidebar({
       </SidebarContent>
 
       <SidebarFooter className="border-t">
-        <NavUser onOpenSettings={onOpenSettings} loading={loading} />
+        <NavUser
+          onOpenSettings={onOpenSettings}
+          loading={loading}
+          demoUser={demoUser}
+        />
       </SidebarFooter>
     </Sidebar>
   );

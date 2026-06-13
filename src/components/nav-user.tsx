@@ -40,18 +40,22 @@ const THEMES = [
 export function NavUser({
   onOpenSettings,
   loading = false,
+  demoUser,
 }: {
   onOpenSettings: () => void;
   /** Booting — skeleton in step with the View card above (same flag) so the
    *  two sidebar blocks reveal together instead of at different times. */
   loading?: boolean;
+  /** Signed-out demo (landing page): a fake persona so the block renders
+   *  without a real session. */
+  demoUser?: { name: string; email: string; image: string | null };
 }) {
   const { data: session } = useSession();
   const { theme, setTheme } = useTheme();
   const { demoMode } = useSettings();
 
   // Hold the profile block's shape with a skeleton until the sidebar is ready.
-  if (loading || !session) {
+  if (loading || (!session && !demoUser)) {
     return (
       <SidebarMenu>
         <SidebarMenuItem>
@@ -70,9 +74,11 @@ export function NavUser({
   }
   /* Demo mode masks the real signed-in identity too, so a recording shows only
      the demo persona (the toggle is owner-only reachable). */
-  const user = demoMode
-    ? { name: "Demo User", email: "personal@betterbox.dev", image: null }
-    : session.user;
+  const user =
+    demoUser ??
+    (demoMode
+      ? { name: "Demo User", email: "personal@betterbox.dev", image: null }
+      : session!.user);
   const initials = (user.name ?? user.email ?? "?").slice(0, 2).toUpperCase();
 
   const profile = (
@@ -89,6 +95,22 @@ export function NavUser({
       </div>
     </>
   );
+
+  // In the demo there's no real session, so the menu's actions (Settings,
+  // theme, sign out) are inert or destructive — render the profile as a static,
+  // non-interactive block instead of a dropdown.
+  if (demoUser) {
+    return (
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <div className="flex h-12 cursor-default items-center gap-2 rounded-md p-2">
+            {profile}
+            <ChevronsUpDown className="ml-auto size-4 text-muted-foreground/50" />
+          </div>
+        </SidebarMenuItem>
+      </SidebarMenu>
+    );
+  }
 
   return (
     <SidebarMenu>

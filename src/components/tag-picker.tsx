@@ -90,8 +90,13 @@ export function useTagActions(accountId: string, email: FullEmail | undefined) {
       } catch {
         patchLabels(email.id, label.id, !on);
       }
+      // The Labeled view (grouped by label) is a separate query — refresh it so
+      // the message appears/disappears under the tag immediately.
+      queryClient.invalidateQueries({
+        queryKey: ["emails-label", accountId, label.id],
+      });
     },
-    [accountId, email, patchLabels],
+    [accountId, email, patchLabels, queryClient],
   );
 
   const createTag = useCallback(
@@ -110,6 +115,9 @@ export function useTagActions(accountId: string, email: FullEmail | undefined) {
       } catch {
         patchLabels(email.id, label.id, false);
       }
+      queryClient.invalidateQueries({
+        queryKey: ["emails-label", accountId, label.id],
+      });
     },
     [accountId, email, patchLabels, queryClient],
   );

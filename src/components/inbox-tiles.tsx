@@ -43,14 +43,18 @@ import {
   useTileDrag,
   type TileStorage,
 } from "@/components/tile-board";
+import { toast } from "sonner";
+
 import type { Account } from "@/lib/account";
 import { linkGoogle } from "@/lib/auth-client";
+import { isTestAccount } from "@/lib/test-account";
 import { formatCount } from "@/lib/format";
 import { exportEmail } from "@/lib/export-email";
 import { useIsFetching, useQueryClient } from "@tanstack/react-query";
 import {
   accountsQueryKey,
   actOnEmail,
+  deleteDraft,
   emailsQueryKey,
   flattenEmails,
   markEmailsRead,
@@ -91,6 +95,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 const STORAGE_KEY = "bm.tiles-layout";
 const FULL_EMAIL_MIN_WIDTH = 330;
 
@@ -148,6 +159,7 @@ export function InboxTiles({
   onOpenEmail,
   onCloseReader,
   onRemovePane,
+  onEditDraft,
 }: {
   accounts: Account[];
   scopeIds: string[];
@@ -156,6 +168,8 @@ export function InboxTiles({
   onOpenEmail: (accountId: string, emailId: string) => void;
   onCloseReader: () => void;
   onRemovePane: (accountId: string) => void;
+  /** Drafts open in the composer for editing instead of the read-only reader. */
+  onEditDraft?: (accountId: string, emailId: string) => void;
 }) {
   const scoped = accounts.filter((a) => scopeIds.includes(a.accountId));
   const ids = scoped.map((a) => a.accountId);
@@ -168,11 +182,16 @@ export function InboxTiles({
 
   const openEmail = useCallback(
     (accountId: string, emailId: string) => {
+      // A draft isn't a message to read — open it in the composer to edit/send.
+      if (folder === "drafts" && onEditDraft) {
+        onEditDraft(accountId, emailId);
+        return;
+      }
       if (split)
         setOpenEmails((current) => ({ ...current, [accountId]: emailId }));
       else onOpenEmail(accountId, emailId);
     },
-    [split, onOpenEmail],
+    [folder, onEditDraft, split, onOpenEmail],
   );
   const getOpenEmail = useCallback(
     (accountId: string) =>
@@ -502,6 +521,7 @@ function ReaderPane({
     const target = lastMessage;
     if (!target || !replySender || replySending || !replyBody.trim()) return;
     setReplySending(true);
+    const sandbox = isTestAccount(accountId);
     try {
       await sendNewEmail({
         accountId,
@@ -520,9 +540,21 @@ function ReaderPane({
       setReplyOpen(false);
       setReplyBody("");
       setReplySent(true);
+      if (sandbox) {
+        toast("Demo — reply not sent", {
+          description: "This is a sandbox. Nothing actually left BetterBox.",
+        });
+      } else {
+        toast.success("Reply sent", {
+          description: `To ${replySender.address}`,
+        });
+      }
       queryClient.invalidateQueries({
         queryKey: ["thread", accountId, target.threadId],
       });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      toast.error("Couldn’t send reply", { description: message });
     } finally {
       setReplySending(false);
     }
@@ -531,6 +563,7 @@ function ReaderPane({
   const runAction = async (action: MessageAction) => {
     if (!email || busy) return;
     setBusy(true);
+    const sandbox = isTestAccount(accountId);
     try {
       await actOnEmail(accountId, email.id, action);
       if (action === "star" || action === "unstar") {
@@ -550,8 +583,12 @@ function ReaderPane({
           },
       );
       queryClient.invalidateQueries({ queryKey: accountsQueryKey });
+      const label = action === "archive" ? "Archived" : "Moved to trash";
+      toast(sandbox ? `Demo — ${label.toLowerCase()} in sandbox only` : label);
       onClose();
-    } catch {
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      toast.error("Action failed", { description: message });
       setBusy(false);
     }
   };
@@ -811,7 +848,9 @@ function ReaderPane({
                   className="mt-6 flex w-full items-center gap-2 rounded-lg border border-accent-2-focus/40 bg-accent-2/10 px-3 py-2 text-left text-[12.5px] text-accent-2-hover hover:bg-accent-2/15"
                 >
                   <CheckIcon className="size-3.5" />
-                  Reply sent — it&rsquo;ll appear in this thread. Reply again?
+                  {isTestAccount(accountId)
+                    ? "Demo — nothing was actually sent. Reply again?"
+                    : "Reply sent — it’ll appear in this thread. Reply again?"}
                 </button>
               ) : null}
             </div>
@@ -1167,11 +1206,17 @@ function PaneHeader({
           {formatCount(account.unread)} new
         </span>
       )}
+      {folder === "drafts" && (
+        <DeleteAllDraftsButton
+          account={account}
+          className={cn(iconButton, "ml-auto")}
+        />
+      )}
       <Hint label="Search this inbox">
         <button
           type="button"
           onClick={onOpenSearch}
-          className={cn(iconButton, "ml-auto")}
+          className={cn(iconButton, folder !== "drafts" && "ml-auto")}
         >
           <SearchIcon className="size-3.5" />
         </button>
@@ -1200,6 +1245,84 @@ function PaneHeader({
         </Hint>
       )}
     </div>
+  );
+}
+
+/** Drafts-only: delete every draft in this account, behind a confirm dialog. */
+function DeleteAllDraftsButton({
+  account,
+  className,
+}: {
+  account: Account;
+  className: string;
+}) {
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const draftsList = () =>
+    flattenEmails(
+      queryClient.getQueryData(emailsQueryKey(account.accountId, "drafts")),
+    ) ?? [];
+
+  const onConfirm = async () => {
+    const drafts = draftsList();
+    setBusy(true);
+    try {
+      await Promise.all(
+        drafts.map((d) => deleteDraft(account.accountId, d.id)),
+      );
+      queryClient.invalidateQueries({
+        queryKey: ["emails", account.accountId],
+      });
+      toast.success(
+        `Deleted ${drafts.length} draft${drafts.length === 1 ? "" : "s"}`,
+      );
+      setOpen(false);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const count = open ? draftsList().length : 0;
+
+  return (
+    <>
+      <Hint label="Delete all drafts">
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className={className}
+        >
+          <Trash2Icon className="size-3.5" />
+        </button>
+      </Hint>
+      <Dialog open={open} onOpenChange={(o) => !o && setOpen(false)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete all drafts?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            {count === 0
+              ? "There are no drafts to delete."
+              : `Permanently delete ${count} draft${count === 1 ? "" : "s"} in ${account.email || account.accountId}. This can’t be undone.`}
+          </p>
+          <DialogFooter>
+            <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              disabled={busy || count === 0}
+              onClick={() => void onConfirm()}
+              className="bg-label-red text-white hover:bg-label-red/90"
+            >
+              {busy ? "Deleting…" : "Delete all"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

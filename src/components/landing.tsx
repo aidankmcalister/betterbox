@@ -1,17 +1,56 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Link } from "@tanstack/react-router";
-import { Sparkles } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { MailIcon, Sparkles } from "lucide-react";
+import { toast } from "sonner";
 
+import { AppSidebar } from "@/components/app-sidebar";
+import { CommandMenu } from "@/components/command-menu";
+import { Composer } from "@/components/composer";
 import { InboxTiles, type Reading } from "@/components/inbox-tiles";
 import { Button } from "@/components/ui/button";
-import { makeDemoAccounts } from "@/lib/test-account";
+import { Kbd, KbdGroup } from "@/components/ui/kbd";
+import { Toaster } from "@/components/ui/sonner";
+import { useAccountScope } from "@/hooks/use-account-scope";
+import { fetchFullEmail, isReplyDraft } from "@/lib/mail-queries";
+import type { Folder } from "@/lib/folders";
+import { makeDemoAccounts, markTestAccountRead } from "@/lib/test-account";
 import { cn } from "@/lib/utils";
+
+// Layout effect on the client (avoids the post-paint flash), plain effect on
+// the server (where useLayoutEffect would warn).
+const useIsoLayoutEffect =
+  typeof window !== "undefined" ? useLayoutEffect : useEffect;
+
+/** Landing follows the OS color scheme (system), independent of the in-app
+ *  theme setting — returns the `dark`/`light` class to scope onto the page. */
+function useSystemTheme(): "dark" | "light" {
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  // Layout effect so the correct scheme is applied before the browser paints —
+  // otherwise a light-mode visitor sees a dark frame first.
+  useIsoLayoutEffect(() => {
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => setTheme(mq.matches ? "dark" : "light");
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+  return theme;
+}
 
 /**
  * Signed-out landing page — the "BetterBox Landing v6" marketing layout, styled
  * with the app's standard shadcn tokens (background/card/border/foreground/
- * muted-foreground) and the default type scale. Always dark, regardless of the
- * in-app theme. The only bespoke flourish is the animated "live" pulse dot.
+ * muted-foreground) and the default type scale. Follows the OS color scheme
+ * (system), independent of the in-app theme. The only bespoke flourish is the
+ * animated "live" pulse dot.
  */
 
 const COL = "mx-auto max-w-6xl px-10";
@@ -28,11 +67,11 @@ function Wordmark({ small }: { small?: boolean }) {
     <span className="inline-flex items-center gap-2">
       <span
         className={cn(
-          "inline-flex flex-none items-center justify-center rounded-md bg-primary font-bold tracking-tight text-primary-foreground",
-          small ? "size-5 text-[10px]" : "size-6 text-sm",
+          "inline-flex flex-none items-center justify-center rounded-md bg-primary text-primary-foreground",
+          small ? "size-5" : "size-6",
         )}
       >
-        B
+        <MailIcon className={small ? "size-3" : "size-3.5"} />
       </span>
       <span
         className={cn(
@@ -247,29 +286,161 @@ function Demo() {
   );
 }
 
-/** The demo slot: the real inbox running on two seeded test accounts — fully
- *  browsable, nothing actually sends. Client-only (the inbox is heavy and uses
- *  localStorage) and forced dark to sit inside the dark demo frame. */
+const DEMO_USER = { name: "You", email: "personal@betterbox.dev", image: null };
+const noop = () => {};
+
+/** The demo slot: a fully self-contained copy of the real app — sidebar,
+ *  folders, the ⌘K palette and compose — on two seeded test accounts. A sealed
+ *  sandbox: everything stays inside this box (overlays portal here via the
+ *  `transform` containing block, not to <body>), nothing hits the network,
+ *  nothing sends, and settings are disabled. Client-only; theme follows the
+ *  page (system). */
 function LandingDemo() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-  const accounts = useMemo(() => makeDemoAccounts(), []);
-  const scopeIds = useMemo(() => accounts.map((a) => a.accountId), [accounts]);
+
+  const boxRef = useRef<HTMLDivElement>(null);
+  // ⌘K only fires while the pointer/focus is inside the demo.
+  const activeRef = useRef(false);
+  const queryClient = useQueryClient();
+
+  // Bumped after a read-state change so the demo accounts (and their unread
+  // counts) are recomputed from the test store.
+  const [readVersion, setReadVersion] = useState(0);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const accounts = useMemo(() => makeDemoAccounts(), [readVersion]);
+  const accountIds = useMemo(
+    () => accounts.map((a) => a.accountId),
+    [accounts],
+  );
+  const { scopeIds, allOn, toggle } = useAccountScope(accountIds);
+
+  const [folder, setFolder] = useState<Folder>("inbox");
   const [reading, setReading] = useState<Reading | null>(null);
+  const [cmdOpen, setCmdOpen] = useState(false);
+  const [composeOpen, setComposeOpen] = useState(false);
+  const [draftRef, setDraftRef] = useState<{
+    accountId: string;
+    emailId: string;
+  } | null>(null);
+
+  const openCompose = useCallback(() => {
+    setDraftRef(null);
+    setComposeOpen(true);
+  }, []);
+  const editDraft = useCallback(async (accountId: string, emailId: string) => {
+    // Reply-drafts open the thread (reader + inline reply); new drafts compose.
+    try {
+      const full = await fetchFullEmail(accountId, emailId);
+      if (isReplyDraft(full)) {
+        setReading({ accountId, emailId });
+        return;
+      }
+    } catch {
+      /* fall through to the composer */
+    }
+    setDraftRef({ accountId, emailId });
+    setComposeOpen(true);
+  }, []);
+
+  const scopedAccounts = useMemo(
+    () => accounts.filter((a) => scopeIds.includes(a.accountId)),
+    [accounts, scopeIds],
+  );
+
+  const goInbox = useCallback(() => {
+    toggle("all");
+    setFolder("inbox");
+  }, [toggle]);
+
+  // "Mark all read" in the demo: update the test store, refresh the lists, and
+  // recompute the unread counts. Nothing leaves the sandbox.
+  const markAccountRead = useCallback(
+    (accountId: string) => {
+      markTestAccountRead(accountId);
+      queryClient.invalidateQueries({ queryKey: ["emails", accountId] });
+      setReadVersion((v) => v + 1);
+      const email = accounts.find((a) => a.accountId === accountId)?.email;
+      toast("Marked all read", { description: email });
+    },
+    [accounts, queryClient],
+  );
+
+  // ⌘K toggles the palette — but only when the demo is the focus, so it never
+  // hijacks the rest of the marketing page.
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.key !== "k" || !(e.metaKey || e.ctrlKey)) return;
+      const inside =
+        activeRef.current || !!boxRef.current?.contains(document.activeElement);
+      if (!inside) return;
+      e.preventDefault();
+      setCmdOpen((o) => !o);
+    };
+    document.addEventListener("keydown", down);
+    return () => document.removeEventListener("keydown", down);
+  }, []);
 
   if (!mounted) return <DemoLoading />;
 
   return (
-    <div className="dark absolute inset-0 bg-background text-left text-foreground">
-      <InboxTiles
+    // Scaled to 80% so the full app fits the demo box comfortably; the inner is
+    // sized to 125% so it still fills the frame after scaling. The `transform`
+    // also makes this the containing block for the `fixed` overlays (compose,
+    // ⌘K palette), keeping them inside the demo instead of escaping to the page.
+    <div
+      ref={boxRef}
+      onMouseEnter={() => (activeRef.current = true)}
+      onMouseLeave={() => (activeRef.current = false)}
+      className="absolute top-0 left-0 flex h-[125%] w-[125%] origin-top-left scale-[0.8] bg-background text-left text-foreground"
+    >
+      {/* Rendered inside the scaled box so its fixed positioning is contained
+          here (transform → containing block) instead of escaping to the page. */}
+      <Toaster position="bottom-right" />
+      <CommandMenu
+        open={cmdOpen}
+        onOpenChange={setCmdOpen}
+        onOpenSettings={noop}
+        onGoInbox={goInbox}
+        onCompose={openCompose}
+        onMarkAccountRead={markAccountRead}
+        accounts={accounts}
+        searchAccounts={scopedAccounts}
+        container={boxRef}
+      />
+      <Composer
+        open={composeOpen}
+        onOpenChange={setComposeOpen}
+        accounts={accounts}
+        draft={draftRef}
+      />
+      <AppSidebar
+        embedded
+        demoUser={DEMO_USER}
         accounts={accounts}
         scopeIds={scopeIds}
-        folder="inbox"
-        reading={reading}
-        onOpenEmail={(accountId, emailId) => setReading({ accountId, emailId })}
-        onCloseReader={() => setReading(null)}
-        onRemovePane={() => {}}
+        allOn={allOn}
+        folder={folder}
+        onFolder={setFolder}
+        onToggleScope={toggle}
+        onOpenCommand={() => setCmdOpen(true)}
+        onOpenSettings={noop}
+        onCompose={openCompose}
       />
+      <div className="flex h-full min-w-0 flex-1 overflow-hidden">
+        <InboxTiles
+          accounts={accounts}
+          scopeIds={scopeIds}
+          folder={folder}
+          reading={reading}
+          onOpenEmail={(accountId, emailId) =>
+            setReading({ accountId, emailId })
+          }
+          onCloseReader={() => setReading(null)}
+          onRemovePane={toggle}
+          onEditDraft={editDraft}
+        />
+      </div>
     </div>
   );
 }
@@ -285,38 +456,62 @@ function DemoLoading() {
   );
 }
 
-const SPEC_CELLS: [string, string][] = [
-  [
-    "multi-account",
-    "Every Google inbox in one list. Colored dots keep accounts apart; views merge them.",
-  ],
-  [
-    "⌘k",
-    "Compose, switch accounts, export, search — every action is a keystroke.",
-  ],
-  ["raw mime", "The original source of any message, one ⌥R away."],
-  [
-    "webhooks",
-    "New-mail events delivered to your endpoint, signed and retried.",
-  ],
-  ["api log", "Every Gmail API call on the record — status, latency, units."],
-  ["exports", "Any thread as Markdown, JSON, or plain text."],
+const SPEC_CELLS: { label: React.ReactNode; body: React.ReactNode }[] = [
+  {
+    label: "multi-account",
+    body: "Every Google inbox in one list. Colored dots keep accounts apart; views merge them.",
+  },
+  {
+    label: (
+      <KbdGroup>
+        <Kbd>⌘</Kbd>
+        <Kbd>K</Kbd>
+      </KbdGroup>
+    ),
+    body: "Compose, switch accounts, export, search — every action is a keystroke.",
+  },
+  {
+    label: "open source",
+    body: "The full client is on GitHub. Self-host it free with your own OAuth app, or let us run it.",
+  },
+  {
+    label: "webhooks",
+    body: "New-mail events delivered to your endpoint, signed and retried.",
+  },
+  {
+    label: "api log",
+    body: "Every Gmail API call on the record — status, latency, units.",
+  },
+  {
+    label: "exports",
+    body: (
+      <>
+        Any thread as Markdown, JSON, or plain text — or the raw MIME source,
+        one <Kbd>⌥R</Kbd> away.
+      </>
+    ),
+  },
 ];
 
 function Spec() {
   return (
     <Wrap label="what it is" caption="the short version">
-      <div className="grid grid-cols-3">
-        {SPEC_CELLS.map(([label, body]) => (
-          <div key={label} className="border-t border-l border-border p-5">
-            <div className="mb-2 font-mono text-xs font-medium tracking-wide text-muted-foreground/60 uppercase">
-              {label}
+      <div className="overflow-hidden rounded-2xl border border-border">
+        <div className="grid grid-cols-3">
+          {SPEC_CELLS.map((cell, i) => (
+            <div
+              key={i}
+              className="border-t border-l border-border p-5 [&:nth-child(-n+3)]:border-t-0 [&:nth-child(3n+1)]:border-l-0"
+            >
+              <div className="mb-2 flex h-5 items-center font-mono text-xs font-medium tracking-wide text-muted-foreground/60 uppercase">
+                {cell.label}
+              </div>
+              <p className="text-sm leading-relaxed text-pretty text-muted-foreground">
+                {cell.body}
+              </p>
             </div>
-            <p className="text-sm leading-relaxed text-pretty text-muted-foreground">
-              {body}
-            </p>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </Wrap>
   );
@@ -347,8 +542,8 @@ function Plans() {
             </a>
           </div>
 
-          {/* Hosted — $5, the recommended paid plan (emphasized) */}
-          <div className="relative flex flex-col items-center bg-muted/30 px-8 py-10 text-center">
+          {/* Hosted — $5, the recommended paid plan */}
+          <div className="relative flex flex-col items-center px-8 py-10 text-center">
             <span className="absolute top-4 right-4 inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 font-mono text-[11px] font-medium tracking-wide text-primary uppercase">
               <Sparkles className="size-3" />
               recommended
@@ -385,33 +580,46 @@ const FAQ_ITEMS = [
     a: "No. BetterBox is a client for the Gmail accounts you already have, built on the Gmail API. Nothing migrates; your mail stays in Google.",
   },
   {
-    q: "Why a waitlist?",
-    a: "BetterBox is going through Google's API verification. Until it clears, sign-ins are limited to allow-listed test accounts. The waitlist is the queue — for those slots, and for launch.",
+    q: "Self-host or hosted — what's the difference?",
+    a: "Two ways to run the same client. Self-host is free and open source: bring your own Google OAuth app and run it on your own infra. Hosted is $5/month — we run and update it, you just sign in. 7-day trial, no card.",
+  },
+  {
+    q: "Is it really open source?",
+    a: "Yes. The full client is on GitHub — audit every line, self-host it for free, or fork it. Hosted runs the same code, maintained by us.",
+  },
+  {
+    q: "Why is there a waitlist?",
+    a: "The waitlist is for the hosted plan. Hosted is going through Google's API verification; until it clears, sign-ins are limited to allow-listed accounts. Self-host isn't gated — your own OAuth app, your own queue.",
   },
   {
     q: "Does BetterBox store my mail?",
-    a: "Messages are fetched live from the Gmail API when you open the app. Webhook and analytics data is metadata — counts, timings, statuses — not message content.",
+    a: "On either plan, messages are fetched live from the Gmail API when you open the app. Webhook and analytics data is metadata — counts, timings, statuses — not message content.",
   },
   {
-    q: "When does it launch?",
-    a: "When verification clears and the client is ready. Waitlist members get access first, in order.",
+    q: "When does hosted launch?",
+    a: "When verification clears and the client is ready. Waitlist members get access first, in order. Self-host works today, straight from source.",
   },
 ];
 
 function Faq() {
   return (
     <Wrap label="faq">
-      <div className="grid grid-cols-2 gap-x-12 gap-y-7">
-        {FAQ_ITEMS.map((it) => (
-          <div key={it.q}>
-            <h4 className="mb-2 text-base font-medium tracking-tight text-foreground">
-              {it.q}
-            </h4>
-            <p className="text-sm leading-relaxed text-pretty text-muted-foreground">
-              {it.a}
-            </p>
-          </div>
-        ))}
+      <div className="overflow-hidden rounded-2xl border border-border">
+        <div className="grid grid-cols-2">
+          {FAQ_ITEMS.map((it) => (
+            <div
+              key={it.q}
+              className="border-t border-l border-border p-6 [&:nth-child(-n+2)]:border-t-0 [&:nth-child(odd)]:border-l-0"
+            >
+              <h4 className="mb-2 text-[15px] font-medium tracking-tight text-foreground">
+                {it.q}
+              </h4>
+              <p className="text-sm leading-relaxed text-pretty text-muted-foreground">
+                {it.a}
+              </p>
+            </div>
+          ))}
+        </div>
       </div>
     </Wrap>
   );
@@ -444,8 +652,37 @@ function Footer() {
 }
 
 export function LandingPage() {
+  const theme = useSystemTheme();
+
+  // Mirror the system theme onto <html> while the landing is mounted. Overlays
+  // (compose From menu, tag picker, tooltips) portal to <body>, so they read
+  // the root class — without this they'd inherit the stored in-app theme and
+  // render light inside a dark demo. Restored to the app's theme on unmount.
+  useIsoLayoutEffect(() => {
+    const root = document.documentElement;
+    const had = {
+      dark: root.classList.contains("dark"),
+      light: root.classList.contains("light"),
+    };
+    const prevScheme = root.style.colorScheme;
+    root.classList.remove("light", "dark");
+    root.classList.add(theme);
+    root.style.colorScheme = theme;
+    return () => {
+      root.classList.remove("light", "dark");
+      if (had.dark) root.classList.add("dark");
+      else if (had.light) root.classList.add("light");
+      root.style.colorScheme = prevScheme;
+    };
+  }, [theme]);
+
   return (
-    <div className="h-svh w-full overflow-y-auto bg-background">
+    <div
+      className={cn(
+        theme,
+        "h-svh w-full overflow-y-auto bg-background text-foreground",
+      )}
+    >
       <Header />
       <Hero />
       <Demo />

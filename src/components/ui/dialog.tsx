@@ -41,12 +41,16 @@ function DialogContent({
   className,
   children,
   showCloseButton = true,
+  container,
   ...props
 }: DialogPrimitive.Popup.Props & {
   showCloseButton?: boolean;
+  /** Portal target. Pass an element/ref to keep the dialog inside a bounded
+   *  container (e.g. the landing demo box) instead of escaping to <body>. */
+  container?: DialogPrimitive.Portal.Props["container"];
 }) {
   return (
-    <DialogPortal>
+    <DialogPortal container={container}>
       <DialogOverlay />
       <DialogPrimitive.Popup
         data-slot="dialog-content"

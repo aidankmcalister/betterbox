@@ -11,9 +11,18 @@ import {
   XIcon,
 } from "lucide-react";
 
+import { toast } from "sonner";
+
+import { useQueryClient } from "@tanstack/react-query";
+
 import { useSession } from "@/lib/auth-client";
 import type { Account } from "@/lib/account";
-import { sendNewEmail } from "@/lib/mail-queries";
+import {
+  deleteDraft,
+  saveDraft,
+  sendNewEmail,
+  useFullEmailQuery,
+} from "@/lib/mail-queries";
 import { isTestAccount } from "@/lib/test-account";
 import { AccountDot } from "@/components/account-dot";
 import { RichTextEditor } from "@/components/rich-text-editor";
@@ -29,6 +38,17 @@ import {
 
 const shortName = (email: string) => email.split("@")[0] || email;
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** True when `value` is one or more comma-separated, well-formed addresses. */
+function isValidRecipients(value: string): boolean {
+  const parts = value
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  return parts.length > 0 && parts.every((part) => EMAIL_RE.test(part));
+}
+
 /**
  * Docked composer for a new message (design: fixed bottom-right panel, not a
  * Dialog). Field rows are borderless — plain inputs, label column 44px,
@@ -40,17 +60,20 @@ export function Composer({
   onOpenChange,
   accounts,
   initialDraft,
+  draft,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   accounts: Account[];
   initialDraft?: { to?: string; subject?: string; body?: string };
+  /** Open an existing draft for editing — its fields are loaded and seeded. */
+  draft?: { accountId: string; emailId: string } | null;
 }) {
   const { data: session } = useSession();
-  const sendable = useMemo(
-    () => accounts.filter((a) => !isTestAccount(a.accountId) && a.email),
-    [accounts],
-  );
+  const queryClient = useQueryClient();
+  // Any inbox with an address can be the From. Test/demo accounts are included
+  // so the picker shows them — sending from one is a sealed no-op (see `send`).
+  const sendable = useMemo(() => accounts.filter((a) => a.email), [accounts]);
 
   const [fromId, setFromId] = useState<string | null>(null);
   const [to, setTo] = useState("");
@@ -59,17 +82,40 @@ export function Composer({
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Load the draft being edited (no-op query when not editing a draft).
+  const draftEmail = useFullEmailQuery(
+    draft?.accountId ?? "",
+    draft?.emailId ?? null,
+  ).data;
+
   /* Start from a clean slate each time the composer opens. */
   useEffect(() => {
     if (!open) return;
-    setFromId(null);
+    setFromId(draft?.accountId ?? null);
     setTo(initialDraft?.to ?? "");
     setSubject(initialDraft?.subject ?? "");
     // The body is the rich editor's HTML; a seeded draft (e.g. a forward) is
     // plain text, so escape it and keep its line breaks.
     setBody(initialDraft?.body ? plainToHtml(initialDraft.body) : "");
     setError(null);
-  }, [open, initialDraft]);
+    setSending(false);
+  }, [open, initialDraft, draft]);
+
+  // Seed the fields once the edited draft loads (arrives after the open reset).
+  useEffect(() => {
+    if (!open || !draft || !draftEmail) return;
+    setFromId(draft.accountId);
+    setTo(draftEmail.to ?? "");
+    setSubject(
+      !draftEmail.subject || draftEmail.subject === "(no subject)"
+        ? ""
+        : draftEmail.subject,
+    );
+    setBody(
+      draftEmail.bodyHtml ??
+        (draftEmail.body ? plainToHtml(draftEmail.body) : ""),
+    );
+  }, [open, draft, draftEmail]);
 
   const from =
     sendable.find((a) => a.accountId === fromId) ??
@@ -79,19 +125,60 @@ export function Composer({
 
   if (!open) return null;
 
-  const canSend = !sending && from !== null && to.trim().length > 0;
+  // Require at least one well-formed address (comma-separated allowed) before
+  // Send is enabled — so "d" can't be sent.
+  const recipientsValid = isValidRecipients(to);
+  const canSend = !sending && from !== null && recipientsValid;
 
-  const discard = () => {
+  const hasContent =
+    to.trim().length > 0 || subject.trim().length > 0 || body.length > 0;
+
+  const refreshDrafts = (accountId: string) => {
+    queryClient.invalidateQueries({ queryKey: ["emails", accountId] });
+    // Drop the cached full-email so re-opening an edited draft shows new content.
+    queryClient.invalidateQueries({ queryKey: ["email", accountId] });
+  };
+
+  const reset = () => {
     setTo("");
     setSubject("");
     setBody("");
     onOpenChange(false);
   };
 
+  // Closing keeps your work: save the current content as a draft (or update the
+  // one being edited). Empty composers don't create a draft.
+  const close = () => {
+    if (from && hasContent) {
+      void saveDraft({
+        accountId: from.accountId,
+        id: draft?.emailId,
+        to: to.trim(),
+        subject,
+        html: body,
+      }).then(() => refreshDrafts(from.accountId));
+      if (isTestAccount(from.accountId)) toast("Saved to drafts");
+    }
+    reset();
+  };
+
+  // Discard throws the message away — and removes the draft if we were editing
+  // one (so it doesn't linger in the Drafts folder).
+  const discard = () => {
+    if (draft && from) {
+      void deleteDraft(from.accountId, draft.emailId).then(() =>
+        refreshDrafts(from.accountId),
+      );
+      if (isTestAccount(from.accountId)) toast("Draft discarded");
+    }
+    reset();
+  };
+
   const send = async () => {
     if (!canSend || !from) return;
     setSending(true);
     setError(null);
+    const sandbox = isTestAccount(from.accountId);
     try {
       await sendNewEmail({
         accountId: from.accountId,
@@ -100,9 +187,24 @@ export function Composer({
         body: "",
         html: body,
       });
-      discard();
+      // A sent draft leaves the Drafts folder.
+      if (draft) {
+        await deleteDraft(from.accountId, draft.emailId);
+        refreshDrafts(from.accountId);
+      }
+      if (sandbox) {
+        toast("Demo — message not sent", {
+          description: "This is a sandbox. Nothing actually left BetterBox.",
+        });
+      } else {
+        toast.success("Message sent", { description: `To ${to.trim()}` });
+      }
+      setSending(false);
+      reset();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      const message = err instanceof Error ? err.message : String(err);
+      setError(message);
+      toast.error("Couldn’t send message", { description: message });
       setSending(false);
     }
   };
@@ -115,17 +217,19 @@ export function Composer({
           event.preventDefault();
           void send();
         }
-        if (event.key === "Escape" && !sending) onOpenChange(false);
+        if (event.key === "Escape" && !sending) close();
       }}
       className="fixed right-5 bottom-5 z-40 flex w-[520px] max-w-[calc(100vw-2.5rem)] flex-col overflow-hidden rounded-xl border border-input bg-secondary shadow-2xl"
     >
       <header className="flex items-center gap-2 border-b bg-popover px-3.5 py-[11px]">
         <PencilIcon className="size-3.5 text-muted-foreground" />
-        <span className="text-[13.5px] font-semibold">New message</span>
-        <Hint label="Close composer">
+        <span className="text-[13.5px] font-semibold">
+          {draft ? "Edit draft" : "New message"}
+        </span>
+        <Hint label="Close — saves to drafts">
           <button
             type="button"
-            onClick={() => onOpenChange(false)}
+            onClick={close}
             className="ml-auto inline-flex size-5 cursor-pointer items-center justify-center rounded text-muted-foreground/70 hover:bg-muted hover:text-foreground"
           >
             <XIcon className="size-[15px]" />
@@ -224,6 +328,11 @@ export function Composer({
           <Kbd>⌘</Kbd>
           <Kbd>↵</Kbd>
         </KbdGroup>
+        {!error && to.trim().length > 0 && !recipientsValid && (
+          <span className="min-w-0 truncate font-mono text-[11px] text-muted-foreground/70">
+            Enter a valid email address
+          </span>
+        )}
         {error && (
           <span className="min-w-0 truncate font-mono text-[11px] text-label-red">
             {error}
@@ -237,7 +346,11 @@ export function Composer({
           />
           <FooterIcon icon={CodeIcon} title="Code block — soon" disabled />
           <FooterIcon icon={LinkIcon} title="Link — soon" disabled />
-          <FooterIcon icon={Trash2Icon} title="Discard" onClick={discard} />
+          <FooterIcon
+            icon={Trash2Icon}
+            title={draft ? "Delete draft" : "Discard"}
+            onClick={discard}
+          />
         </span>
       </footer>
     </section>

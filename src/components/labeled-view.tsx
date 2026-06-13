@@ -82,7 +82,7 @@ function LabelAccordion({
   onToggle: () => void;
 } & RowHandlers) {
   const { density } = useSettings();
-  const query = useLabelEmailsQuery(accountId, label.name, open);
+  const query = useLabelEmailsQuery(accountId, label, open);
   const emails = flattenEmails(query.data);
 
   return (

@@ -12,6 +12,13 @@ import {
   makeTestEmails,
   makeTestFullEmail,
   makeTestRawEmail,
+  markTestAccountRead,
+  markTestEmailsRead,
+  removeTestLabel,
+  setTestEmailLabel,
+  testLabelEmails,
+  upsertTestDraft,
+  deleteTestEmail,
 } from "@/lib/test-account";
 
 export type FullEmail = ThreadRowEmail & {
@@ -129,18 +136,18 @@ export function useEmailsQuery(
 
 export function useLabelEmailsQuery(
   accountId: string,
-  labelName: string,
+  label: Label,
   enabled: boolean,
 ) {
   return useInfiniteQuery({
-    queryKey: ["emails-label", accountId, labelName],
+    queryKey: ["emails-label", accountId, label.id],
     enabled,
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last: EmailsPage) => last.nextPageToken ?? undefined,
     queryFn: async ({ pageParam }): Promise<EmailsPage> => {
       if (isTestAccount(accountId)) {
         await sleep(READ_LATENCY_MS);
-        return { emails: makeTestEmails(accountId, "inbox").slice(0, 5) };
+        return { emails: testLabelEmails(accountId, label.id) };
       }
       const pageQuery = pageParam
         ? `&pageToken=${encodeURIComponent(pageParam)}`
@@ -150,7 +157,7 @@ export function useLabelEmailsQuery(
         nextPageToken?: string | null;
       }>(
         `/api/emails?accountId=${accountId}&max=50&q=${encodeURIComponent(
-          `label:"${labelName}"`,
+          `label:"${label.name}"`,
         )}${pageQuery}`,
       );
       return {
@@ -161,21 +168,41 @@ export function useLabelEmailsQuery(
   });
 }
 
+export async function fetchFullEmail(
+  accountId: string,
+  emailId: string,
+): Promise<FullEmail> {
+  if (isTestAccount(accountId)) return makeTestFullEmail(accountId, emailId);
+  const data = await fetchJson<{ email: FullEmail }>(
+    `/api/message?accountId=${accountId}&id=${encodeURIComponent(emailId)}`,
+  );
+  return data.email;
+}
+
 export function useFullEmailQuery(accountId: string, emailId: string | null) {
   return useQuery({
     queryKey: ["email", accountId, emailId],
     enabled: emailId !== null,
     queryFn: async (): Promise<FullEmail> => {
-      if (isTestAccount(accountId)) {
-        await sleep(READ_LATENCY_MS);
-        return makeTestFullEmail(accountId, emailId!);
-      }
-      const data = await fetchJson<{ email: FullEmail }>(
-        `/api/message?accountId=${accountId}&id=${encodeURIComponent(emailId!)}`,
-      );
-      return data.email;
+      if (isTestAccount(accountId)) await sleep(READ_LATENCY_MS);
+      return fetchFullEmail(accountId, emailId!);
     },
   });
+}
+
+/** A draft that continues an existing thread (vs. a brand-new message) — opened
+ *  in the thread reader rather than the standalone composer. */
+export function isReplyDraft(email: {
+  id: string;
+  threadId?: string;
+  references?: string;
+  subject?: string;
+}): boolean {
+  return (
+    (!!email.threadId && email.threadId !== email.id) ||
+    !!email.references?.trim() ||
+    /^re:/i.test(email.subject ?? "")
+  );
 }
 
 export function useThreadQuery(
@@ -292,7 +319,10 @@ export async function renameLabel(
 }
 
 export async function deleteLabel(accountId: string, labelId: string) {
-  if (isTestAccount(accountId)) return;
+  if (isTestAccount(accountId)) {
+    removeTestLabel(accountId, labelId);
+    return;
+  }
   await fetchJson("/api/labels", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -306,7 +336,10 @@ export async function setEmailLabel(
   labelId: string,
   on: boolean,
 ) {
-  if (isTestAccount(accountId)) return;
+  if (isTestAccount(accountId)) {
+    setTestEmailLabel(accountId, id, labelId, on);
+    return;
+  }
   await fetchJson("/api/labels", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -337,6 +370,30 @@ export async function sendNewEmail(options: {
   });
 }
 
+/** Save the composer's current content as a draft. Returns the draft id (demo
+ *  only — real Gmail draft persistence isn't wired yet, so it's a no-op there). */
+export async function saveDraft(opts: {
+  accountId: string;
+  id?: string;
+  to: string;
+  subject: string;
+  html: string;
+}): Promise<string | null> {
+  if (isTestAccount(opts.accountId)) return upsertTestDraft(opts);
+  return null;
+}
+
+/** Delete a draft so it leaves the Drafts folder. Demo: drop from the store.
+ *  Real: trash the underlying message (we don't track the Gmail draft id yet,
+ *  but trashing removes it from Drafts). */
+export async function deleteDraft(accountId: string, emailId: string) {
+  if (isTestAccount(accountId)) {
+    deleteTestEmail(emailId);
+    return;
+  }
+  await actOnEmail(accountId, emailId, "trash");
+}
+
 export async function actOnEmail(
   accountId: string,
   id: string,
@@ -351,7 +408,11 @@ export async function actOnEmail(
 }
 
 export async function markEmailsRead(accountId: string, ids: string[]) {
-  if (isTestAccount(accountId) || ids.length === 0) return;
+  if (ids.length === 0) return;
+  if (isTestAccount(accountId)) {
+    markTestEmailsRead(ids);
+    return;
+  }
   await fetchJson(`/api/emails`, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -360,7 +421,10 @@ export async function markEmailsRead(accountId: string, ids: string[]) {
 }
 
 export async function markAllAccountRead(accountId: string) {
-  if (isTestAccount(accountId)) return;
+  if (isTestAccount(accountId)) {
+    markTestAccountRead(accountId);
+    return;
+  }
   await fetchJson(`/api/emails`, {
     method: "POST",
     headers: { "content-type": "application/json" },

@@ -1,4 +1,4 @@
-import { Fragment, useState, type ReactNode } from "react";
+import { Fragment, useState, type ComponentProps, type ReactNode } from "react";
 import {
   AlignLeft,
   CircleUserRound,
@@ -61,6 +61,7 @@ export function CommandMenu({
   onAddTestAccount,
   accounts,
   searchAccounts,
+  container,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -72,6 +73,8 @@ export function CommandMenu({
   accounts: Account[];
   /** Accounts whose panes are on screen — the "Search in …" targets. */
   searchAccounts: Account[];
+  /** Portal target — keeps the palette inside a bounded box (landing demo). */
+  container?: ComponentProps<typeof CommandDialog>["container"];
 }) {
   const { theme, setTheme } = useTheme();
   const settings = useSettings();
@@ -242,7 +245,7 @@ export function CommandMenu({
     .filter((group) => group.entries.length > 0);
 
   return (
-    <CommandDialog open={open} onOpenChange={setOpen}>
+    <CommandDialog open={open} onOpenChange={setOpen} container={container}>
       <Command shouldFilter={false}>
         <CommandInput
           placeholder="Run a command, or type a query to search your inboxes…"
