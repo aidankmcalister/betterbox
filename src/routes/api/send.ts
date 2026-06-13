@@ -18,6 +18,7 @@ export const Route = createFileRoute("/api/send")({
           to?: string;
           subject?: string;
           body?: string;
+          html?: string;
           inReplyTo?: string;
           references?: string;
           threadId?: string;
@@ -38,6 +39,7 @@ export const Route = createFileRoute("/api/send")({
             to: body.to.trim(),
             subject: body.subject ?? "",
             body: body.body ?? "",
+            html: body.html,
             inReplyTo: body.inReplyTo,
             references: body.references,
             threadId: body.threadId,

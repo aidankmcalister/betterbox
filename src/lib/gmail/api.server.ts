@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 const GMAIL = "https://gmail.googleapis.com/gmail/v1/users/me";
 const METADATA_HEADERS = ["Subject", "From", "Date"];
 
@@ -304,14 +306,16 @@ export async function getRawEmail(
   return Buffer.from(raw, "base64url").toString("utf8");
 }
 
-/** Send a plain-text message from the token's own address (messages.send).
- *  Pass inReplyTo/references/threadId to thread it as a real reply. */
+/** Send a message from the token's own address (messages.send). Pass `html`
+ *  for rich text (sent as multipart/alternative with a plain-text fallback);
+ *  pass inReplyTo/references/threadId to thread it as a real reply. */
 export async function sendEmail(
   accessToken: string,
   options: {
     to: string;
     subject: string;
     body: string;
+    html?: string;
     inReplyTo?: string;
     references?: string;
     threadId?: string;
@@ -325,14 +329,46 @@ export async function sendEmail(
     `To: ${options.to}`,
     `Subject: ${encodeSubject(options.subject)}`,
     "MIME-Version: 1.0",
-    'Content-Type: text/plain; charset="UTF-8"',
   ];
   // Threading headers make Gmail (and every other client) nest the reply
   // under the original conversation instead of starting a new one.
   if (options.inReplyTo) headerLines.push(`In-Reply-To: ${options.inReplyTo}`);
   if (options.references) headerLines.push(`References: ${options.references}`);
 
-  const mime = [...headerLines, "", options.body].join("\r\n");
+  // base64 the part bodies so UTF-8 (emoji, accents) survives intact.
+  const b64 = (s: string) =>
+    Buffer.from(s, "utf8").toString("base64").replace(/(.{76})/g, "$1\r\n");
+
+  let mime: string;
+  if (options.html?.trim()) {
+    const text = options.body.trim() ? options.body : stripHtml(options.html);
+    const boundary = `bb_${randomUUID()}`;
+    mime = [
+      ...headerLines,
+      `Content-Type: multipart/alternative; boundary="${boundary}"`,
+      "",
+      `--${boundary}`,
+      'Content-Type: text/plain; charset="UTF-8"',
+      "Content-Transfer-Encoding: base64",
+      "",
+      b64(text),
+      `--${boundary}`,
+      'Content-Type: text/html; charset="UTF-8"',
+      "Content-Transfer-Encoding: base64",
+      "",
+      b64(options.html),
+      `--${boundary}--`,
+    ].join("\r\n");
+  } else {
+    mime = [
+      ...headerLines,
+      'Content-Type: text/plain; charset="UTF-8"',
+      "Content-Transfer-Encoding: base64",
+      "",
+      b64(options.body),
+    ].join("\r\n");
+  }
+
   const payload: { raw: string; threadId?: string } = {
     raw: Buffer.from(mime).toString("base64url"),
   };

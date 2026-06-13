@@ -72,6 +72,7 @@ import { cn } from "@/lib/utils";
 import { AccountDot, useAccountColor } from "@/components/account-dot";
 import { HtmlBody } from "@/components/html-body";
 import { RawView } from "@/components/raw-view";
+import { RichTextEditor } from "@/components/rich-text-editor";
 import { SenderAvatar } from "@/components/sender-avatar";
 import { isVerifiedSender } from "@/lib/verified-senders";
 import { Hint } from "@/components/ui/tooltip";
@@ -507,7 +508,8 @@ function ReaderPane({
         subject: /^re:/i.test(target.subject)
           ? target.subject
           : `Re: ${target.subject}`,
-        body: replyBody,
+        body: "",
+        html: replyBody,
         inReplyTo: target.messageId || undefined,
         references:
           [target.references, target.messageId].filter(Boolean).join(" ") ||
@@ -771,21 +773,13 @@ function ReaderPane({
                       &lt;{(replySender ?? sender).address}&gt;
                     </span>
                   </div>
-                  <textarea
-                    autoFocus
+                  <RichTextEditor
                     value={replyBody}
-                    onChange={(event) => setReplyBody(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (
-                        event.key === "Enter" &&
-                        (event.metaKey || event.ctrlKey)
-                      ) {
-                        event.preventDefault();
-                        void sendReply();
-                      }
-                    }}
+                    onChange={setReplyBody}
+                    onSubmit={() => void sendReply()}
                     placeholder="Write your reply…"
-                    className="h-32 w-full resize-none rounded-md bg-background/50 p-2.5 text-sm leading-[1.6] outline-none placeholder:text-muted-foreground/60"
+                    autoFocus
+                    minHeight={120}
                   />
                   <div className="mt-2 flex items-center gap-2">
                     <Button

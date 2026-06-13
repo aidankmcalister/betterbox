@@ -319,6 +319,7 @@ export async function sendNewEmail(options: {
   to: string;
   subject: string;
   body: string;
+  html?: string;
   inReplyTo?: string;
   references?: string;
   threadId?: string;

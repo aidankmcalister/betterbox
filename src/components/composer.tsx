@@ -16,6 +16,7 @@ import type { Account } from "@/lib/account";
 import { sendNewEmail } from "@/lib/mail-queries";
 import { isTestAccount } from "@/lib/test-account";
 import { AccountDot } from "@/components/account-dot";
+import { RichTextEditor } from "@/components/rich-text-editor";
 import { Button } from "@/components/ui/button";
 import { Hint } from "@/components/ui/tooltip";
 import {
@@ -37,10 +38,12 @@ export function Composer({
   open,
   onOpenChange,
   accounts,
+  initialDraft,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   accounts: Account[];
+  initialDraft?: { to?: string; subject?: string; body?: string };
 }) {
   const { data: session } = useSession();
   const sendable = useMemo(
@@ -59,11 +62,13 @@ export function Composer({
   useEffect(() => {
     if (!open) return;
     setFromId(null);
-    setTo("");
-    setSubject("");
-    setBody("");
+    setTo(initialDraft?.to ?? "");
+    setSubject(initialDraft?.subject ?? "");
+    // The body is the rich editor's HTML; a seeded draft (e.g. a forward) is
+    // plain text, so escape it and keep its line breaks.
+    setBody(initialDraft?.body ? plainToHtml(initialDraft.body) : "");
     setError(null);
-  }, [open]);
+  }, [open, initialDraft]);
 
   const from =
     sendable.find((a) => a.accountId === fromId) ??
@@ -91,7 +96,8 @@ export function Composer({
         accountId: from.accountId,
         to: to.trim(),
         subject,
-        body,
+        body: "",
+        html: body,
       });
       discard();
     } catch (err) {
@@ -199,12 +205,14 @@ export function Composer({
         />
       </div>
 
-      <textarea
-        value={body}
-        onChange={(event) => setBody(event.target.value)}
-        placeholder="Write your message…"
-        className="h-[200px] resize-none bg-transparent px-4 py-3.5 text-[13.5px] leading-[1.6] text-foreground/85 outline-none placeholder:text-muted-foreground/60"
-      />
+      <div className="px-3.5 py-3">
+        <RichTextEditor
+          value={body}
+          onChange={setBody}
+          placeholder="Write your message…"
+          minHeight={200}
+        />
+      </div>
 
       <footer className="flex items-center gap-2 border-t px-3.5 py-[11px]">
         <Button size="sm" disabled={!canSend} onClick={() => void send()}>
@@ -220,7 +228,11 @@ export function Composer({
           </span>
         )}
         <span className="ml-auto inline-flex gap-0.5">
-          <FooterIcon icon={PaperclipIcon} title="Attachments — soon" disabled />
+          <FooterIcon
+            icon={PaperclipIcon}
+            title="Attachments — soon"
+            disabled
+          />
           <FooterIcon icon={CodeIcon} title="Code block — soon" disabled />
           <FooterIcon icon={LinkIcon} title="Link — soon" disabled />
           <FooterIcon icon={Trash2Icon} title="Discard" onClick={discard} />
@@ -228,6 +240,17 @@ export function Composer({
       </footer>
     </section>
   );
+}
+
+/** Escape a plain-text draft and preserve its line breaks so it seeds the rich
+ *  editor (which treats its content as HTML) without dropping `<addr>` or runs. */
+function plainToHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .split("\n")
+    .join("<br>");
 }
 
 function FieldLabel({ children }: { children: string }) {
