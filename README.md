@@ -70,7 +70,7 @@ That's it. Want the owner-only tools (seeded test accounts + demo mode)? Run `bu
 | Framework | [TanStack Start](https://tanstack.com/start) (React 19, SSR)                              |
 | Styling   | Tailwind CSS v4 + shadcn/ui (on [Base UI](https://base-ui.com))                           |
 | Auth      | [Better Auth](https://better-auth.com) — Google + GitHub, multi-account, encrypted tokens |
-| Database  | [Prisma Postgres](https://prisma.io/postgres) via [Prisma](https://prisma.io) 7                                              |
+| Database  | [Prisma Postgres](https://prisma.io/postgres) via [Prisma](https://prisma.io) 7           |
 | Runtime   | [Bun](https://bun.sh) · deployed with Nitro                                               |
 | Tooling   | Prettier (format), Biome (lint), Vitest / `bun test`                                      |
 
