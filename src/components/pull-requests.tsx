@@ -14,6 +14,7 @@ import {
 
 import { linkGithub } from "@/lib/auth-client";
 import { usePullRequestsQuery, type PullRequest } from "@/lib/github-queries";
+import demoPullRequests from "@/data/demo-pull-requests.json";
 import { Button } from "@/components/ui/button";
 import { Hint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -133,7 +134,7 @@ function Row({ pr, now }: { pr: PullRequest; now: number }) {
       target="_blank"
       rel="noopener noreferrer"
       className={cn(
-        "flex h-[34px] items-center gap-2.5 border-b border-l-2 border-border px-4 hover:bg-muted/50",
+        "flex h-[34px] items-center gap-4 border-b border-l-2 border-border px-4 hover:bg-muted/50",
         pr.awaitsYou ? "border-l-primary" : "border-l-transparent",
       )}
     >
@@ -179,7 +180,7 @@ function Row({ pr, now }: { pr: PullRequest; now: number }) {
         <ReviewPill pr={pr} />
       </span>
       <Hint label={`${pr.comments} comment${pr.comments === 1 ? "" : "s"}`}>
-        <span className="flex w-[38px] flex-none items-center justify-end gap-1 font-mono text-[11px] text-muted-foreground/60">
+        <span className="flex w-[44px] flex-none items-center justify-end gap-1 font-mono text-[11px] text-muted-foreground/60">
           <MessageSquareIcon className="size-3" />
           {pr.comments}
         </span>
@@ -191,7 +192,7 @@ function Row({ pr, now }: { pr: PullRequest; now: number }) {
           <DiffStat pr={pr} />
         </span>
       </Hint>
-      <span className="flex w-[18px] flex-none justify-center">
+      <span className="flex w-[22px] flex-none justify-center">
         <Hint label={`CI ${pr.ci === "none" ? "not run" : pr.ci}`}>
           <span className="flex">
             <CiDot ci={pr.ci} />
@@ -291,23 +292,57 @@ const matches = (p: PullRequest, f: FilterId) => {
   return true;
 };
 
-export function PullRequestsPage({ signedIn }: { signedIn: boolean }) {
-  const [filter, setFilter] = useState<FilterId>("open");
-  const query = usePullRequestsQuery(signedIn);
-  const now = useMemo(() => Date.now(), [query.dataUpdatedAt]);
+type DemoPr = Omit<PullRequest, "url" | "author" | "labels" | "updated"> & {
+  minutesAgo: number;
+};
 
-  if (query.isLoading) return <LoadingState />;
-  if (query.data && !query.data.linked) return <ConnectState />;
-  if (query.isError || query.data?.error) {
-    return (
-      <ErrorState
-        message={query.data?.error ?? String(query.error)}
-        onRetry={() => query.refetch()}
-      />
-    );
+/** Seeded PRs for the landing-page sandbox — no network, fresh relative times.
+ *  Data lives in `@/data/demo-pull-requests`. */
+function makeDemoPullRequests(): PullRequest[] {
+  const now = Date.now();
+  return (demoPullRequests as unknown as DemoPr[]).map(
+    ({ minutesAgo, ...rec }) => ({
+      ...rec,
+      labels: [],
+      author: "you",
+      url: "#",
+      updated: new Date(now - minutesAgo * 60_000).toISOString(),
+    }),
+  );
+}
+
+export function PullRequestsPage({
+  signedIn = false,
+  demo = false,
+}: {
+  signedIn?: boolean;
+  /** Landing-page sandbox: render seeded PRs, no API / connect / loading. */
+  demo?: boolean;
+}) {
+  const [filter, setFilter] = useState<FilterId>("open");
+  const query = usePullRequestsQuery(signedIn && !demo);
+  const now = useMemo(() => Date.now(), [query.dataUpdatedAt]);
+  const demoPrs = useMemo(() => (demo ? makeDemoPullRequests() : []), [demo]);
+
+  if (!demo) {
+    if (query.isLoading) return <LoadingState />;
+    if (query.data && !query.data.linked) return <ConnectState />;
+    if (query.isError || query.data?.error) {
+      return (
+        <ErrorState
+          message={query.data?.error ?? String(query.error)}
+          onRetry={() => query.refetch()}
+        />
+      );
+    }
   }
 
-  const prs = query.data?.prs ?? [];
+  const prs = demo ? demoPrs : (query.data?.prs ?? []);
+  const login = demo ? "betterbox" : query.data?.login;
+  const fetching = !demo && query.isFetching;
+  const refresh = () => {
+    if (!demo) query.refetch();
+  };
   const nOpen = prs.filter(
     (p) => p.state === "open" || p.state === "draft",
   ).length;
@@ -342,14 +377,14 @@ export function PullRequestsPage({ signedIn }: { signedIn: boolean }) {
             <span className="size-1.5 rounded-full bg-success shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-success)_20%,transparent)]" />
             live
           </span>
-          {query.data?.login && <span>@{query.data.login}</span>}
+          {login && <span>@{login}</span>}
           <button
             type="button"
-            onClick={() => query.refetch()}
+            onClick={refresh}
             className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-muted-foreground hover:bg-muted/50 hover:text-foreground"
           >
             <RefreshCwIcon
-              className={cn("size-3", query.isFetching && "animate-spin")}
+              className={cn("size-3", fetching && "animate-spin")}
             />
             Refresh
           </button>
@@ -379,17 +414,15 @@ export function PullRequestsPage({ signedIn }: { signedIn: boolean }) {
 
       {/* list */}
       <div className="flex-1 overflow-y-auto">
-        <div className="sticky top-0 z-[1] flex h-[30px] items-center gap-2.5 border-b border-l-2 border-border border-l-transparent bg-background px-4 text-[10.5px] tracking-[0.4px] text-muted-foreground/60 uppercase">
+        <div className="sticky top-0 z-[1] flex h-[30px] items-center gap-4 border-b border-l-2 border-border border-l-transparent bg-background px-4 text-[10.5px] tracking-[0.4px] text-muted-foreground/60 uppercase">
           <span className="w-4 flex-none" />
           <span className="w-[152px] flex-none">Repository</span>
           <span className="min-w-0 flex-1 truncate">Pull request</span>
           <span className="w-3 flex-none" />
           <span className="w-[104px] flex-none">Review</span>
-          <span className="flex w-[38px] flex-none justify-end">
-            <MessageSquareIcon className="size-3" />
-          </span>
+          <span className="flex w-[44px] flex-none justify-end">Comments</span>
           <span className="w-[124px] flex-none text-right">Changes</span>
-          <span className="w-[18px] flex-none text-center">CI</span>
+          <span className="w-[22px] flex-none text-center">CI</span>
           <span className="w-[34px] flex-none text-right">Upd.</span>
         </div>
 
@@ -410,7 +443,7 @@ export function PullRequestsPage({ signedIn }: { signedIn: boolean }) {
             ))}
             <div className="flex items-center justify-center gap-2 p-3.5 font-mono text-[10.5px] text-muted-foreground/60">
               <GithubMark className="size-3" />
-              live from the GitHub API · authored + review-requested
+              live from the GitHub API
             </div>
           </>
         )}

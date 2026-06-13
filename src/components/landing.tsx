@@ -15,6 +15,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { CommandMenu } from "@/components/command-menu";
 import { Composer } from "@/components/composer";
 import { InboxTiles, type Reading } from "@/components/inbox-tiles";
+import { PullRequestsPage } from "@/components/pull-requests";
 import { Button } from "@/components/ui/button";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { Toaster } from "@/components/ui/sonner";
@@ -319,6 +320,17 @@ function LandingDemo() {
   const [reading, setReading] = useState<Reading | null>(null);
   const [cmdOpen, setCmdOpen] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
+  // Which surface fills the demo: the mailbox or a developer page (PRs).
+  const [devView, setDevView] = useState<"pull_requests" | null>(null);
+
+  // Picking a mailbox folder leaves any dev page; opening a dev page enters it.
+  const selectFolder = useCallback((next: Folder) => {
+    setDevView(null);
+    setFolder(next);
+  }, []);
+  const openDevPage = useCallback((id: string) => {
+    if (id === "pull_requests") setDevView("pull_requests");
+  }, []);
   const [draftRef, setDraftRef] = useState<{
     accountId: string;
     emailId: string;
@@ -350,6 +362,7 @@ function LandingDemo() {
 
   const goInbox = useCallback(() => {
     toggle("all");
+    setDevView(null);
     setFolder("inbox");
   }, [toggle]);
 
@@ -421,25 +434,31 @@ function LandingDemo() {
         scopeIds={scopeIds}
         allOn={allOn}
         folder={folder}
-        onFolder={setFolder}
+        onFolder={selectFolder}
         onToggleScope={toggle}
         onOpenCommand={() => setCmdOpen(true)}
         onOpenSettings={noop}
         onCompose={openCompose}
+        onOpenDevPage={openDevPage}
+        activeDevId={devView ?? undefined}
       />
       <div className="flex h-full min-w-0 flex-1 overflow-hidden">
-        <InboxTiles
-          accounts={accounts}
-          scopeIds={scopeIds}
-          folder={folder}
-          reading={reading}
-          onOpenEmail={(accountId, emailId) =>
-            setReading({ accountId, emailId })
-          }
-          onCloseReader={() => setReading(null)}
-          onRemovePane={toggle}
-          onEditDraft={editDraft}
-        />
+        {devView === "pull_requests" ? (
+          <PullRequestsPage demo />
+        ) : (
+          <InboxTiles
+            accounts={accounts}
+            scopeIds={scopeIds}
+            folder={folder}
+            reading={reading}
+            onOpenEmail={(accountId, emailId) =>
+              setReading({ accountId, emailId })
+            }
+            onCloseReader={() => setReading(null)}
+            onRemovePane={toggle}
+            onEditDraft={editDraft}
+          />
+        )}
       </div>
     </div>
   );

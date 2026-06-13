@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Collapsible } from "@base-ui/react/collapsible";
@@ -60,6 +60,13 @@ import { Hint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/rules")({
+  // Owner-only while rules are a work in progress. The _app route resolves the
+  // session into context; non-owners are bounced to the inbox.
+  beforeLoad: ({ context }) => {
+    const role = (context as { session?: { user?: { role?: string } } }).session
+      ?.user?.role;
+    if (role !== "OWNER") throw redirect({ to: "/" });
+  },
   component: RulesPage,
 });
 

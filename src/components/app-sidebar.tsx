@@ -16,7 +16,7 @@ import {
 
 import { useLocation, useNavigate } from "@tanstack/react-router";
 
-import { linkGoogle } from "@/lib/auth-client";
+import { linkGoogle, useSession } from "@/lib/auth-client";
 import { useSettings } from "@/hooks/use-settings";
 import { formatCount } from "@/lib/format";
 import { NavUser } from "@/components/nav-user";
@@ -54,8 +54,16 @@ const developer: {
   title: string;
   icon: typeof Inbox;
   to?: string;
+  /** Render as a dimmed "Soon" item (non-navigable). */
+  disabled?: boolean;
 }[] = [
-  { id: "rules", title: "Rules", icon: GitBranch, to: "/rules" },
+  {
+    id: "rules",
+    title: "Rules",
+    icon: GitBranch,
+    to: "/rules",
+    disabled: true,
+  },
   {
     id: "pull_requests",
     title: "PRs",
@@ -118,6 +126,8 @@ export function AppSidebar({
   onOpenSettings,
   onCompose,
   onAddTestAccount,
+  onOpenDevPage,
+  activeDevId,
   loading = false,
   embedded = false,
   demoUser,
@@ -132,6 +142,11 @@ export function AppSidebar({
   onOpenSettings: () => void;
   onCompose: () => void;
   onAddTestAccount?: () => void;
+  /** Embedded only (landing demo): open a developer page inside the sandbox
+   *  instead of navigating the real router. */
+  onOpenDevPage?: (id: string) => void;
+  /** Embedded only: which developer page is showing, for the active highlight. */
+  activeDevId?: string;
   /** Session/accounts still booting — skeleton the account + profile blocks. */
   loading?: boolean;
   /** Embedded in a fixed-height container (landing demo) — fill the parent
@@ -141,15 +156,21 @@ export function AppSidebar({
   demoUser?: { name: string; email: string; image: string | null };
 }) {
   const { hiddenNav } = useSettings();
+  const { data: session } = useSession();
+  const isOwner = session?.user.role === "OWNER";
   const navigate = useNavigate();
   const pathname = useLocation({ select: (location) => location.pathname });
-  const onLiveDev = developer.some((item) => item.to === pathname);
+  const onLiveDev = embedded
+    ? !!activeDevId
+    : developer.some((item) => item.to === pathname);
   // The account view box only matters on mail pages — it scopes which inboxes
   // you're reading. Hide it on the developer/tool pages where it does nothing.
   const SCOPE_HIDDEN_PREFIXES = ["/rules", "/webhooks", "/pull-requests"];
-  const showAccountScope = !SCOPE_HIDDEN_PREFIXES.some(
-    (p) => pathname === p || pathname.startsWith(`${p}/`),
-  );
+  const showAccountScope = embedded
+    ? !activeDevId
+    : !SCOPE_HIDDEN_PREFIXES.some(
+        (p) => pathname === p || pathname.startsWith(`${p}/`),
+      );
   const scopedUnread = accounts
     .filter((account) => scopeIds.includes(account.accountId))
     .reduce((sum, account) => sum + account.unread, 0);
@@ -158,9 +179,13 @@ export function AppSidebar({
   const visibleMailbox = mailbox.filter(
     (item) => item.id === "inbox" || !hiddenNav.includes(item.id),
   );
-  const visibleDeveloper = developer.filter(
-    (item) => !hiddenNav.includes(item.id),
-  );
+  const visibleDeveloper = developer
+    .filter((item) => !hiddenNav.includes(item.id))
+    // Rules are owner-only for now: the owner gets a live link, everyone else
+    // sees the disabled "Soon" item.
+    .map((item) =>
+      item.id === "rules" ? { ...item, disabled: !isOwner } : item,
+    );
   // const visibleMisc = misc.filter((item) => !hiddenNav.includes(item.id));
 
   return (
@@ -233,11 +258,19 @@ export function AppSidebar({
             <SidebarGroupContent>
               <SidebarMenu className="gap-px">
                 {visibleDeveloper.map((item) =>
-                  item.to ? (
+                  item.to && !item.disabled ? (
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton
-                        isActive={pathname === item.to}
-                        onClick={() => navigate({ to: item.to })}
+                        isActive={
+                          embedded
+                            ? activeDevId === item.id
+                            : pathname === item.to
+                        }
+                        onClick={() =>
+                          embedded && onOpenDevPage
+                            ? onOpenDevPage(item.id)
+                            : navigate({ to: item.to as string })
+                        }
                         className={navButton}
                       >
                         <item.icon />
