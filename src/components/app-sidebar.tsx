@@ -56,9 +56,9 @@ const developer: {
   icon: typeof Inbox;
   to?: string;
 }[] = [
+  { id: "rules", title: "Rules", icon: GitBranch, to: "/rules" },
   { id: "pull_requests", title: "PRs", icon: GitPullRequest },
   { id: "webhooks", title: "Webhooks", icon: Webhook },
-  { id: "rules", title: "Rules", icon: GitBranch },
   { id: "api", title: "API", icon: Braces },
 ];
 
@@ -134,6 +134,12 @@ export function AppSidebar({
   const navigate = useNavigate();
   const pathname = useLocation({ select: (location) => location.pathname });
   const onLiveDev = developer.some((item) => item.to === pathname);
+  // The account view box only matters on mail pages — it scopes which inboxes
+  // you're reading. Hide it on the developer/tool pages where it does nothing.
+  const SCOPE_HIDDEN_PREFIXES = ["/rules", "/webhooks", "/api", "/pull-requests"];
+  const showAccountScope = !SCOPE_HIDDEN_PREFIXES.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`),
+  );
   const scopedUnread = accounts
     .filter((account) => scopeIds.includes(account.accountId))
     .reduce((sum, account) => sum + account.unread, 0);
@@ -274,22 +280,24 @@ export function AppSidebar({
           </SidebarGroup>
         )}*/}
 
-        <SidebarGroup className="mt-auto p-0 pb-3">
-          <SidebarGroupContent>
-            {loading ? (
-              <ViewCardSkeleton />
-            ) : accounts.length > 0 ? (
-              <ViewCard
-                accounts={accounts}
-                scopeIds={scopeIds}
-                allOn={allOn}
-                onToggle={onToggleScope}
-                onAddAccount={() => linkGoogle()}
-                onAddTestAccount={onAddTestAccount}
-              />
-            ) : null}
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {showAccountScope && (
+          <SidebarGroup className="mt-auto p-0 pb-3">
+            <SidebarGroupContent>
+              {loading ? (
+                <ViewCardSkeleton />
+              ) : accounts.length > 0 ? (
+                <ViewCard
+                  accounts={accounts}
+                  scopeIds={scopeIds}
+                  allOn={allOn}
+                  onToggle={onToggleScope}
+                  onAddAccount={() => linkGoogle()}
+                  onAddTestAccount={onAddTestAccount}
+                />
+              ) : null}
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
       <SidebarFooter className="border-t">
