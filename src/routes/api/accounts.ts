@@ -1,6 +1,9 @@
 import { auth } from "@/lib/auth";
 import { getEmailAddress, getInboxUnread } from "@/lib/gmail/api.server";
-import { getGoogleToken, listGoogleAccounts } from "@/lib/gmail/accounts.server";
+import {
+  getGoogleToken,
+  listGoogleAccounts,
+} from "@/lib/gmail/accounts.server";
 import { json } from "@/lib/json-response";
 import { createFileRoute } from "@tanstack/react-router";
 

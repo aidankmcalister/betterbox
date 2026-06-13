@@ -228,7 +228,12 @@ function labelsQueryOptions(accountId: string) {
     queryFn: async (): Promise<Label[]> => {
       if (isTestAccount(accountId)) return TEST_LABELS;
       const data = await fetchJson<{
-        labels?: { id: string; name: string; type?: string; color?: Label["color"] }[];
+        labels?: {
+          id: string;
+          name: string;
+          type?: string;
+          color?: Label["color"];
+        }[];
       }>(`/api/labels?accountId=${accountId}`);
       return (data.labels ?? [])
         .filter((label) => label.type === "user")

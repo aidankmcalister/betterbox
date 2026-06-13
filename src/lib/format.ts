@@ -11,7 +11,10 @@ export function formatCount(n: number): string {
 
 /** Coarse "time ago" for timestamps: 90s → "1m ago", 7200s → "2h ago". */
 export function formatRelative(iso: string, now = Date.now()): string {
-  const seconds = Math.max(0, Math.round((now - new Date(iso).getTime()) / 1000));
+  const seconds = Math.max(
+    0,
+    Math.round((now - new Date(iso).getTime()) / 1000),
+  );
   const [value, unit] =
     seconds < 60
       ? [seconds, "s"]

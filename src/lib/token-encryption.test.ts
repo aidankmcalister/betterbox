@@ -35,9 +35,9 @@ describe("OAuth token encryption", () => {
   test("plaintext OAuth tokens fail to decrypt (backfill encrypts them)", async () => {
     // Real Google tokens contain non-hex chars, so decryption throws — that
     // failure is what the backfill's try/catch relies on for idempotency.
-    expect(await decryptThrows("1//0gFakeRefreshToken-with_chars.not/hex")).toBe(
-      true,
-    );
+    expect(
+      await decryptThrows("1//0gFakeRefreshToken-with_chars.not/hex"),
+    ).toBe(true);
     expect(await decryptThrows("ya29.a0AfH-plainAccessToken")).toBe(true);
   });
 

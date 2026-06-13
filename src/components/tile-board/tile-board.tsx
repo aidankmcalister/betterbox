@@ -236,9 +236,15 @@ function TileTree({ node }: { node: LayoutNode }) {
     <ResizablePanelGroup
       orientation={node.dir === "row" ? "horizontal" : "vertical"}
       onLayoutChanged={(layout) => {
-        const grows = node.children.map((child) => layout[childKey(child)] ?? 1);
+        const grows = node.children.map(
+          (child) => layout[childKey(child)] ?? 1,
+        );
         const total = grows.reduce((sum, grow) => sum + grow, 0);
-        if (total > 0) resizeSplit(node.id, grows.map((grow) => grow / total));
+        if (total > 0)
+          resizeSplit(
+            node.id,
+            grows.map((grow) => grow / total),
+          );
       }}
     >
       {node.children.map((child, i) => (

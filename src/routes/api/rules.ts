@@ -26,7 +26,9 @@ function normalize(body: RuleBody) {
   const conditions = Array.isArray(body.conditions) ? body.conditions : [];
   const actions = Array.isArray(body.actions) ? body.actions : [];
   if (!isRuleValid({ conditions, actions })) {
-    throw new Error("a rule needs a complete condition and at least one action");
+    throw new Error(
+      "a rule needs a complete condition and at least one action",
+    );
   }
   return {
     name: body.name?.trim() || null,
@@ -109,7 +111,9 @@ export const Route = createFileRoute("/api/rules")({
         const userId = await requireUser(request);
         if (!userId) return json({ error: "Not signed in" }, 401);
 
-        const body = (await request.json().catch(() => null)) as { id?: string } | null;
+        const body = (await request.json().catch(() => null)) as {
+          id?: string;
+        } | null;
         if (!body?.id) return json({ error: "id is required" }, 400);
 
         await prisma.rule.deleteMany({ where: { id: body.id, userId } });

@@ -147,7 +147,7 @@ function SectionLabel({
 }) {
   return (
     <div className="mb-6 flex items-baseline">
-      <span className="font-mono text-xs font-medium tracking-wide uppercase text-muted-foreground/60">
+      <span className="font-mono text-xs font-medium tracking-wide text-muted-foreground/60 uppercase">
         {children}
       </span>
       {caption && (
@@ -309,7 +309,7 @@ function Spec() {
       <div className="grid grid-cols-3">
         {SPEC_CELLS.map(([label, body]) => (
           <div key={label} className="border-t border-l border-border p-5">
-            <div className="mb-2 font-mono text-xs font-medium tracking-wide uppercase text-muted-foreground/60">
+            <div className="mb-2 font-mono text-xs font-medium tracking-wide text-muted-foreground/60 uppercase">
               {label}
             </div>
             <p className="text-sm leading-relaxed text-pretty text-muted-foreground">
@@ -329,7 +329,7 @@ function Plans() {
         <div className="grid grid-cols-2 divide-x divide-border">
           {/* Free — self-host */}
           <div className="flex flex-col items-center px-8 py-10 text-center">
-            <span className="font-mono text-xs tracking-wide uppercase text-muted-foreground/60">
+            <span className="font-mono text-xs tracking-wide text-muted-foreground/60 uppercase">
               self-host
             </span>
             <span className="mt-3 text-4xl font-semibold tracking-tight text-foreground">
@@ -349,11 +349,11 @@ function Plans() {
 
           {/* Hosted — $5, the recommended paid plan (emphasized) */}
           <div className="relative flex flex-col items-center bg-muted/30 px-8 py-10 text-center">
-            <span className="absolute top-4 right-4 inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 font-mono text-[11px] font-medium tracking-wide uppercase text-primary">
+            <span className="absolute top-4 right-4 inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 font-mono text-[11px] font-medium tracking-wide text-primary uppercase">
               <Sparkles className="size-3" />
               recommended
             </span>
-            <span className="font-mono text-xs tracking-wide uppercase text-muted-foreground/60">
+            <span className="font-mono text-xs tracking-wide text-muted-foreground/60 uppercase">
               hosted
             </span>
             <div className="mt-3 flex items-baseline gap-1.5">
@@ -427,7 +427,10 @@ function Footer() {
           is pending
         </span>
         <div className="ml-auto flex items-center gap-4 font-mono text-xs">
-          <a href="mailto:hello@betterbox.dev" className="text-muted-foreground">
+          <a
+            href="mailto:hello@betterbox.dev"
+            className="text-muted-foreground"
+          >
             hello@betterbox.dev
           </a>
           <Link to="/privacy" className="text-muted-foreground">

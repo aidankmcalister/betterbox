@@ -70,7 +70,11 @@ export function RichTextEditor({
         style: `min-height:${minHeight}px`,
       },
       handleKeyDown: (_view, event) => {
-        if ((event.metaKey || event.ctrlKey) && event.key === "Enter" && onSubmit) {
+        if (
+          (event.metaKey || event.ctrlKey) &&
+          event.key === "Enter" &&
+          onSubmit
+        ) {
           event.preventDefault();
           onSubmit();
           return true;
@@ -124,36 +128,72 @@ function Toolbar({ editor }: { editor: Editor }) {
 
   return (
     <div className="flex flex-wrap items-center gap-0.5 border-b px-1.5 py-1">
-      <Btn label="Bold" active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()}>
+      <Btn
+        label="Bold"
+        active={editor.isActive("bold")}
+        onClick={() => editor.chain().focus().toggleBold().run()}
+      >
         <BoldIcon />
       </Btn>
-      <Btn label="Italic" active={editor.isActive("italic")} onClick={() => editor.chain().focus().toggleItalic().run()}>
+      <Btn
+        label="Italic"
+        active={editor.isActive("italic")}
+        onClick={() => editor.chain().focus().toggleItalic().run()}
+      >
         <ItalicIcon />
       </Btn>
-      <Btn label="Strikethrough" active={editor.isActive("strike")} onClick={() => editor.chain().focus().toggleStrike().run()}>
+      <Btn
+        label="Strikethrough"
+        active={editor.isActive("strike")}
+        onClick={() => editor.chain().focus().toggleStrike().run()}
+      >
         <StrikethroughIcon />
       </Btn>
-      <Btn label="Inline code" active={editor.isActive("code")} onClick={() => editor.chain().focus().toggleCode().run()}>
+      <Btn
+        label="Inline code"
+        active={editor.isActive("code")}
+        onClick={() => editor.chain().focus().toggleCode().run()}
+      >
         <CodeIcon />
       </Btn>
       <Divider />
-      <Btn label="Bullet list" active={editor.isActive("bulletList")} onClick={() => editor.chain().focus().toggleBulletList().run()}>
+      <Btn
+        label="Bullet list"
+        active={editor.isActive("bulletList")}
+        onClick={() => editor.chain().focus().toggleBulletList().run()}
+      >
         <ListIcon />
       </Btn>
-      <Btn label="Numbered list" active={editor.isActive("orderedList")} onClick={() => editor.chain().focus().toggleOrderedList().run()}>
+      <Btn
+        label="Numbered list"
+        active={editor.isActive("orderedList")}
+        onClick={() => editor.chain().focus().toggleOrderedList().run()}
+      >
         <ListOrderedIcon />
       </Btn>
-      <Btn label="Quote" active={editor.isActive("blockquote")} onClick={() => editor.chain().focus().toggleBlockquote().run()}>
+      <Btn
+        label="Quote"
+        active={editor.isActive("blockquote")}
+        onClick={() => editor.chain().focus().toggleBlockquote().run()}
+      >
         <QuoteIcon />
       </Btn>
       <Btn label="Link" active={editor.isActive("link")} onClick={setLink}>
         <LinkIcon />
       </Btn>
       <Divider />
-      <Btn label="Undo" disabled={!editor.can().undo()} onClick={() => editor.chain().focus().undo().run()}>
+      <Btn
+        label="Undo"
+        disabled={!editor.can().undo()}
+        onClick={() => editor.chain().focus().undo().run()}
+      >
         <Undo2Icon />
       </Btn>
-      <Btn label="Redo" disabled={!editor.can().redo()} onClick={() => editor.chain().focus().redo().run()}>
+      <Btn
+        label="Redo"
+        disabled={!editor.can().redo()}
+        onClick={() => editor.chain().focus().redo().run()}
+      >
         <Redo2Icon />
       </Btn>
     </div>

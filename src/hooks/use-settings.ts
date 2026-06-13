@@ -1,7 +1,13 @@
 import { useEffect, useSyncExternalStore } from "react";
 import type { Density } from "@/components/thread-row";
 
-export type AccentId = "orange" | "blue" | "teal" | "purple" | "green" | "yellow";
+export type AccentId =
+  | "orange"
+  | "blue"
+  | "teal"
+  | "purple"
+  | "green"
+  | "yellow";
 export type SnippetFont = "sans" | "mono";
 export type ExportFormat = "md" | "json" | "txt";
 export type Clock = "12h" | "24h";
@@ -110,12 +116,32 @@ export const ACCENTS: Record<
   AccentId,
   { label: string; base: string; hover: string; focus: string }
 > = {
-  orange: { label: "Orange", base: "#f46a3c", hover: "#ff885f", focus: "#db5a2e" },
+  orange: {
+    label: "Orange",
+    base: "#f46a3c",
+    hover: "#ff885f",
+    focus: "#db5a2e",
+  },
   blue: { label: "Blue", base: "#4ea7fc", hover: "#7cbdfd", focus: "#2e8de4" },
   teal: { label: "Teal", base: "#1fb8a6", hover: "#38d6c2", focus: "#169486" },
-  purple: { label: "Purple", base: "#b59aff", hover: "#cbbaff", focus: "#9878f2" },
-  green: { label: "Green", base: "#4cb782", hover: "#6fcb9d", focus: "#379a68" },
-  yellow: { label: "Yellow", base: "#f2c94c", hover: "#f6d97a", focus: "#d9ad26" },
+  purple: {
+    label: "Purple",
+    base: "#b59aff",
+    hover: "#cbbaff",
+    focus: "#9878f2",
+  },
+  green: {
+    label: "Green",
+    base: "#4cb782",
+    hover: "#6fcb9d",
+    focus: "#379a68",
+  },
+  yellow: {
+    label: "Yellow",
+    base: "#f2c94c",
+    hover: "#f6d97a",
+    focus: "#d9ad26",
+  },
 };
 
 const ACCENT_VARS = [

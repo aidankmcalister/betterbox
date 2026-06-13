@@ -16,12 +16,11 @@
 import { symmetricDecrypt, symmetricEncrypt } from "better-auth/crypto";
 import prisma from "../src/lib/prisma.server";
 
-const secret =
-  process.env.BETTER_AUTH_SECRET || process.env.AUTH_SECRET || "";
+const secret = process.env.BETTER_AUTH_SECRET || process.env.AUTH_SECRET || "";
 
 if (!secret) {
   throw new Error(
-    "BETTER_AUTH_SECRET is required to encrypt tokens (run with --env-file=.env)"
+    "BETTER_AUTH_SECRET is required to encrypt tokens (run with --env-file=.env)",
   );
 }
 
@@ -76,15 +75,15 @@ async function main() {
       rowsUpdated++;
       console.log(
         `  ↳ ${account.providerId} (${account.id}): encrypted ${Object.keys(
-          updates
-        ).join(", ")}`
+          updates,
+        ).join(", ")}`,
       );
     }
   }
 
   console.log(
     `Done. ${tokensEncrypted} token(s) encrypted across ${rowsUpdated} row(s); ` +
-      `${tokensSkipped} already encrypted.`
+      `${tokensSkipped} already encrypted.`,
   );
 }
 

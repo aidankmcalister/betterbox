@@ -29,15 +29,15 @@ A web-based Gmail client for developers — a faster, denser UI on top of the Gm
 - **Rules (builder):** sidebar **Rules** → `/rules` (PRs, Webhooks, API, Jobs
   are **Soon**). A rules table + new/edit modal. Each rule applies to one or
   more accounts, matches on conditions (`from`/`to`/`subject`/`label`/`has
-  attachment`, with contains/negated/prefix/suffix operators) joined with
+attachment`, with contains/negated/prefix/suffix operators) joined with
   **AND/OR**, and runs an ordered list of actions
   (apply label, archive, star, mark read, trash, forward, trigger webhook) —
   optionally against existing inbox mail too. Rules persist to the DB and a
   **read-only preview** shows what each would catch. The engine runs entirely on
-  the `gmail.modify` scope we already hold — no Gmail filter API. *(The
+  the `gmail.modify` scope we already hold — no Gmail filter API. _(The
   background runner that fires rules on every new message is the next step, so
   the LAST RUN column reads "never" and webhook/forward/apply-to-existing don't
-  execute yet; see Roadmap.)*
+  execute yet; see Roadmap.)_
 - **Search:** per-pane Gmail full-text search from the pane header (scoped to the
   current folder), plus **⌘K** to fire a search across the accounts on screen.
 - **Compose & send:** docked composer with an account-aware From selector.

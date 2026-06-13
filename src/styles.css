@@ -46,15 +46,16 @@
   --color-label-purple: #b59aff;
   /* Mono = machine output (addresses, IDs, counts, timestamps, code). The
      design's stack: system mono first, JetBrains Mono as the shipped face. */
-  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono Variable",
-    "JetBrains Mono", Menlo, monospace;
+  --font-mono:
+    ui-monospace, "SF Mono", "JetBrains Mono Variable", "JetBrains Mono", Menlo,
+    monospace;
 }
 
 @theme inline {
   --font-heading: var(--font-sans);
   /* Roboto = anything a human wrote or a label we wrote (design rule). */
-  --font-sans: "Roboto Variable", Roboto, -apple-system, system-ui, "Segoe UI",
-    sans-serif;
+  --font-sans:
+    "Roboto Variable", Roboto, -apple-system, system-ui, "Segoe UI", sans-serif;
   /* Landing "live" pulse dot — use via `motion-safe:animate-bb-pulse`. */
   --animate-bb-pulse: bb-pulse 2.2s ease-out infinite;
   @keyframes bb-pulse {

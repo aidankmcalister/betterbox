@@ -38,7 +38,17 @@ function sanitizeEmail(html: string): string {
     // Let real email styling render: external stylesheets + web fonts, plus
     // common media wrappers. <style>/inline styles are allowed by default.
     ADD_TAGS: ["link", "style", "video", "audio", "source", "picture"],
-    ADD_ATTR: ["rel", "href", "media", "type", "target", "controls", "poster", "srcset", "sizes"],
+    ADD_ATTR: [
+      "rel",
+      "href",
+      "media",
+      "type",
+      "target",
+      "controls",
+      "poster",
+      "srcset",
+      "sizes",
+    ],
   });
 }
 
@@ -90,7 +100,9 @@ export function HtmlBody({ html }: { html: string }) {
     observerRef.current.observe(idoc.body);
     fit();
     // Remote fonts/images can land after first paint and grow the body; re-fit.
-    idoc.querySelectorAll("img").forEach((img) => img.addEventListener("load", fit));
+    idoc
+      .querySelectorAll("img")
+      .forEach((img) => img.addEventListener("load", fit));
     if (idoc.fonts?.ready) idoc.fonts.ready.then(fit).catch(() => {});
 
     // iframe swallows wheel events even with no inner scroll; forward to the reader pane.

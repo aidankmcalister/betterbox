@@ -43,7 +43,9 @@ function TempSignIn() {
                 started.current = false;
                 started.current = true;
                 signIn().catch((err) =>
-                  setError(err instanceof Error ? err.message : "Sign-in failed"),
+                  setError(
+                    err instanceof Error ? err.message : "Sign-in failed",
+                  ),
                 );
               }}
               className="font-mono text-[11.5px] text-ink-subtle underline-offset-2 hover:text-ink hover:underline"

@@ -18,7 +18,9 @@ export function DeveloperPage({
         <span className="font-mono text-[10.5px] font-medium tracking-[0.5px] text-accent-2 uppercase">
           Soon
         </span>
-        <h1 className="mt-2 text-2xl font-semibold tracking-[-0.3px]">{title}</h1>
+        <h1 className="mt-2 text-2xl font-semibold tracking-[-0.3px]">
+          {title}
+        </h1>
         <div className="mt-4 text-sm leading-relaxed text-pretty text-muted-foreground">
           {children ?? "Description coming soon."}
         </div>

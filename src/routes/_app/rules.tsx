@@ -938,7 +938,7 @@ function WebhookCombobox({
           sideOffset={4}
           align="start"
         >
-          <Combobox.Popup className="max-h-72 w-(--anchor-width) min-w-64 origin-(--transform-origin) overflow-y-auto rounded-lg bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 outline-none transition-[opacity,scale] duration-100 data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0">
+          <Combobox.Popup className="max-h-72 w-(--anchor-width) min-w-64 origin-(--transform-origin) overflow-y-auto rounded-lg bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 transition-[opacity,scale] duration-100 outline-none data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0">
             <div className="px-2 pt-1 pb-1.5 font-mono text-[9.5px] tracking-[0.4px] text-muted-foreground/50 uppercase">
               your webhooks
             </div>

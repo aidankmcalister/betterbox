@@ -25,7 +25,11 @@ export const READER_PANE_ID = "__reader__";
 
 const newSplitId = () => crypto.randomUUID();
 
-function split(dir: SplitDir, children: LayoutNode[], sizes: number[]): SplitNode {
+function split(
+  dir: SplitDir,
+  children: LayoutNode[],
+  sizes: number[],
+): SplitNode {
   return { type: "split", id: newSplitId(), dir, sizes, children };
 }
 
@@ -54,17 +58,20 @@ function evenSizes(count: number): number[] {
   return Array.from({ length: count }, () => 1 / count);
 }
 
-function removePane(
-  node: LayoutNode,
-  accountId: string,
-): LayoutNode | null {
+function removePane(node: LayoutNode, accountId: string): LayoutNode | null {
   if (node.type === "pane") {
     return node.accountId === accountId ? null : node;
   }
 
   const kept = node.children
-    .map((child, i) => ({ child: removePane(child, accountId), size: node.sizes[i] }))
-    .filter((entry): entry is { child: LayoutNode; size: number } => entry.child !== null);
+    .map((child, i) => ({
+      child: removePane(child, accountId),
+      size: node.sizes[i],
+    }))
+    .filter(
+      (entry): entry is { child: LayoutNode; size: number } =>
+        entry.child !== null,
+    );
 
   if (kept.length === 0) return null;
   if (kept.length === 1) return kept[0].child;
@@ -111,7 +118,9 @@ function swapPanes(
   }
   return {
     ...node,
-    children: node.children.map((child) => swapPanes(child, accountA, accountB)),
+    children: node.children.map((child) =>
+      swapPanes(child, accountA, accountB),
+    ),
   };
 }
 
@@ -123,7 +132,8 @@ export function movePane(
   zone: DropZone,
 ): LayoutNode {
   if (sourceAccountId === targetAccountId) return tree;
-  if (zone === "center") return swapPanes(tree, sourceAccountId, targetAccountId);
+  if (zone === "center")
+    return swapPanes(tree, sourceAccountId, targetAccountId);
 
   const without = removePane(tree, sourceAccountId);
   if (without === null) return tree; // source was the only pane
@@ -149,7 +159,9 @@ export function withSplitSizes(
   }
   return {
     ...node,
-    children: node.children.map((child) => withSplitSizes(child, splitId, sizes)),
+    children: node.children.map((child) =>
+      withSplitSizes(child, splitId, sizes),
+    ),
   };
 }
 

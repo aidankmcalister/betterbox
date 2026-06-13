@@ -151,7 +151,13 @@ async function fetchEmail(accessToken: string, id: string): Promise<Email> {
   if (!res.ok) {
     // Couldn't load this row even after retries; mark it so it's not a silent
     // "(no subject)" masquerading as a real, empty email.
-    return { id, from: "", subject: "(couldn’t load)", date: "", unread: false };
+    return {
+      id,
+      from: "",
+      subject: "(couldn’t load)",
+      date: "",
+      unread: false,
+    };
   }
   const message = (await res.json()) as {
     snippet?: string;
@@ -253,11 +259,7 @@ function extractBody(payload?: MessagePart): {
   const html = findPart(payload, "text/html");
   const bodyHtml = html ? decodePart(html) : undefined;
   const plain = findPart(payload, "text/plain");
-  const body = plain
-    ? decodePart(plain)
-    : bodyHtml
-      ? stripHtml(bodyHtml)
-      : "";
+  const body = plain ? decodePart(plain) : bodyHtml ? stripHtml(bodyHtml) : "";
   return { body, bodyHtml };
 }
 
@@ -275,25 +277,27 @@ function decodePart(part: MessagePart): string {
 }
 
 function stripHtml(html: string): string {
-  return html
-    .replace(/<(style|script)[\s\S]*?<\/\1>/gi, "")
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/(p|div|tr|li|h[1-6]|table)>/gi, "\n")
-    .replace(/<[^>]+>/g, "")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    // Table-heavy HTML leaves heavy indentation and blank runs — collapse the
-    // inline whitespace, trim each line, then squeeze blank lines so exports
-    // aren't mostly empty space.
-    .split("\n")
-    .map((line) => line.replace(/[ \t]+/g, " ").trim())
-    .join("\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
+  return (
+    html
+      .replace(/<(style|script)[\s\S]*?<\/\1>/gi, "")
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/(p|div|tr|li|h[1-6]|table)>/gi, "\n")
+      .replace(/<[^>]+>/g, "")
+      .replace(/&nbsp;/g, " ")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      // Table-heavy HTML leaves heavy indentation and blank runs — collapse the
+      // inline whitespace, trim each line, then squeeze blank lines so exports
+      // aren't mostly empty space.
+      .split("\n")
+      .map((line) => line.replace(/[ \t]+/g, " ").trim())
+      .join("\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim()
+  );
 }
 
 export async function getRawEmail(
@@ -337,7 +341,9 @@ export async function sendEmail(
 
   // base64 the part bodies so UTF-8 (emoji, accents) survives intact.
   const b64 = (s: string) =>
-    Buffer.from(s, "utf8").toString("base64").replace(/(.{76})/g, "$1\r\n");
+    Buffer.from(s, "utf8")
+      .toString("base64")
+      .replace(/(.{76})/g, "$1\r\n");
 
   let mime: string;
   if (options.html?.trim()) {
@@ -390,9 +396,7 @@ export async function actOnEmail(
   action: MessageAction,
 ): Promise<void> {
   const path =
-    action === "trash"
-      ? `/messages/${id}/trash`
-      : `/messages/${id}/modify`;
+    action === "trash" ? `/messages/${id}/trash` : `/messages/${id}/modify`;
   const body =
     action === "trash"
       ? undefined
@@ -428,7 +432,10 @@ export async function markEmailsRead(
   const res = await gmailFetch(accessToken, "/messages/batchModify", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ ids: ids.slice(0, 1000), removeLabelIds: ["UNREAD"] }),
+    body: JSON.stringify({
+      ids: ids.slice(0, 1000),
+      removeLabelIds: ["UNREAD"],
+    }),
   });
   if (!res.ok) throw new Error(`Gmail batchModify failed (${res.status})`);
 }

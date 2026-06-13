@@ -47,7 +47,7 @@ function ContextMenuContent({
         <ContextMenuPrimitive.Popup
           data-slot="context-menu-content"
           className={cn(
-            "z-50 min-w-44 origin-(--transform-origin) overflow-hidden rounded-lg bg-popover p-[5px] text-popover-foreground shadow-xl ring-1 ring-foreground/10 transition-[opacity,scale] duration-100 outline-none data-starting-style:scale-95 data-starting-style:opacity-0 data-ending-style:scale-95 data-ending-style:opacity-0",
+            "z-50 min-w-44 origin-(--transform-origin) overflow-hidden rounded-lg bg-popover p-[5px] text-popover-foreground shadow-xl ring-1 ring-foreground/10 transition-[opacity,scale] duration-100 outline-none data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0",
             className,
           )}
           {...props}
@@ -58,7 +58,9 @@ function ContextMenuContent({
 }
 
 function ContextMenuGroup({ ...props }: ContextMenuPrimitive.Group.Props) {
-  return <ContextMenuPrimitive.Group data-slot="context-menu-group" {...props} />;
+  return (
+    <ContextMenuPrimitive.Group data-slot="context-menu-group" {...props} />
+  );
 }
 
 function ContextMenuLabel({

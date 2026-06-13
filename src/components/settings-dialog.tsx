@@ -503,7 +503,6 @@ function SidebarChips() {
   );
 }
 
-
 function InboxPage() {
   const settings = useSettings();
 

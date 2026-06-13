@@ -1,5 +1,17 @@
-export type ConditionField = "from" | "to" | "subject" | "body" | "hasAttachment" | "label";
-export type Operator = "contains" | "notContains" | "is" | "isNot" | "startsWith" | "endsWith";
+export type ConditionField =
+  | "from"
+  | "to"
+  | "subject"
+  | "body"
+  | "hasAttachment"
+  | "label";
+export type Operator =
+  | "contains"
+  | "notContains"
+  | "is"
+  | "isNot"
+  | "startsWith"
+  | "endsWith";
 export type MatchMode = "all" | "any";
 export type ActionType =
   | "label"
@@ -46,19 +58,28 @@ export type RuleMessage = {
 };
 
 function address(value: string): string {
-  return value.match(/<([^>]+)>/)?.[1]?.trim().toLowerCase() ?? value.trim().toLowerCase();
+  return (
+    value
+      .match(/<([^>]+)>/)?.[1]
+      ?.trim()
+      .toLowerCase() ?? value.trim().toLowerCase()
+  );
 }
 
-export function matchesCondition(condition: Condition, message: RuleMessage): boolean {
+export function matchesCondition(
+  condition: Condition,
+  message: RuleMessage,
+): boolean {
   if (condition.field === "hasAttachment") {
     return message.hasAttachment === (condition.value !== "false");
   }
   if (condition.field === "label") {
     const needle = condition.value.trim().toLowerCase();
     if (!needle) return false;
-    const labels = [...(message.labelIds ?? []), ...(message.labelNames ?? [])].map((label) =>
-      label.toLowerCase(),
-    );
+    const labels = [
+      ...(message.labelIds ?? []),
+      ...(message.labelNames ?? []),
+    ].map((label) => label.toLowerCase());
     const hasLabel = labels.includes(needle);
     return condition.operator === "isNot" ? !hasLabel : hasLabel;
   }
@@ -73,7 +94,9 @@ export function matchesCondition(condition: Condition, message: RuleMessage): bo
           : message.subject;
   const needle = condition.value.trim().toLowerCase();
   if (!needle) return false;
-  const normalizedHaystack = isText ? haystack.trim().toLowerCase() : address(haystack);
+  const normalizedHaystack = isText
+    ? haystack.trim().toLowerCase()
+    : address(haystack);
 
   if (condition.operator === "is") {
     return normalizedHaystack === needle;
@@ -93,14 +116,21 @@ export function matchesCondition(condition: Condition, message: RuleMessage): bo
   return haystack.toLowerCase().includes(needle);
 }
 
-export function matchesRule(rule: Pick<Rule, "match" | "conditions">, message: RuleMessage): boolean {
+export function matchesRule(
+  rule: Pick<Rule, "match" | "conditions">,
+  message: RuleMessage,
+): boolean {
   if (rule.conditions.length === 0) return false;
   const test = (condition: Condition) => matchesCondition(condition, message);
-  return rule.match === "any" ? rule.conditions.some(test) : rule.conditions.every(test);
+  return rule.match === "any"
+    ? rule.conditions.some(test)
+    : rule.conditions.every(test);
 }
 
 export function isConditionComplete(condition: Condition): boolean {
-  return condition.field === "hasAttachment" || condition.value.trim().length > 0;
+  return (
+    condition.field === "hasAttachment" || condition.value.trim().length > 0
+  );
 }
 
 export function isActionComplete(action: Action): boolean {
@@ -108,7 +138,9 @@ export function isActionComplete(action: Action): boolean {
   return !needsValue.includes(action.type) || Boolean(action.value?.trim());
 }
 
-export function isRuleValid(rule: Pick<Rule, "conditions" | "actions">): boolean {
+export function isRuleValid(
+  rule: Pick<Rule, "conditions" | "actions">,
+): boolean {
   return (
     rule.conditions.length > 0 &&
     rule.conditions.every(isConditionComplete) &&
@@ -137,13 +169,19 @@ const OPERATOR_LABEL: Record<Operator, string> = {
 
 export function describeCondition(condition: Condition): string {
   if (condition.field === "hasAttachment") {
-    return condition.value === "false" ? "has no attachment" : "has an attachment";
+    return condition.value === "false"
+      ? "has no attachment"
+      : "has an attachment";
   }
   return `${FIELD_LABEL[condition.field]} ${OPERATOR_LABEL[condition.operator]} “${condition.value}”`;
 }
 
-export function describeConditions(rule: Pick<Rule, "match" | "conditions">): string {
-  return rule.conditions.map(describeCondition).join(rule.match === "any" ? " OR " : " AND ");
+export function describeConditions(
+  rule: Pick<Rule, "match" | "conditions">,
+): string {
+  return rule.conditions
+    .map(describeCondition)
+    .join(rule.match === "any" ? " OR " : " AND ");
 }
 
 export function describeAction(action: Action): string {
@@ -169,14 +207,17 @@ export function describeActions(rule: Pick<Rule, "actions">): string {
   return rule.actions.map(describeAction).join(" + ");
 }
 
-export function describeRule(rule: Pick<Rule, "match" | "conditions" | "actions">): string {
+export function describeRule(
+  rule: Pick<Rule, "match" | "conditions" | "actions">,
+): string {
   return `${describeConditions(rule)} → ${describeActions(rule)}`;
 }
 
 // A Gmail search that approximates the conditions, for the read-only "what would
 // this catch?" preview. The live runner uses matchesRule on message metadata.
 function conditionToGmailTerm(condition: Condition): string {
-  const negative = condition.operator === "notContains" || condition.operator === "isNot";
+  const negative =
+    condition.operator === "notContains" || condition.operator === "isNot";
   switch (condition.field) {
     case "from":
       return `${negative ? "-" : ""}from:(${condition.value})`;
@@ -195,7 +236,9 @@ function conditionToGmailTerm(condition: Condition): string {
   }
 }
 
-export function ruleToGmailQuery(rule: Pick<Rule, "match" | "conditions">): string {
+export function ruleToGmailQuery(
+  rule: Pick<Rule, "match" | "conditions">,
+): string {
   const terms = rule.conditions.map(conditionToGmailTerm);
   if (terms.length <= 1) return terms[0] ?? "";
   return rule.match === "any" ? `{${terms.join(" ")}}` : terms.join(" ");

@@ -298,4 +298,3 @@ function LoadingScreen({
     </div>
   );
 }
-

@@ -1,0 +1,16 @@
+# Dependencies & lockfiles
+node_modules
+bun.lock
+
+# Build output
+dist
+.output
+.tanstack
+.vite
+
+# Generated code (do not format)
+src/generated
+src/routeTree.gen.ts
+
+# Env
+.env

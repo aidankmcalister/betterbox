@@ -1,9 +1,9 @@
-"use client"
+"use client";
 
-import type { ReactElement, ReactNode } from "react"
-import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip"
+import type { ReactElement, ReactNode } from "react";
+import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip";
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils";
 
 function TooltipProvider({
   delay = 0,
@@ -15,15 +15,15 @@ function TooltipProvider({
       delay={delay}
       {...props}
     />
-  )
+  );
 }
 
 function Tooltip({ ...props }: TooltipPrimitive.Root.Props) {
-  return <TooltipPrimitive.Root data-slot="tooltip" {...props} />
+  return <TooltipPrimitive.Root data-slot="tooltip" {...props} />;
 }
 
 function TooltipTrigger({ ...props }: TooltipPrimitive.Trigger.Props) {
-  return <TooltipPrimitive.Trigger data-slot="tooltip-trigger" {...props} />
+  return <TooltipPrimitive.Trigger data-slot="tooltip-trigger" {...props} />;
 }
 
 function TooltipContent({
@@ -51,8 +51,8 @@ function TooltipContent({
         <TooltipPrimitive.Popup
           data-slot="tooltip-content"
           className={cn(
-            "z-50 inline-flex w-fit max-w-xs origin-(--transform-origin) items-center gap-1.5 rounded-md bg-foreground px-3 py-1.5 text-xs text-background has-data-[slot=kbd]:pr-1.5 **:data-[slot=kbd]:relative **:data-[slot=kbd]:isolate **:data-[slot=kbd]:z-50 **:data-[slot=kbd]:rounded-sm transition-[opacity,scale] duration-100 data-starting-style:scale-95 data-starting-style:opacity-0 data-ending-style:scale-95 data-ending-style:opacity-0",
-            className
+            "z-50 inline-flex w-fit max-w-xs origin-(--transform-origin) items-center gap-1.5 rounded-md bg-foreground px-3 py-1.5 text-xs text-background transition-[opacity,scale] duration-100 has-data-[slot=kbd]:pr-1.5 data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0 **:data-[slot=kbd]:relative **:data-[slot=kbd]:isolate **:data-[slot=kbd]:z-50 **:data-[slot=kbd]:rounded-sm",
+            className,
           )}
           {...props}
         >
@@ -61,7 +61,7 @@ function TooltipContent({
         </TooltipPrimitive.Popup>
       </TooltipPrimitive.Positioner>
     </TooltipPrimitive.Portal>
-  )
+  );
 }
 
 /** Convenience wrapper: <Hint label="Archive"><button …/></Hint>. Replaces
@@ -71,17 +71,17 @@ function Hint({
   side = "top",
   children,
 }: {
-  label: ReactNode
-  side?: "top" | "bottom" | "left" | "right"
-  children: ReactElement
+  label: ReactNode;
+  side?: "top" | "bottom" | "left" | "right";
+  children: ReactElement;
 }) {
-  if (!label) return children
+  if (!label) return children;
   return (
     <Tooltip>
       <TooltipTrigger render={children} />
       <TooltipContent side={side}>{label}</TooltipContent>
     </Tooltip>
-  )
+  );
 }
 
-export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider, Hint }
+export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider, Hint };

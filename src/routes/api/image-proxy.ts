@@ -11,7 +11,11 @@ import { createFileRoute } from "@tanstack/react-router";
 /** Hosts the proxy refuses to fetch (loopback, link-local, RFC 1918). */
 function isPrivateHost(hostname: string): boolean {
   const host = hostname.toLowerCase();
-  if (host === "localhost" || host.endsWith(".local") || host.endsWith(".internal")) {
+  if (
+    host === "localhost" ||
+    host.endsWith(".local") ||
+    host.endsWith(".internal")
+  ) {
     return true;
   }
   return (

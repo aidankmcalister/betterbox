@@ -65,18 +65,25 @@ export const Route = createFileRoute("/api/labels")({
             if (!body.name?.trim()) {
               return json({ error: "name is required" }, 400);
             }
-            return json({ label: await createLabel(accessToken, body.name.trim()) });
+            return json({
+              label: await createLabel(accessToken, body.name.trim()),
+            });
           }
           if (body.op === "rename") {
             if (!body.labelId || !body.name?.trim()) {
               return json({ error: "labelId and name are required" }, 400);
             }
             return json({
-              label: await renameLabel(accessToken, body.labelId, body.name.trim()),
+              label: await renameLabel(
+                accessToken,
+                body.labelId,
+                body.name.trim(),
+              ),
             });
           }
           if (body.op === "delete") {
-            if (!body.labelId) return json({ error: "labelId is required" }, 400);
+            if (!body.labelId)
+              return json({ error: "labelId is required" }, 400);
             await deleteLabel(accessToken, body.labelId);
             return json({ ok: true });
           }
@@ -84,9 +91,7 @@ export const Route = createFileRoute("/api/labels")({
             return json({ error: "id and labelId are required" }, 400);
           }
           const [add, remove] =
-            body.op === "apply"
-              ? [[body.labelId], []]
-              : [[], [body.labelId]];
+            body.op === "apply" ? [[body.labelId], []] : [[], [body.labelId]];
           await modifyMessageLabels(accessToken, body.id, add, remove);
           return json({ ok: true });
         } catch (error) {

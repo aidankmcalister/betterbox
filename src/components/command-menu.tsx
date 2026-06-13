@@ -112,14 +112,23 @@ export function CommandMenu({
     {
       heading: "Actions",
       entries: [
-        { label: "Compose", icon: <PenLine />, action: onCompose, shortcut: "C" },
+        {
+          label: "Compose",
+          icon: <PenLine />,
+          action: onCompose,
+          shortcut: "C",
+        },
         {
           label: "Go to inbox",
           icon: <Inbox />,
           action: onGoInbox,
           shortcut: "G I",
         },
-        { label: "Add account", icon: <UserPlus />, action: () => linkGoogle() },
+        {
+          label: "Add account",
+          icon: <UserPlus />,
+          action: () => linkGoogle(),
+        },
         ...(onAddTestAccount
           ? [
               {
@@ -147,7 +156,8 @@ export function CommandMenu({
         {
           label: "Reset tile layout",
           icon: <RotateCcw />,
-          action: () => window.dispatchEvent(new Event(RESET_TILE_LAYOUT_EVENT)),
+          action: () =>
+            window.dispatchEvent(new Event(RESET_TILE_LAYOUT_EVENT)),
         },
       ],
     },
@@ -171,7 +181,8 @@ export function CommandMenu({
           icon: <Rows3 />,
           action: () =>
             updateSettings({
-              density: settings.density === "compact" ? "comfortable" : "compact",
+              density:
+                settings.density === "compact" ? "comfortable" : "compact",
             }),
         },
         {
@@ -183,12 +194,14 @@ export function CommandMenu({
         {
           label: `${settings.inboxAvatars ? "Hide" : "Show"} profile icons`,
           icon: <CircleUserRound />,
-          action: () => updateSettings({ inboxAvatars: !settings.inboxAvatars }),
+          action: () =>
+            updateSettings({ inboxAvatars: !settings.inboxAvatars }),
         },
         {
           label: `${settings.showSnippets ? "Hide" : "Show"} snippets`,
           icon: <AlignLeft />,
-          action: () => updateSettings({ showSnippets: !settings.showSnippets }),
+          action: () =>
+            updateSettings({ showSnippets: !settings.showSnippets }),
         },
       ],
     },
@@ -279,12 +292,17 @@ export function CommandMenu({
                     value={`search-${account.accountId}`}
                     onSelect={() => dispatchSearch(account.accountId)}
                   >
-                    <AccountDot colorIndex={index} accountId={account.accountId} />
+                    <AccountDot
+                      colorIndex={index}
+                      accountId={account.accountId}
+                    />
                     <span className="min-w-0 flex-1 truncate">
                       Search{" "}
                       {query && (
                         <>
-                          <span className="text-foreground">“{query}”</span>{" "}
+                          <span className="text-foreground">
+                            “{query}”
+                          </span>{" "}
                         </>
                       )}
                       in{" "}
@@ -310,7 +328,9 @@ export function CommandMenu({
                       Search{" "}
                       {query && (
                         <>
-                          <span className="text-foreground">“{query}”</span>{" "}
+                          <span className="text-foreground">
+                            “{query}”
+                          </span>{" "}
                         </>
                       )}
                       in <span className="text-foreground">all accounts</span>

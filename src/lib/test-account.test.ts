@@ -10,8 +10,12 @@ import {
 
 describe("inbox volume", () => {
   test("inbox always has at least 100 rows", () => {
-    expect(makeTestEmails("test-1", "inbox").length).toBeGreaterThanOrEqual(100);
-    expect(makeTestEmails("test-2", "inbox").length).toBeGreaterThanOrEqual(100);
+    expect(makeTestEmails("test-1", "inbox").length).toBeGreaterThanOrEqual(
+      100,
+    );
+    expect(makeTestEmails("test-2", "inbox").length).toBeGreaterThanOrEqual(
+      100,
+    );
   });
 
   test("two accounts differ in volume (not cloned)", () => {

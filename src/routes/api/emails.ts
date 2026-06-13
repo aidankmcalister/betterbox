@@ -22,7 +22,8 @@ export const Route = createFileRoute("/api/emails")({
         const max = Number(url.searchParams.get("max")) || 50;
         const pageToken = url.searchParams.get("pageToken") ?? undefined;
         const q = url.searchParams.get("q")?.trim();
-        const folderQuery = FOLDER_QUERY[toFolder(url.searchParams.get("folder"))];
+        const folderQuery =
+          FOLDER_QUERY[toFolder(url.searchParams.get("folder"))];
 
         const accessToken = await getGoogleToken(
           request.headers,

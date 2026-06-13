@@ -4,8 +4,8 @@ import { DeveloperPage } from "@/components/developer-page";
 export const Route = createFileRoute("/_app/webhooks")({
   component: () => (
     <DeveloperPage title="Webhooks">
-      <div className="space-y-6 max-w-lg">
-        <p className="text-zinc-400 text-sm leading-relaxed">
+      <div className="max-w-lg space-y-6">
+        <p className="text-sm leading-relaxed text-zinc-400">
           Pipe incoming emails into any system that accepts an HTTP POST. Define
           a filter, point it at a URL, and BetterBox delivers a signed JSON
           payload the moment a matching message arrives — no polling required.
@@ -24,7 +24,7 @@ export const Route = createFileRoute("/_app/webhooks")({
             Payloads are HMAC-signed — verify on your end, replay from the log
           </li>
         </ul>
-        <div className="rounded-md border border-zinc-800 bg-zinc-950 p-4 font-mono text-xs text-zinc-500 leading-relaxed">
+        <div className="rounded-md border border-zinc-800 bg-zinc-950 p-4 font-mono text-xs leading-relaxed text-zinc-500">
           <span className="text-zinc-600">POST </span>
           <span className="text-zinc-300">
             https://your-server.com/hooks/email

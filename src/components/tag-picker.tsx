@@ -37,7 +37,8 @@ const tagColorIndex = (label: Label, overrides: Record<string, number>) =>
   overrides[label.id] ??
   [...label.name].reduce((total, ch) => total + ch.charCodeAt(0), 0) %
     TAG_COLORS.length;
-const tagColorVar = (index: number) => `var(${TAG_COLORS[index % TAG_COLORS.length]})`;
+const tagColorVar = (index: number) =>
+  `var(${TAG_COLORS[index % TAG_COLORS.length]})`;
 
 export type TagActions = ReturnType<typeof useTagActions>;
 
@@ -50,9 +51,12 @@ export function useTagActions(accountId: string, email: FullEmail | undefined) {
   const patchLabels = useCallback(
     (messageId: string, labelId: string, on: boolean) => {
       const upd = (ids: string[] = []) =>
-        on ? Array.from(new Set([...ids, labelId])) : ids.filter((id) => id !== labelId);
-      queryClient.setQueryData<FullEmail>(["email", accountId, messageId], (e) =>
-        e ? { ...e, labelIds: upd(e.labelIds) } : e,
+        on
+          ? Array.from(new Set([...ids, labelId]))
+          : ids.filter((id) => id !== labelId);
+      queryClient.setQueryData<FullEmail>(
+        ["email", accountId, messageId],
+        (e) => (e ? { ...e, labelIds: upd(e.labelIds) } : e),
       );
       const patch = (data?: EmailsData) =>
         data && {
@@ -64,7 +68,10 @@ export function useTagActions(accountId: string, email: FullEmail | undefined) {
             ),
           })),
         };
-      queryClient.setQueriesData<EmailsData>({ queryKey: ["emails", accountId] }, patch);
+      queryClient.setQueriesData<EmailsData>(
+        { queryKey: ["emails", accountId] },
+        patch,
+      );
       queryClient.setQueriesData<EmailsData>(
         { queryKey: ["emails-search", accountId] },
         patch,
@@ -112,7 +119,9 @@ export function useTagActions(accountId: string, email: FullEmail | undefined) {
       const trimmed = name.trim();
       if (!trimmed || trimmed === label.name) return;
       queryClient.setQueryData<Label[]>(labelsQueryKey(accountId), (current) =>
-        (current ?? []).map((l) => (l.id === label.id ? { ...l, name: trimmed } : l)),
+        (current ?? []).map((l) =>
+          l.id === label.id ? { ...l, name: trimmed } : l,
+        ),
       );
       try {
         await renameLabel(accountId, label.id, trimmed);
@@ -140,15 +149,20 @@ export function useTagActions(accountId: string, email: FullEmail | undefined) {
             ),
           })),
         };
-      queryClient.setQueriesData<EmailsData>({ queryKey: ["emails", accountId] }, strip);
+      queryClient.setQueriesData<EmailsData>(
+        { queryKey: ["emails", accountId] },
+        strip,
+      );
       queryClient.setQueriesData<EmailsData>(
         { queryKey: ["emails-search", accountId] },
         strip,
       );
-      queryClient.setQueriesData<FullEmail>({ queryKey: ["email", accountId] }, (e) =>
-        e && e.labelIds?.includes(label.id)
-          ? { ...e, labelIds: e.labelIds.filter((id) => id !== label.id) }
-          : e,
+      queryClient.setQueriesData<FullEmail>(
+        { queryKey: ["email", accountId] },
+        (e) =>
+          e && e.labelIds?.includes(label.id)
+            ? { ...e, labelIds: e.labelIds.filter((id) => id !== label.id) }
+            : e,
       );
       try {
         await deleteLabel(accountId, label.id);
@@ -159,10 +173,24 @@ export function useTagActions(accountId: string, email: FullEmail | undefined) {
     [accountId, queryClient],
   );
 
-  return { labels, appliedIds, appliedTags, toggleTag, createTag, renameTag, deleteTag };
+  return {
+    labels,
+    appliedIds,
+    appliedTags,
+    toggleTag,
+    createTag,
+    renameTag,
+    deleteTag,
+  };
 }
 
-export function LabelDot({ label, className }: { label: Label; className?: string }) {
+export function LabelDot({
+  label,
+  className,
+}: {
+  label: Label;
+  className?: string;
+}) {
   const { tagColors } = useSettings();
   return (
     <span
@@ -202,7 +230,11 @@ export function AppliedTags({ tags }: { tags: TagActions }) {
   return (
     <div className="mt-2 flex flex-wrap gap-1.5">
       {tags.appliedTags.map((label) => (
-        <TagChip key={label.id} label={label} onRemove={() => tags.toggleTag(label)} />
+        <TagChip
+          key={label.id}
+          label={label}
+          onRemove={() => tags.toggleTag(label)}
+        />
       ))}
     </div>
   );
@@ -217,7 +249,8 @@ export function TagPicker({
   disabled: boolean;
 }) {
   const { tagColors } = useSettings();
-  const { labels, appliedIds, toggleTag, createTag, renameTag, deleteTag } = tags;
+  const { labels, appliedIds, toggleTag, createTag, renameTag, deleteTag } =
+    tags;
 
   const [open, setOpen] = useState(false);
   const [newTag, setNewTag] = useState("");
@@ -229,7 +262,8 @@ export function TagPicker({
 
   const show = () => {
     const rect = buttonRef.current?.getBoundingClientRect();
-    if (rect) setPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+    if (rect)
+      setPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
     setOpen(true);
   };
   const close = () => {
@@ -364,9 +398,15 @@ export function TagPicker({
                         >
                           <span
                             className="size-2 shrink-0 rounded-full"
-                            style={{ background: tagColorVar(tagColorIndex(label, tagColors)) }}
+                            style={{
+                              background: tagColorVar(
+                                tagColorIndex(label, tagColors),
+                              ),
+                            }}
                           />
-                          <span className="min-w-0 flex-1 truncate">{label.name}</span>
+                          <span className="min-w-0 flex-1 truncate">
+                            {label.name}
+                          </span>
                         </button>
                         {appliedIds.includes(label.id) && (
                           <CheckIcon className="size-3.5 shrink-0 text-accent-2-hover" />

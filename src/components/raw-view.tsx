@@ -22,7 +22,7 @@ export function RawView({ mime }: { mime: string }) {
         <span className="font-mono text-[11px] text-muted-foreground/70">
           raw source
         </span>
-        <span className="ml-auto font-mono text-[10.5px] tabular-nums text-muted-foreground/60">
+        <span className="ml-auto font-mono text-[10.5px] text-muted-foreground/60 tabular-nums">
           {bytes} bytes
         </span>
         <Hint label={wrap ? "Show exact line structure" : "Wrap long lines"}>

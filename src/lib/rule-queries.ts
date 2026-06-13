@@ -12,7 +12,10 @@ export type RuleInput = {
   applyToExisting: boolean;
 };
 
-export type RulePreview = { matched: number; samples: { from: string; subject: string }[] };
+export type RulePreview = {
+  matched: number;
+  samples: { from: string; subject: string }[];
+};
 
 export const rulesQueryKey = ["rules"] as const;
 
@@ -41,9 +44,11 @@ export function useRulesQuery(enabled: boolean) {
   });
 }
 
-export const createRule = (input: RuleInput) => send(input) as Promise<{ rule: Rule }>;
+export const createRule = (input: RuleInput) =>
+  send(input) as Promise<{ rule: Rule }>;
 
-export const updateRule = (id: string, input: RuleInput) => send({ id, ...input }, "PATCH");
+export const updateRule = (id: string, input: RuleInput) =>
+  send({ id, ...input }, "PATCH");
 
 export const setRuleEnabled = (id: string, enabled: boolean) =>
   send({ id, enabled }, "PATCH");
