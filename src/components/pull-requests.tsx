@@ -28,6 +28,10 @@ function relTime(iso: string, now: number): string {
   return `${Math.round(m / 1440)}d`;
 }
 
+// Every metric column (Review, Comments, Changes, CI, Upd) is the same width
+// so the header labels and values line up in an even grid.
+const METRIC_COL = "w-[116px] flex-none";
+
 const STATE_ICON = {
   open: { Icon: GitPullRequestArrowIcon, cls: "text-label-green" },
   draft: { Icon: GitPullRequestDraftIcon, cls: "text-muted-foreground/70" },
@@ -86,7 +90,6 @@ function CiDot({ ci }: { ci: PullRequest["ci"] }) {
   }[ci];
   return (
     <span
-      title={`CI ${ci}`}
       className={cn(
         "inline-flex size-[18px] flex-none items-center justify-center rounded-full",
         look.cls,
@@ -167,11 +170,16 @@ function Row({ pr, now }: { pr: PullRequest; now: number }) {
           </Hint>
         )}
       </span>
-      <span className="flex w-[104px] flex-none justify-start">
+      <span className={cn(METRIC_COL, "flex justify-end")}>
         <ReviewPill pr={pr} />
       </span>
       <Hint label={`${pr.comments} comment${pr.comments === 1 ? "" : "s"}`}>
-        <span className="flex w-[44px] flex-none items-center justify-end gap-1 font-mono text-[11px] text-muted-foreground/60">
+        <span
+          className={cn(
+            METRIC_COL,
+            "flex items-center justify-end gap-1 font-mono text-[11px] text-muted-foreground/60",
+          )}
+        >
           <MessageSquareIcon className="size-3" />
           {pr.comments}
         </span>
@@ -179,18 +187,23 @@ function Row({ pr, now }: { pr: PullRequest; now: number }) {
       <Hint
         label={`+${pr.additions.toLocaleString()} added · −${pr.deletions.toLocaleString()} removed`}
       >
-        <span className="flex w-[124px] flex-none justify-end">
+        <span className={cn(METRIC_COL, "flex justify-end")}>
           <DiffStat pr={pr} />
         </span>
       </Hint>
-      <span className="flex w-[22px] flex-none justify-center">
+      <span className={cn(METRIC_COL, "flex justify-end")}>
         <Hint label={`CI ${pr.ci === "none" ? "not run" : pr.ci}`}>
           <span className="flex">
             <CiDot ci={pr.ci} />
           </span>
         </Hint>
       </span>
-      <span className="w-[34px] flex-none text-right font-mono text-[11px] text-muted-foreground/60">
+      <span
+        className={cn(
+          METRIC_COL,
+          "text-right font-mono text-[11px] text-muted-foreground/60",
+        )}
+      >
         {relTime(pr.updated, now)}
       </span>
     </a>
@@ -410,11 +423,11 @@ export function PullRequestsPage({
           <span className="w-[152px] flex-none">Repository</span>
           <span className="min-w-0 flex-1 truncate">Pull request</span>
           <span className="w-3 flex-none" />
-          <span className="w-[104px] flex-none">Review</span>
-          <span className="flex w-[44px] flex-none justify-end">Comments</span>
-          <span className="w-[124px] flex-none text-right">Changes</span>
-          <span className="w-[22px] flex-none text-center">CI</span>
-          <span className="w-[34px] flex-none text-right">Upd.</span>
+          <span className={cn(METRIC_COL, "text-right")}>Review</span>
+          <span className={cn(METRIC_COL, "text-right")}>Comments</span>
+          <span className={cn(METRIC_COL, "text-right")}>Changes</span>
+          <span className={cn(METRIC_COL, "text-right")}>CI</span>
+          <span className={cn(METRIC_COL, "text-right")}>Upd.</span>
         </div>
 
         {rows.length === 0 ? (

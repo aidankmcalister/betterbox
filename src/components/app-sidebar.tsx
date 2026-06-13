@@ -70,7 +70,7 @@ const developer: {
     to: "/rules",
     disabled: true,
   },
-  { id: "webhooks", title: "Webhooks", icon: Webhook },
+  { id: "webhooks", title: "Webhooks", icon: Webhook, disabled: true },
 ];
 
 // const misc: {
