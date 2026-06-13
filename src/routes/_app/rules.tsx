@@ -172,9 +172,9 @@ function RulesPage() {
           {active} active · {rules.length} total
         </span>
         <div className="ml-auto flex items-center gap-3.5 font-mono text-[11px] text-muted-foreground/80">
-          <span className="inline-flex items-center gap-1.5 text-success">
-            <span className="size-1.5 rounded-full bg-success" />
-            auto-runs · every 15m
+          <span className="inline-flex items-center gap-1.5 text-muted-foreground/60">
+            <span className="size-1.5 rounded-full bg-label-yellow" />
+            auto-run paused
           </span>
           <Button size="sm" onClick={() => setEditing("new")}>
             <PlusIcon data-icon="inline-start" />
@@ -232,7 +232,8 @@ function RulesPage() {
             ))}
             <div className="flex items-center justify-center gap-2 p-3.5 text-center font-mono text-[10.5px] text-muted-foreground/60">
               <GitBranch className="size-3" />
-              checks for new mail every 15 min · actions fire via gmail.modify
+              rules save &amp; preview now · auto-run is paused · actions fire
+              via gmail.modify
             </div>
           </>
         )}
