@@ -281,6 +281,7 @@ function AccountsPage({ accounts }: { accounts: Account[] }) {
         <SettingRow
           label="Default send-from"
           description="Used when composing from the unified view"
+          soon
         >
           <SoonControl label={primaryEmail ?? "—"} mono />
         </SettingRow>
@@ -404,7 +405,7 @@ function AppearancePage() {
         <Field label="Clock">
           <ClockSegmented />
         </Field>
-        <Field label="Profile icons">
+        <Field label="Sender avatars">
           <AvatarsSwitch />
         </Field>
       </div>
@@ -561,7 +562,10 @@ function InboxPage() {
   const settings = useSettings();
 
   return (
-    <Page title="Inbox" description="Density, layout, and reading behavior">
+    <Page
+      title="Inbox"
+      description="Row content, layout, reading, and composing"
+    >
       <PageSection title="Rows">
         <SettingRow label="Show snippets">
           <Switch
@@ -581,7 +585,7 @@ function InboxPage() {
         </SettingRow>
       </PageSection>
 
-      <PageSection title="Multi-account">
+      <PageSection title="Layout">
         <SettingRow
           label="Reading pane"
           description="One shared reader, or a separate reader docked per account"
@@ -596,10 +600,29 @@ function InboxPage() {
           />
         </SettingRow>
         <SettingRow
-          label="Layout"
+          label="Custom tiles"
           description="Arrange the inbox tiles by dragging pane headers"
+          soon
         >
           <SoonControl label="Custom (tiles)" />
+        </SettingRow>
+      </PageSection>
+
+      <PageSection title="Reading">
+        <SettingRow
+          label="Mark as read"
+          description="When an opened message loses its unread state"
+        >
+          <SegmentedButtons
+            options={[
+              { value: "instant", label: "Instant" },
+              { value: "1s", label: "1s" },
+              { value: "5s", label: "5s" },
+              { value: "off", label: "Off" },
+            ]}
+            value={settings.markRead}
+            onChange={(markRead) => updateSettings({ markRead })}
+          />
         </SettingRow>
       </PageSection>
 
@@ -618,24 +641,6 @@ function InboxPage() {
           />
         </SettingRow>
       </PageSection>
-
-      <PageSection title="Behavior">
-        <SettingRow
-          label="Mark as read"
-          description="When an opened message loses its unread state"
-        >
-          <SegmentedButtons
-            options={[
-              { value: "instant", label: "Instant" },
-              { value: "1s", label: "1s" },
-              { value: "5s", label: "5s" },
-              { value: "off", label: "Off" },
-            ]}
-            value={settings.markRead}
-            onChange={(markRead) => updateSettings({ markRead })}
-          />
-        </SettingRow>
-      </PageSection>
     </Page>
   );
 }
@@ -649,6 +654,7 @@ function DeveloperPage() {
         <SettingRow
           label="Open messages in raw view"
           description="MIME source + headers by default"
+          soon
         >
           <Switch checked={false} disabled />
         </SettingRow>
@@ -753,6 +759,7 @@ function KeyboardPage() {
         <SettingRow
           label="Vim-style navigation"
           description="j/k move · o open · gg top"
+          soon
         >
           <Switch checked={false} disabled />
         </SettingRow>
@@ -770,11 +777,7 @@ function KeyboardPage() {
             >
               <span className="flex items-center gap-2 text-[13px]">
                 {shortcut.label}
-                {shortcut.soon && (
-                  <span className="font-mono text-[10px] font-medium tracking-wide text-muted-foreground/70 uppercase">
-                    Soon
-                  </span>
-                )}
+                {shortcut.soon && <SoonTag />}
               </span>
               <KbdGroup>
                 {shortcut.keys.map((key) => (
@@ -827,22 +830,42 @@ function PageSection({
 function SettingRow({
   label,
   description,
+  soon = false,
   children,
 }: {
   label: string;
   description?: string;
+  /** Marks the setting as upcoming — adds a "Soon" tag and dims the row. */
+  soon?: boolean;
   children: ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between gap-6">
+    <div
+      className={cn(
+        "flex items-center justify-between gap-6",
+        soon && "opacity-60",
+      )}
+    >
       <div className="min-w-0">
-        <p className="text-[13px]">{label}</p>
+        <p className="flex items-center gap-2 text-[13px]">
+          {label}
+          {soon && <SoonTag />}
+        </p>
         {description && (
           <p className="text-xs text-muted-foreground">{description}</p>
         )}
       </div>
       <div className="shrink-0">{children}</div>
     </div>
+  );
+}
+
+/** Small uppercase "Soon" tag for not-yet-wired settings. */
+function SoonTag() {
+  return (
+    <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[9.5px] font-medium tracking-wide text-muted-foreground/70 uppercase">
+      Soon
+    </span>
   );
 }
 
