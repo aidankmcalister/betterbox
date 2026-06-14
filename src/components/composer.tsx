@@ -242,7 +242,9 @@ export function Composer({
       <header
         onPointerDown={onHeaderPointerDown}
         className={cn(
-          "flex items-center gap-2 border-b bg-popover px-3.5 py-[11px]",
+          "flex items-center gap-2 border-b bg-popover",
+          // Match the account/reader pane header height (h-9) in pane mode.
+          inPane ? "h-9 px-2.5" : "px-3.5 py-[11px]",
           onHeaderPointerDown &&
             "cursor-grab touch-none select-none active:cursor-grabbing",
         )}
