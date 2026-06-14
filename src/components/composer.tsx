@@ -3,15 +3,18 @@ import {
   CheckIcon,
   ChevronDownIcon,
   CodeIcon,
+  EyeIcon,
   GripVerticalIcon,
   LinkIcon,
   PaperclipIcon,
   PencilIcon,
+  PenLineIcon,
   SendIcon,
   Trash2Icon,
   XIcon,
 } from "lucide-react";
 
+import DOMPurify from "dompurify";
 import { toast } from "sonner";
 
 import { useQueryClient } from "@tanstack/react-query";
@@ -101,6 +104,8 @@ export function Composer({
   const { fromId, to, subject, body } = content;
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Preview renders the body as the recipient sees it (rich text → HTML).
+  const [preview, setPreview] = useState(false);
 
   const from =
     sendable.find((a) => a.accountId === fromId) ??
@@ -131,6 +136,7 @@ export function Composer({
     onContentChange({ fromId: null, to: "", subject: "", body: "" });
     setError(null);
     setSending(false);
+    setPreview(false);
     onOpenChange(false);
   };
 
@@ -312,16 +318,20 @@ export function Composer({
         />
       </div>
 
-      <div className={cn(inPane && "min-h-0 flex-1")}>
-        <RichTextEditor
-          value={body}
-          onChange={(next) => onContentChange({ body: next })}
-          placeholder="Write your message…"
-          minHeight={inPane ? 320 : 200}
-          // The editor fills edge-to-edge in both modes — drop the rounded border
-          // so it isn't an inset box (the rows above/below divide it instead).
-          className={cn("rounded-none border-0", inPane && "h-full")}
-        />
+      <div className={cn(inPane && "min-h-0 flex-1", preview && "overflow-y-auto")}>
+        {preview ? (
+          <PreviewBody html={body} minHeight={inPane ? 320 : 200} />
+        ) : (
+          <RichTextEditor
+            value={body}
+            onChange={(next) => onContentChange({ body: next })}
+            placeholder="Write your message…"
+            minHeight={inPane ? 320 : 200}
+            // The editor fills edge-to-edge in both modes — drop the rounded
+            // border so it isn't an inset box (the rows divide it instead).
+            className={cn("rounded-none border-0", inPane && "h-full")}
+          />
+        )}
       </div>
 
       <footer className="flex items-center gap-2 border-t px-3.5 py-[11px]">
@@ -344,6 +354,12 @@ export function Composer({
           </span>
         )}
         <span className="ml-auto inline-flex gap-0.5">
+          <FooterIcon
+            icon={preview ? PenLineIcon : EyeIcon}
+            title={preview ? "Back to editing" : "Preview"}
+            active={preview}
+            onClick={() => setPreview((p) => !p)}
+          />
           <FooterIcon
             icon={PaperclipIcon}
             title="Attachments — soon"
@@ -546,11 +562,13 @@ function FooterIcon({
   title,
   onClick,
   disabled = false,
+  active = false,
 }: {
   icon: typeof PaperclipIcon;
   title: string;
   onClick?: () => void;
   disabled?: boolean;
+  active?: boolean;
 }) {
   return (
     <Hint label={title}>
@@ -559,16 +577,43 @@ function FooterIcon({
       <button
         type="button"
         aria-disabled={disabled}
+        aria-pressed={active}
         onClick={disabled ? undefined : onClick}
         className={cn(
           "inline-flex items-center justify-center rounded-md p-1.5 text-muted-foreground",
           disabled
             ? "cursor-default opacity-40"
             : "cursor-pointer hover:bg-popover hover:text-foreground",
+          active && "bg-popover text-foreground",
         )}
       >
         <Icon className="size-[15px]" />
       </button>
     </Hint>
+  );
+}
+
+/** Read-only render of the message body — how the recipient will see it. Uses
+ *  the same prose styles as the editor, sanitized (the HTML is our own TipTap
+ *  output, but a pasted/typed link could carry a javascript: href). */
+function PreviewBody({ html, minHeight }: { html: string; minHeight: number }) {
+  if (!html) {
+    return (
+      <div
+        className="px-3.5 py-3 text-[13px] text-muted-foreground/60"
+        style={{ minHeight }}
+      >
+        Nothing to preview yet — write a message first.
+      </div>
+    );
+  }
+  const clean = typeof window === "undefined" ? "" : DOMPurify.sanitize(html);
+  return (
+    <div
+      className="tiptap prose-email max-w-none px-3.5 py-3 text-[13px] leading-[1.6] text-foreground"
+      style={{ minHeight }}
+      // Sanitized just above.
+      dangerouslySetInnerHTML={{ __html: clean }}
+    />
   );
 }
