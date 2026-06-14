@@ -20,6 +20,7 @@ import {
   GripVerticalIcon,
   HashIcon,
   MailOpenIcon,
+  PencilIcon,
   RefreshCwIcon,
   ReplyAllIcon,
   SearchIcon,
@@ -68,6 +69,7 @@ import {
   type MessageAction,
 } from "@/lib/mail-queries";
 import { MARK_READ_MS, useSettings } from "@/hooks/use-settings";
+import { Composer } from "@/components/composer";
 import { AppliedTags, TagPicker, useTagActions } from "@/components/tag-picker";
 import { LabeledView } from "@/components/labeled-view";
 import type { Folder } from "@/lib/folders";
@@ -105,7 +107,18 @@ import {
 const STORAGE_KEY = "bm.tiles-layout";
 const FULL_EMAIL_MIN_WIDTH = 330;
 
+/** Pane id for the composer when it lives in the board (composerMode: "pane"). */
+export const COMPOSE_PANE_ID = "__compose__";
+
 export type Reading = { accountId: string; emailId: string };
+
+/** Compose-as-a-pane state, threaded from AppShell when composerMode === "pane". */
+export type ComposePane = {
+  open: boolean;
+  draft?: { to?: string; subject?: string; body?: string };
+  draftRef: { accountId: string; emailId: string } | null;
+  onOpenChange: (open: boolean) => void;
+};
 
 const splitReaderId = (accountId: string) => `${READER_PANE_ID}:${accountId}`;
 
@@ -162,6 +175,7 @@ export function InboxTiles({
   onCloseReader,
   onRemovePane,
   onEditDraft,
+  compose,
   portalContainer,
 }: {
   accounts: Account[];
@@ -173,6 +187,8 @@ export function InboxTiles({
   onRemovePane: (accountId: string) => void;
   /** Drafts open in the composer for editing instead of the read-only reader. */
   onEditDraft?: (accountId: string, emailId: string) => void;
+  /** Set (composerMode === "pane") to dock the composer as a draggable tile. */
+  compose?: ComposePane | null;
   /** Portal target for row context menus — set in the landing demo so they
    *  stay inside the scaled box. */
   portalContainer?: React.RefObject<HTMLElement | null>;
@@ -226,7 +242,8 @@ export function InboxTiles({
     : reading
       ? [READER_PANE_ID]
       : [];
-  const paneIds = [...ids, ...readerIds];
+  const composeIds = compose?.open ? [COMPOSE_PANE_ID] : [];
+  const paneIds = [...ids, ...readerIds, ...composeIds];
 
   useEffect(() => {
     if (split) {
@@ -301,6 +318,9 @@ export function InboxTiles({
   const storage: TileStorage = { load: loadStoredTree, save: persistTree };
 
   const renderPane = (paneId: string) => {
+    if (paneId === COMPOSE_PANE_ID && compose) {
+      return <ComposePane compose={compose} accounts={accounts} />;
+    }
     if (paneId === READER_PANE_ID && reading) {
       return (
         <ReaderPane
@@ -326,6 +346,14 @@ export function InboxTiles({
   };
 
   const renderDragLabel = (paneId: string) => {
+    if (paneId === COMPOSE_PANE_ID) {
+      return (
+        <>
+          <PencilIcon className="size-3.5 text-muted-foreground" />
+          <span className="text-xs">New message</span>
+        </>
+      );
+    }
     if (paneId === READER_PANE_ID || paneId.startsWith(`${READER_PANE_ID}:`)) {
       return (
         <>
@@ -358,6 +386,28 @@ export function InboxTiles({
         emptyLabel="No linked accounts."
       />
     </TilesContext.Provider>
+  );
+}
+
+/** The composer docked as a board tile — its header doubles as the drag handle. */
+function ComposePane({
+  compose,
+  accounts,
+}: {
+  compose: ComposePane;
+  accounts: Account[];
+}) {
+  const beginHeaderDrag = useTileDrag();
+  return (
+    <Composer
+      inPane
+      open
+      onOpenChange={compose.onOpenChange}
+      accounts={accounts}
+      initialDraft={compose.draft}
+      draft={compose.draftRef}
+      onHeaderPointerDown={(event) => beginHeaderDrag(event, COMPOSE_PANE_ID)}
+    />
   );
 }
 

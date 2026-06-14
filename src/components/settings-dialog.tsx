@@ -603,6 +603,22 @@ function InboxPage() {
         </SettingRow>
       </PageSection>
 
+      <PageSection title="Composer">
+        <SettingRow
+          label="Open as"
+          description="A floating popout, or a draggable pane in the board"
+        >
+          <SegmentedButtons
+            options={[
+              { value: "popout", label: "Popout" },
+              { value: "pane", label: "Pane" },
+            ]}
+            value={settings.composerMode}
+            onChange={(composerMode) => updateSettings({ composerMode })}
+          />
+        </SettingRow>
+      </PageSection>
+
       <PageSection title="Behavior">
         <SettingRow
           label="Mark as read"

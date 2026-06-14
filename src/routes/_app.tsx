@@ -62,7 +62,7 @@ const DEV_PATHS = new Set(["/pull-requests", "/webhooks", "/api"]);
 
 function AppShell() {
   useApplyAccent();
-  const { devTools, demoMode } = useSettings();
+  const { devTools, demoMode, composerMode } = useSettings();
   // The server already resolved the session (beforeLoad); use it until the
   // client query settles so the auth branch is correct on the very first paint.
   const { session: serverSession } = Route.useRouteContext();
@@ -264,13 +264,18 @@ function AppShell() {
         onOpenChange={setSettingsOpen}
         accounts={allAccounts ?? []}
       />
-      <Composer
-        open={composeOpen}
-        onOpenChange={setComposeOpen}
-        accounts={allAccounts ?? []}
-        initialDraft={composeDraft}
-        draft={draftRef}
-      />
+      {/* Pane mode docks the composer in the board (below). But the board isn't
+          mounted on dev pages, so fall back to the popout there so compose still
+          works. */}
+      {(composerMode === "popout" || onDevPage) && (
+        <Composer
+          open={composeOpen}
+          onOpenChange={setComposeOpen}
+          accounts={allAccounts ?? []}
+          initialDraft={composeDraft}
+          draft={draftRef}
+        />
+      )}
       <AppSidebar
         accounts={allAccounts ?? []}
         scopeIds={scopeIds}
@@ -298,6 +303,16 @@ function AppShell() {
               onEditDraft={editDraft}
               onCloseReader={closeReader}
               onRemovePane={toggle}
+              compose={
+                composerMode === "pane"
+                  ? {
+                      open: composeOpen,
+                      draft: composeDraft,
+                      draftRef,
+                      onOpenChange: setComposeOpen,
+                    }
+                  : null
+              }
             />
           )}
           <Outlet />

@@ -3,6 +3,7 @@ import {
   CheckIcon,
   ChevronDownIcon,
   CodeIcon,
+  GripVerticalIcon,
   LinkIcon,
   PaperclipIcon,
   PencilIcon,
@@ -64,6 +65,8 @@ export function Composer({
   accounts,
   initialDraft,
   draft,
+  inPane = false,
+  onHeaderPointerDown,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -71,6 +74,10 @@ export function Composer({
   initialDraft?: { to?: string; subject?: string; body?: string };
   /** Open an existing draft for editing — its fields are loaded and seeded. */
   draft?: { accountId: string; emailId: string } | null;
+  /** Render to fill a tile (pane mode) instead of the floating popout. */
+  inPane?: boolean;
+  /** In pane mode, makes the header a drag handle for the tile board. */
+  onHeaderPointerDown?: (event: React.PointerEvent) => void;
 }) {
   const { data: session } = useSession();
   const queryClient = useQueryClient();
@@ -225,9 +232,24 @@ export function Composer({
         }
         if (event.key === "Escape" && !sending) close();
       }}
-      className="fixed right-5 bottom-5 z-40 flex w-[520px] max-w-[calc(100vw-2.5rem)] flex-col overflow-hidden rounded-xl border border-input bg-secondary shadow-2xl"
+      className={cn(
+        "flex flex-col overflow-hidden bg-secondary",
+        inPane
+          ? "h-full w-full"
+          : "fixed right-5 bottom-5 z-40 w-[520px] max-w-[calc(100vw-2.5rem)] rounded-xl border border-input shadow-2xl",
+      )}
     >
-      <header className="flex items-center gap-2 border-b bg-popover px-3.5 py-[11px]">
+      <header
+        onPointerDown={onHeaderPointerDown}
+        className={cn(
+          "flex items-center gap-2 border-b bg-popover px-3.5 py-[11px]",
+          onHeaderPointerDown &&
+            "cursor-grab touch-none select-none active:cursor-grabbing",
+        )}
+      >
+        {onHeaderPointerDown && (
+          <GripVerticalIcon className="size-3.5 shrink-0 text-muted-foreground/70" />
+        )}
         <PencilIcon className="size-3.5 text-muted-foreground" />
         <span className="text-[13.5px] font-semibold">
           {draft ? "Edit draft" : "New message"}
@@ -309,12 +331,13 @@ export function Composer({
         />
       </div>
 
-      <div className="px-3.5 py-3">
+      <div className={cn("px-3.5 py-3", inPane && "min-h-0 flex-1")}>
         <RichTextEditor
           value={body}
           onChange={setBody}
           placeholder="Write your message…"
-          minHeight={200}
+          minHeight={inPane ? 320 : 200}
+          className={inPane ? "h-full" : undefined}
         />
       </div>
 

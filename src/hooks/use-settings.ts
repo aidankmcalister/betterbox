@@ -13,6 +13,7 @@ export type ExportFormat = "md" | "json" | "txt";
 export type Clock = "12h" | "24h";
 export type MarkRead = "off" | "instant" | "1s" | "5s";
 export type ReaderMode = "shared" | "split";
+export type ComposerMode = "popout" | "pane";
 
 export type Settings = {
   density: Density;
@@ -28,6 +29,8 @@ export type Settings = {
   clock: Clock;
   markRead: MarkRead;
   readerMode: ReaderMode;
+  /** Popout = floating bottom-right panel; pane = a draggable tile in the board. */
+  composerMode: ComposerMode;
   /** Off by default — the account dot already carries the account color. */
   inboxAvatars: boolean;
   /** Inbox can never be hidden. */
@@ -50,6 +53,7 @@ const DEFAULT_SETTINGS: Settings = {
   clock: "12h",
   markRead: "1s",
   readerMode: "shared",
+  composerMode: "popout",
   inboxAvatars: false,
   hiddenNav: [],
   devTools: false,
