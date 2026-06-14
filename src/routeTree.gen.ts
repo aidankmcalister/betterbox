@@ -19,6 +19,7 @@ import { Route as ApiMessageRouteImport } from './routes/api/message'
 import { Route as ApiLabelsRouteImport } from './routes/api/labels'
 import { Route as ApiImageProxyRouteImport } from './routes/api/image-proxy'
 import { Route as ApiEmailsRouteImport } from './routes/api/emails'
+import { Route as ApiContactsRouteImport } from './routes/api/contacts'
 import { Route as ApiAccountsRouteImport } from './routes/api/accounts'
 import { Route as AppWebhooksRouteImport } from './routes/_app/webhooks'
 import { Route as AppTrashRouteImport } from './routes/_app/trash'
@@ -79,6 +80,11 @@ const ApiImageProxyRoute = ApiImageProxyRouteImport.update({
 const ApiEmailsRoute = ApiEmailsRouteImport.update({
   id: '/api/emails',
   path: '/api/emails',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiContactsRoute = ApiContactsRouteImport.update({
+  id: '/api/contacts',
+  path: '/api/contacts',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAccountsRoute = ApiAccountsRouteImport.update({
@@ -156,6 +162,7 @@ export interface FileRoutesByFullPath {
   '/trash': typeof AppTrashRoute
   '/webhooks': typeof AppWebhooksRoute
   '/api/accounts': typeof ApiAccountsRoute
+  '/api/contacts': typeof ApiContactsRoute
   '/api/emails': typeof ApiEmailsRoute
   '/api/image-proxy': typeof ApiImageProxyRoute
   '/api/labels': typeof ApiLabelsRoute
@@ -178,6 +185,7 @@ export interface FileRoutesByTo {
   '/trash': typeof AppTrashRoute
   '/webhooks': typeof AppWebhooksRoute
   '/api/accounts': typeof ApiAccountsRoute
+  '/api/contacts': typeof ApiContactsRoute
   '/api/emails': typeof ApiEmailsRoute
   '/api/image-proxy': typeof ApiImageProxyRoute
   '/api/labels': typeof ApiLabelsRoute
@@ -203,6 +211,7 @@ export interface FileRoutesById {
   '/_app/trash': typeof AppTrashRoute
   '/_app/webhooks': typeof AppWebhooksRoute
   '/api/accounts': typeof ApiAccountsRoute
+  '/api/contacts': typeof ApiContactsRoute
   '/api/emails': typeof ApiEmailsRoute
   '/api/image-proxy': typeof ApiImageProxyRoute
   '/api/labels': typeof ApiLabelsRoute
@@ -229,6 +238,7 @@ export interface FileRouteTypes {
     | '/trash'
     | '/webhooks'
     | '/api/accounts'
+    | '/api/contacts'
     | '/api/emails'
     | '/api/image-proxy'
     | '/api/labels'
@@ -251,6 +261,7 @@ export interface FileRouteTypes {
     | '/trash'
     | '/webhooks'
     | '/api/accounts'
+    | '/api/contacts'
     | '/api/emails'
     | '/api/image-proxy'
     | '/api/labels'
@@ -275,6 +286,7 @@ export interface FileRouteTypes {
     | '/_app/trash'
     | '/_app/webhooks'
     | '/api/accounts'
+    | '/api/contacts'
     | '/api/emails'
     | '/api/image-proxy'
     | '/api/labels'
@@ -291,6 +303,7 @@ export interface RootRouteChildren {
   PrivacyRoute: typeof PrivacyRoute
   TempSignInRoute: typeof TempSignInRoute
   ApiAccountsRoute: typeof ApiAccountsRoute
+  ApiContactsRoute: typeof ApiContactsRoute
   ApiEmailsRoute: typeof ApiEmailsRoute
   ApiImageProxyRoute: typeof ApiImageProxyRoute
   ApiLabelsRoute: typeof ApiLabelsRoute
@@ -370,6 +383,13 @@ declare module '@tanstack/react-router' {
       path: '/api/emails'
       fullPath: '/api/emails'
       preLoaderRoute: typeof ApiEmailsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/contacts': {
+      id: '/api/contacts'
+      path: '/api/contacts'
+      fullPath: '/api/contacts'
+      preLoaderRoute: typeof ApiContactsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/accounts': {
@@ -494,6 +514,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   TempSignInRoute: TempSignInRoute,
   ApiAccountsRoute: ApiAccountsRoute,
+  ApiContactsRoute: ApiContactsRoute,
   ApiEmailsRoute: ApiEmailsRoute,
   ApiImageProxyRoute: ApiImageProxyRoute,
   ApiLabelsRoute: ApiLabelsRoute,

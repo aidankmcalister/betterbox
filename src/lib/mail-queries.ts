@@ -64,6 +64,42 @@ const READ_LATENCY_MS = 260;
 
 export const accountsQueryKey = ["accounts"] as const;
 
+export type Contact = { name: string; email: string };
+
+// Generic, non-personal stand-ins for the demo's compose autocomplete.
+const DEMO_CONTACTS: Contact[] = [
+  { name: "Alex Rivera", email: "alex.rivera@example.com" },
+  { name: "Jordan Lee", email: "jordan@example.com" },
+  { name: "Sam Patel", email: "sam.patel@example.com" },
+  { name: "Taylor Kim", email: "taylor.kim@example.com" },
+  { name: "Morgan Diaz", email: "morgan@example.dev" },
+  { name: "Casey Nguyen", email: "casey.nguyen@example.com" },
+  { name: "Riley Chen", email: "riley@example.dev" },
+];
+
+/** People you've emailed before, for compose To autocomplete. Test/demo
+ *  accounts return a static set; real accounts hit /api/contacts (Sent). */
+export function useContactsQuery(
+  accountId: string | undefined,
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: ["contacts", accountId ?? "default"],
+    enabled,
+    staleTime: 30 * 60_000,
+    queryFn: async (): Promise<Contact[]> => {
+      if (accountId && isTestAccount(accountId)) return DEMO_CONTACTS;
+      const params = accountId
+        ? `?accountId=${encodeURIComponent(accountId)}`
+        : "";
+      const data = await fetchJson<{ contacts?: Contact[] }>(
+        `/api/contacts${params}`,
+      );
+      return data.contacts ?? [];
+    },
+  });
+}
+
 export function useAccountsQuery(enabled: boolean) {
   return useQuery({
     queryKey: accountsQueryKey,

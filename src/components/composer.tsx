@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CheckIcon,
   ChevronDownIcon,
@@ -16,12 +16,15 @@ import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { useSession } from "@/lib/auth-client";
+import { cn } from "@/lib/utils";
 import type { Account } from "@/lib/account";
 import {
   deleteDraft,
   saveDraft,
   sendNewEmail,
+  useContactsQuery,
   useFullEmailQuery,
+  type Contact,
 } from "@/lib/mail-queries";
 import { isTestAccount } from "@/lib/test-account";
 import { AccountDot } from "@/components/account-dot";
@@ -122,6 +125,9 @@ export function Composer({
     sendable.find((a) => a.email === session?.user.email) ??
     sendable[0] ??
     null;
+
+  // People you've emailed before — feeds the To autocomplete.
+  const contacts = useContactsQuery(from?.accountId, open).data ?? [];
 
   if (!open) return null;
 
@@ -290,14 +296,7 @@ export function Composer({
 
       <div className="flex h-10 items-center gap-2.5 border-b px-4">
         <FieldLabel>To</FieldLabel>
-        <input
-          autoFocus
-          type="email"
-          value={to}
-          onChange={(event) => setTo(event.target.value)}
-          placeholder="name@domain.dev"
-          className="min-w-0 flex-1 bg-transparent font-mono text-[12.5px] outline-none placeholder:text-muted-foreground/60"
-        />
+        <RecipientField value={to} onChange={setTo} contacts={contacts} />
       </div>
 
       <div className="flex h-10 items-center gap-2.5 border-b px-4">
@@ -376,6 +375,119 @@ function FieldLabel({ children }: { children: string }) {
   );
 }
 
+/** To field with Gmail-style autocomplete: the last comma-separated token is
+ *  matched against people you've emailed; pick one to fill it in. */
+function RecipientField({
+  value,
+  onChange,
+  contacts,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  contacts: Contact[];
+}) {
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const lastComma = value.lastIndexOf(",");
+  const prefix = value.slice(0, lastComma + 1); // "" or "a@b.com,"
+  const token = value
+    .slice(lastComma + 1)
+    .trim()
+    .toLowerCase();
+
+  const chosen = new Set(
+    value
+      .split(",")
+      .map((part) => part.trim().toLowerCase())
+      .filter(Boolean),
+  );
+  const matches =
+    token.length === 0
+      ? []
+      : contacts
+          .filter(
+            (c) =>
+              !chosen.has(c.email.toLowerCase()) &&
+              (c.email.toLowerCase().includes(token) ||
+                c.name.toLowerCase().includes(token)),
+          )
+          .slice(0, 6);
+  const show = open && matches.length > 0;
+
+  const choose = (contact: Contact) => {
+    onChange(`${prefix ? `${prefix} ` : ""}${contact.email}, `);
+    setOpen(false);
+    requestAnimationFrame(() => inputRef.current?.focus());
+  };
+
+  return (
+    <div className="relative min-w-0 flex-1">
+      <input
+        ref={inputRef}
+        autoFocus
+        type="text"
+        value={value}
+        onChange={(event) => {
+          onChange(event.target.value);
+          setOpen(true);
+          setActive(0);
+        }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => window.setTimeout(() => setOpen(false), 120)}
+        onKeyDown={(event) => {
+          if (!show) return;
+          if (event.key === "ArrowDown") {
+            event.preventDefault();
+            setActive((a) => Math.min(a + 1, matches.length - 1));
+          } else if (event.key === "ArrowUp") {
+            event.preventDefault();
+            setActive((a) => Math.max(a - 1, 0));
+          } else if (
+            (event.key === "Enter" || event.key === "Tab") &&
+            !event.metaKey &&
+            !event.ctrlKey
+          ) {
+            event.preventDefault();
+            event.stopPropagation();
+            choose(matches[active]);
+          } else if (event.key === "Escape") {
+            event.stopPropagation();
+            setOpen(false);
+          }
+        }}
+        placeholder="name@domain.dev"
+        className="w-full bg-transparent font-mono text-[12.5px] outline-none placeholder:text-muted-foreground/60"
+      />
+      {show && (
+        <div className="absolute top-full left-0 z-50 mt-1.5 w-72 overflow-hidden rounded-lg border bg-popover p-1 shadow-xl ring-1 ring-foreground/10">
+          {matches.map((contact, i) => (
+            <button
+              key={contact.email}
+              type="button"
+              onMouseDown={(event) => event.preventDefault()}
+              onMouseEnter={() => setActive(i)}
+              onClick={() => choose(contact)}
+              className={cn(
+                "flex w-full flex-col rounded-md px-2 py-1.5 text-left",
+                i === active ? "bg-accent text-accent-foreground" : "",
+              )}
+            >
+              {contact.name && (
+                <span className="truncate text-[12.5px]">{contact.name}</span>
+              )}
+              <span className="truncate font-mono text-[11px] text-muted-foreground">
+                {contact.email}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function FooterIcon({
   icon: Icon,
   title,
@@ -389,11 +501,18 @@ function FooterIcon({
 }) {
   return (
     <Hint label={title}>
+      {/* aria-disabled (not `disabled`) so the button still receives hover and
+          the tooltip fires; the click is guarded instead. */}
       <button
         type="button"
-        onClick={onClick}
-        disabled={disabled}
-        className="inline-flex cursor-pointer items-center justify-center rounded-md p-1.5 text-muted-foreground hover:bg-popover hover:text-foreground disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent"
+        aria-disabled={disabled}
+        onClick={disabled ? undefined : onClick}
+        className={cn(
+          "inline-flex items-center justify-center rounded-md p-1.5 text-muted-foreground",
+          disabled
+            ? "cursor-default opacity-40"
+            : "cursor-pointer hover:bg-popover hover:text-foreground",
+        )}
       >
         <Icon className="size-[15px]" />
       </button>

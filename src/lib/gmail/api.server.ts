@@ -123,6 +123,66 @@ export async function searchEmails(
   return mapPool(ids, 8, (id) => fetchEmail(accessToken, id));
 }
 
+export type Contact = { name: string; email: string };
+
+/** People you've emailed before — recipients pulled from recent Sent messages,
+ *  ranked by how often they appear. Powers the compose To autocomplete. */
+export async function listContacts(accessToken: string): Promise<Contact[]> {
+  const { ids } = await listMessageIds(accessToken, 40, undefined, "in:sent");
+  const lists = await mapPool(ids, 8, (id) => fetchRecipients(accessToken, id));
+  const byEmail = new Map<string, { name: string; email: string; n: number }>();
+  for (const recipients of lists) {
+    for (const r of recipients) {
+      const key = r.email.toLowerCase();
+      const hit = byEmail.get(key);
+      if (hit) {
+        hit.n++;
+        if (!hit.name && r.name) hit.name = r.name;
+      } else {
+        byEmail.set(key, { name: r.name, email: r.email, n: 1 });
+      }
+    }
+  }
+  return [...byEmail.values()]
+    .sort((a, b) => b.n - a.n)
+    .slice(0, 100)
+    .map(({ name, email }) => ({ name, email }));
+}
+
+async function fetchRecipients(
+  accessToken: string,
+  id: string,
+): Promise<Contact[]> {
+  const res = await gmailFetchOk(
+    accessToken,
+    `/messages/${id}?format=metadata&metadataHeaders=To&metadataHeaders=Cc`,
+  );
+  if (!res.ok) return [];
+  const message = (await res.json()) as {
+    payload?: { headers?: { name: string; value: string }[] };
+  };
+  const header = (name: string) =>
+    message.payload?.headers?.find(
+      (h) => h.name.toLowerCase() === name.toLowerCase(),
+    )?.value ?? "";
+  return [...parseAddressList(header("To")), ...parseAddressList(header("Cc"))];
+}
+
+function parseAddressList(raw: string): Contact[] {
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map((part) => {
+      const angled = part.match(/^\s*"?([^"<]*)"?\s*<([^>]+)>\s*$/);
+      if (angled) {
+        return { name: angled[1].trim(), email: angled[2].trim() };
+      }
+      const bare = part.trim();
+      return { name: "", email: bare };
+    })
+    .filter((c) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email));
+}
+
 async function listMessageIds(
   accessToken: string,
   max: number,
