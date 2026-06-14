@@ -89,10 +89,12 @@ export function RichTextEditor({
   });
 
   // Keep the editor in sync when the caller resets it (e.g. after sending, or
-  // switching the message being replied to). Skip when the value already
-  // matches so we don't fight the user's typing.
+  // switching the message being replied to). Only re-sync external changes when
+  // the editor isn't focused: syncing mid-typing replaces the doc and interrupts
+  // input rules (e.g. "# " → heading would silently fail "sometimes"). While
+  // focused the editor is the source of truth; the controlled value catches up.
   useEffect(() => {
-    if (!editor) return;
+    if (!editor || editor.isFocused) return;
     const current = editor.isEmpty ? "" : editor.getHTML();
     if (value !== current) {
       editor.commands.setContent(value || "", { emitUpdate: false });
