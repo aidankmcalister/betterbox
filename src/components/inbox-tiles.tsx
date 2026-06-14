@@ -69,7 +69,7 @@ import {
   type MessageAction,
 } from "@/lib/mail-queries";
 import { MARK_READ_MS, useSettings } from "@/hooks/use-settings";
-import { Composer } from "@/components/composer";
+import { Composer, type ComposerContent } from "@/components/composer";
 import { AppliedTags, TagPicker, useTagActions } from "@/components/tag-picker";
 import { LabeledView } from "@/components/labeled-view";
 import type { Folder } from "@/lib/folders";
@@ -115,8 +115,9 @@ export type Reading = { accountId: string; emailId: string };
 /** Compose-as-a-pane state, threaded from AppShell when composerMode === "pane". */
 export type ComposePane = {
   open: boolean;
-  draft?: { to?: string; subject?: string; body?: string };
   draftRef: { accountId: string; emailId: string } | null;
+  content: ComposerContent;
+  onContentChange: (patch: Partial<ComposerContent>) => void;
   onOpenChange: (open: boolean) => void;
 };
 
@@ -404,7 +405,8 @@ function ComposePane({
       open
       onOpenChange={compose.onOpenChange}
       accounts={accounts}
-      initialDraft={compose.draft}
+      content={compose.content}
+      onContentChange={compose.onContentChange}
       draft={compose.draftRef}
       onHeaderPointerDown={(event) => beginHeaderDrag(event, COMPOSE_PANE_ID)}
     />

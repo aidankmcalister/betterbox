@@ -13,7 +13,11 @@ import { toast } from "sonner";
 
 import { AppSidebar } from "@/components/app-sidebar";
 import { CommandMenu } from "@/components/command-menu";
-import { Composer } from "@/components/composer";
+import {
+  Composer,
+  plainToHtml,
+  type ComposerContent,
+} from "@/components/composer";
 import { InboxTiles, type Reading } from "@/components/inbox-tiles";
 import { PullRequestsPage } from "@/components/pull-requests";
 import { Button } from "@/components/ui/button";
@@ -345,8 +349,20 @@ function LandingDemo() {
     accountId: string;
     emailId: string;
   } | null>(null);
+  const [composeContent, setComposeContent] = useState<ComposerContent>({
+    fromId: null,
+    to: "",
+    subject: "",
+    body: "",
+  });
+  const patchComposeContent = useCallback(
+    (patch: Partial<ComposerContent>) =>
+      setComposeContent((current) => ({ ...current, ...patch })),
+    [],
+  );
 
   const openCompose = useCallback(() => {
+    setComposeContent({ fromId: null, to: "", subject: "", body: "" });
     setDraftRef(null);
     setComposeOpen(true);
   }, []);
@@ -358,9 +374,20 @@ function LandingDemo() {
         setReading({ accountId, emailId });
         return;
       }
+      setComposeContent({
+        fromId: accountId,
+        to: full.to ?? "",
+        subject:
+          !full.subject || full.subject === "(no subject)" ? "" : full.subject,
+        body: full.bodyHtml ?? (full.body ? plainToHtml(full.body) : ""),
+      });
+      setDraftRef({ accountId, emailId });
+      setComposeOpen(true);
+      return;
     } catch {
-      /* fall through to the composer */
+      /* fall through to an empty composer pointed at this draft */
     }
+    setComposeContent({ fromId: accountId, to: "", subject: "", body: "" });
     setDraftRef({ accountId, emailId });
     setComposeOpen(true);
   }, []);
@@ -435,6 +462,8 @@ function LandingDemo() {
         open={composeOpen}
         onOpenChange={setComposeOpen}
         accounts={accounts}
+        content={composeContent}
+        onContentChange={patchComposeContent}
         draft={draftRef}
       />
       <AppSidebar

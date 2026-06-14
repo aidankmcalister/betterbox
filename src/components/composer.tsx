@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   CheckIcon,
   ChevronDownIcon,
@@ -24,7 +24,6 @@ import {
   saveDraft,
   sendNewEmail,
   useContactsQuery,
-  useFullEmailQuery,
   type Contact,
 } from "@/lib/mail-queries";
 import { isTestAccount } from "@/lib/test-account";
@@ -43,6 +42,16 @@ import {
 const shortName = (email: string) => email.split("@")[0] || email;
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** The composer's editable fields. Lifted to the parent (AppShell) so they
+ *  persist when the composer remounts — switching pane↔popout, or navigating to
+ *  a page where the board (and its compose pane) isn't mounted. */
+export type ComposerContent = {
+  fromId: string | null;
+  to: string;
+  subject: string;
+  body: string;
+};
 
 /** True when `value` is one or more comma-separated, well-formed addresses. */
 function isValidRecipients(value: string): boolean {
@@ -63,7 +72,8 @@ export function Composer({
   open,
   onOpenChange,
   accounts,
-  initialDraft,
+  content,
+  onContentChange,
   draft,
   inPane = false,
   onHeaderPointerDown,
@@ -71,8 +81,11 @@ export function Composer({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   accounts: Account[];
-  initialDraft?: { to?: string; subject?: string; body?: string };
-  /** Open an existing draft for editing — its fields are loaded and seeded. */
+  /** Editable fields, owned by the parent so they survive the composer
+   *  remounting (e.g. swapping between the board pane and the popout). */
+  content: ComposerContent;
+  onContentChange: (patch: Partial<ComposerContent>) => void;
+  /** Open an existing draft for editing — the parent seeds `content`. */
   draft?: { accountId: string; emailId: string } | null;
   /** Render to fill a tile (pane mode) instead of the floating popout. */
   inPane?: boolean;
@@ -85,47 +98,9 @@ export function Composer({
   // so the picker shows them — sending from one is a sealed no-op (see `send`).
   const sendable = useMemo(() => accounts.filter((a) => a.email), [accounts]);
 
-  const [fromId, setFromId] = useState<string | null>(null);
-  const [to, setTo] = useState("");
-  const [subject, setSubject] = useState("");
-  const [body, setBody] = useState("");
+  const { fromId, to, subject, body } = content;
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Load the draft being edited (no-op query when not editing a draft).
-  const draftEmail = useFullEmailQuery(
-    draft?.accountId ?? "",
-    draft?.emailId ?? null,
-  ).data;
-
-  /* Start from a clean slate each time the composer opens. */
-  useEffect(() => {
-    if (!open) return;
-    setFromId(draft?.accountId ?? null);
-    setTo(initialDraft?.to ?? "");
-    setSubject(initialDraft?.subject ?? "");
-    // The body is the rich editor's HTML; a seeded draft (e.g. a forward) is
-    // plain text, so escape it and keep its line breaks.
-    setBody(initialDraft?.body ? plainToHtml(initialDraft.body) : "");
-    setError(null);
-    setSending(false);
-  }, [open, initialDraft, draft]);
-
-  // Seed the fields once the edited draft loads (arrives after the open reset).
-  useEffect(() => {
-    if (!open || !draft || !draftEmail) return;
-    setFromId(draft.accountId);
-    setTo(draftEmail.to ?? "");
-    setSubject(
-      !draftEmail.subject || draftEmail.subject === "(no subject)"
-        ? ""
-        : draftEmail.subject,
-    );
-    setBody(
-      draftEmail.bodyHtml ??
-        (draftEmail.body ? plainToHtml(draftEmail.body) : ""),
-    );
-  }, [open, draft, draftEmail]);
 
   const from =
     sendable.find((a) => a.accountId === fromId) ??
@@ -153,9 +128,9 @@ export function Composer({
   };
 
   const reset = () => {
-    setTo("");
-    setSubject("");
-    setBody("");
+    onContentChange({ fromId: null, to: "", subject: "", body: "" });
+    setError(null);
+    setSending(false);
     onOpenChange(false);
   };
 
@@ -290,7 +265,7 @@ export function Composer({
               {sendable.map((account) => (
                 <DropdownMenuItem
                   key={account.accountId}
-                  onClick={() => setFromId(account.accountId)}
+                  onClick={() => onContentChange({ fromId: account.accountId })}
                 >
                   <AccountDot
                     colorIndex={accounts.findIndex(
@@ -320,26 +295,32 @@ export function Composer({
 
       <div className="flex min-h-10 items-center gap-2.5 border-b px-4 py-1.5">
         <FieldLabel>To</FieldLabel>
-        <RecipientField value={to} onChange={setTo} contacts={contacts} />
+        <RecipientField
+          value={to}
+          onChange={(next) => onContentChange({ to: next })}
+          contacts={contacts}
+        />
       </div>
 
       <div className="flex h-10 items-center gap-2.5 border-b px-4">
         <FieldLabel>Subject</FieldLabel>
         <input
           value={subject}
-          onChange={(event) => setSubject(event.target.value)}
+          onChange={(event) => onContentChange({ subject: event.target.value })}
           placeholder="Subject"
           className="min-w-0 flex-1 bg-transparent text-[13.5px] outline-none placeholder:text-muted-foreground/60"
         />
       </div>
 
-      <div className={cn("px-3.5 py-3", inPane && "min-h-0 flex-1")}>
+      <div className={cn(inPane ? "min-h-0 flex-1" : "px-3.5 py-3")}>
         <RichTextEditor
           value={body}
-          onChange={setBody}
+          onChange={(next) => onContentChange({ body: next })}
           placeholder="Write your message…"
           minHeight={inPane ? 320 : 200}
-          className={inPane ? "h-full" : undefined}
+          // In a pane the editor fills edge-to-edge — drop the rounded border so
+          // it isn't a box inset inside the tile (the rows above/below divide it).
+          className={inPane ? "h-full rounded-none border-0" : undefined}
         />
       </div>
 
@@ -383,7 +364,7 @@ export function Composer({
 
 /** Escape a plain-text draft and preserve its line breaks so it seeds the rich
  *  editor (which treats its content as HTML) without dropping `<addr>` or runs. */
-function plainToHtml(text: string): string {
+export function plainToHtml(text: string): string {
   return text
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")

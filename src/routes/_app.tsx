@@ -24,7 +24,11 @@ import { useSession } from "../lib/auth-client";
 import { fetchSession } from "@/lib/auth-session";
 import { AppSidebar } from "@/components/app-sidebar";
 import { CommandMenu } from "@/components/command-menu";
-import { Composer } from "@/components/composer";
+import {
+  Composer,
+  plainToHtml,
+  type ComposerContent,
+} from "@/components/composer";
 import { InboxTiles, type Reading } from "@/components/inbox-tiles";
 import { LandingPage } from "@/components/landing";
 import { SettingsDialog } from "@/components/settings-dialog";
@@ -59,6 +63,13 @@ const PATH_FOLDER: Record<string, Folder> = {
 };
 
 const DEV_PATHS = new Set(["/pull-requests", "/webhooks", "/api"]);
+
+const EMPTY_COMPOSE: ComposerContent = {
+  fromId: null,
+  to: "",
+  subject: "",
+  body: "",
+};
 
 function AppShell() {
   useApplyAccent();
@@ -145,16 +156,24 @@ function AppShell() {
   const openSettings = useCallback(() => setSettingsOpen(true), []);
 
   const [composeOpen, setComposeOpen] = useState(false);
-  const [composeDraft, setComposeDraft] = useState<
-    { to?: string; subject?: string; body?: string } | undefined
-  >(undefined);
-  // A draft being edited (opened from the Drafts folder), loaded by the composer.
+  /* The composer's editable fields live here (not in the Composer) so they
+     survive it remounting — switching pane↔popout, or visiting a page where the
+     board/compose pane isn't mounted. */
+  const [composeContent, setComposeContent] = useState<ComposerContent>(
+    EMPTY_COMPOSE,
+  );
+  const patchComposeContent = useCallback(
+    (patch: Partial<ComposerContent>) =>
+      setComposeContent((current) => ({ ...current, ...patch })),
+    [],
+  );
+  // A draft being edited (opened from the Drafts folder).
   const [draftRef, setDraftRef] = useState<{
     accountId: string;
     emailId: string;
   } | null>(null);
   const openCompose = useCallback(() => {
-    setComposeDraft(undefined);
+    setComposeContent(EMPTY_COMPOSE);
     setDraftRef(null);
     setComposeOpen(true);
   }, []);
@@ -168,10 +187,23 @@ function AppShell() {
           openEmail(accountId, emailId);
           return;
         }
+        // Seed the composer from the draft (the fetch already happened here).
+        setComposeContent({
+          fromId: accountId,
+          to: full.to ?? "",
+          subject:
+            !full.subject || full.subject === "(no subject)"
+              ? ""
+              : full.subject,
+          body: full.bodyHtml ?? (full.body ? plainToHtml(full.body) : ""),
+        });
+        setDraftRef({ accountId, emailId });
+        setComposeOpen(true);
+        return;
       } catch {
-        /* fall through to the composer */
+        /* fall through — open an empty composer pointed at this draft */
       }
-      setComposeDraft(undefined);
+      setComposeContent({ ...EMPTY_COMPOSE, fromId: accountId });
       setDraftRef({ accountId, emailId });
       setComposeOpen(true);
     },
@@ -182,7 +214,12 @@ function AppShell() {
       const detail = (e as CustomEvent)?.detail as
         | { to?: string; subject?: string; body?: string }
         | undefined;
-      setComposeDraft(detail);
+      setComposeContent({
+        fromId: null,
+        to: detail?.to ?? "",
+        subject: detail?.subject ?? "",
+        body: detail?.body ? plainToHtml(detail.body) : "",
+      });
       setDraftRef(null);
       setComposeOpen(true);
     };
@@ -272,7 +309,8 @@ function AppShell() {
           open={composeOpen}
           onOpenChange={setComposeOpen}
           accounts={allAccounts ?? []}
-          initialDraft={composeDraft}
+          content={composeContent}
+          onContentChange={patchComposeContent}
           draft={draftRef}
         />
       )}
@@ -307,8 +345,9 @@ function AppShell() {
                 composerMode === "pane"
                   ? {
                       open: composeOpen,
-                      draft: composeDraft,
                       draftRef,
+                      content: composeContent,
+                      onContentChange: patchComposeContent,
                       onOpenChange: setComposeOpen,
                     }
                   : null
