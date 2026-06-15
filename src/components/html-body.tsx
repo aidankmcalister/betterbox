@@ -3,20 +3,35 @@ import { useEffect, useRef, useState } from "react";
 
 // DOMPurify needs a real DOM; no-op during SSR.
 //
-// Privacy: only <img> sources are proxied (tracker pixels, CDN-side IP
-// logging). Every OTHER remote subresource a sender could embed — external
-// stylesheets, web fonts, <video>/<audio>, CSS url()/@import — would fetch
-// straight from the sender's host and leak the reader's IP/User-Agent, so they
-// are stripped. Inline styles and proxied images still render, which covers the
-// vast majority of email layout.
+// Privacy: remote subresources that would fetch straight from the sender's host
+// (leaking the reader's IP/User-Agent) are routed through our image proxy or
+// stripped. <img> src and inline-style url() (background images) are proxied —
+// the proxy fetches server-side, so the sender only sees our IP. Everything
+// else a sender could embed — external <link> stylesheets, @font-face web fonts,
+// @import, <video>/<audio>/<object>/<embed> — is stripped. (Remote fonts are a
+// tracking vector, so @font-face stays stripped even though it's "just CSS".)
 
-/** Remove from CSS anything that triggers a remote fetch: @import rules and
- *  url() values pointing at http(s) or protocol-relative ("//host") targets.
- *  data: / cid: urls are inline and left intact. */
+/** Strip remote fetches out of a <style> block: @import rules and url() values
+ *  pointing at http(s)/protocol-relative targets (this is what kills @font-face
+ *  and remote background CSS). data:/cid: urls are inline and left intact. */
 function stripRemoteCss(css: string): string {
   return css
     .replace(/@import\b[^;]*;?/gi, "")
     .replace(/url\(\s*(['"]?)\s*(?:https?:|\/\/)[^)]*\1\s*\)/gi, "url()");
+}
+
+/** Rewrite remote url() values in an inline style attribute through the image
+ *  proxy, so background-image (and the `background` shorthand) render without
+ *  leaking the reader's IP. Mirrors how <img src> is proxied. */
+function proxyCssUrls(css: string): string {
+  if (typeof window === "undefined") return css;
+  return css.replace(
+    /url\(\s*(['"]?)\s*((?:https?:\/\/|\/\/)[^)'"\s]+)\s*\1\s*\)/gi,
+    (_match, quote: string, url: string) => {
+      const abs = url.startsWith("//") ? `https:${url}` : url;
+      return `url(${quote}${window.location.origin}/api/image-proxy?url=${encodeURIComponent(abs)}${quote})`;
+    },
+  );
 }
 
 let hookRegistered = false;
@@ -41,15 +56,17 @@ function sanitizeEmail(html: string): string {
         node.setAttribute("target", "_blank");
         node.setAttribute("rel", "noopener noreferrer");
       }
-      // Scrub remote url()/@import out of <style> blocks and inline styles so
-      // CSS background-images and @font-face can't phone home.
+      // <style> blocks stay stripped — that's what neutralizes @font-face and
+      // remote background CSS (remote fonts are a tracking vector).
       if (node.tagName === "STYLE" && node.textContent) {
         node.textContent = stripRemoteCss(node.textContent);
       }
+      // Inline styles, by contrast, get their remote url() proxied so element
+      // background images still render (privacy-safe, server-side fetch).
       const inlineStyle =
         node.nodeType === 1 ? (node as Element).getAttribute("style") : null;
       if (inlineStyle) {
-        (node as Element).setAttribute("style", stripRemoteCss(inlineStyle));
+        (node as Element).setAttribute("style", proxyCssUrls(inlineStyle));
       }
     });
     hookRegistered = true;
@@ -106,9 +123,15 @@ export function HtmlBody({ html }: { html: string }) {
     // from overflowing the pane width.
     const style = idoc.createElement("style");
     style.textContent =
-      "html,body{height:auto!important;min-height:0!important;margin:0!important;padding:0;overflow-x:hidden!important}" +
+      // Auto-height + no horizontal scroll (so our ResizeObserver sizing works).
+      "html,body{height:auto!important;min-height:0!important;margin:0!important;padding:0!important;overflow-x:hidden!important}" +
+      // System font base so web-font-reliant emails degrade cleanly (no serif).
+      'body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}' +
+      // Reset for table-based email layouts (most HTML email is built on tables).
+      "table{border-collapse:collapse}" +
       "img,video,table{max-width:100%!important}" +
-      "img,video{height:auto}";
+      "img,video{height:auto}" +
+      "a{word-break:break-all}";
     idoc.head.appendChild(style);
 
     // Guard against resize-observer feedback loops by skipping identical heights.
@@ -124,10 +147,32 @@ export function HtmlBody({ html }: { html: string }) {
     observerRef.current = new ResizeObserver(fit);
     observerRef.current.observe(idoc.body);
     fit();
-    // Remote fonts/images can land after first paint and grow the body; re-fit.
-    idoc
-      .querySelectorAll("img")
-      .forEach((img) => img.addEventListener("load", fit));
+
+    // A failed image (dead CDN, proxy reject) otherwise shows a broken-image
+    // icon. The iframe has no allow-scripts, so we can't use an inline onerror —
+    // attach the handler from here (allow-same-origin lets us touch the doc).
+    // Meaningful alt text becomes muted italic text; decorative images vanish.
+    const handleBroken = (img: HTMLImageElement) => {
+      const alt = (img.getAttribute("alt") || "").trim();
+      if (alt) {
+        const span = idoc.createElement("span");
+        span.textContent = alt;
+        span.style.cssText = "color:#8a817a;font-size:13px;font-style:italic";
+        img.replaceWith(span);
+      } else {
+        img.style.display = "none";
+      }
+      fit();
+    };
+    // Remote images can land after first paint and grow the body; re-fit.
+    idoc.querySelectorAll("img").forEach((img) => {
+      img.addEventListener("load", fit);
+      img.addEventListener("error", () => handleBroken(img));
+      // Caught a failure that happened before this listener attached.
+      if (img.complete && img.naturalWidth === 0 && img.getAttribute("src")) {
+        handleBroken(img);
+      }
+    });
     if (idoc.fonts?.ready) idoc.fonts.ready.then(fit).catch(() => {});
 
     // iframe swallows wheel events even with no inner scroll; forward to the reader pane.
