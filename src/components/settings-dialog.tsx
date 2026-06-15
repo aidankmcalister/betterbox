@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  CheckIcon,
   ChevronDownIcon,
   Clapperboard,
   Command,
@@ -48,6 +49,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type PageId =
   | "accounts"
@@ -344,13 +351,75 @@ function AccountsPage({ accounts }: { accounts: Account[] }) {
       <PageSection title="Sending">
         <SettingRow
           label="Default send-from"
-          description="Used when composing from the unified view"
-          soon
+          description="Which account the composer starts on for a new message"
         >
-          <SoonControl label={primaryEmail ?? "None"} mono />
+          <SendFromControl accounts={accounts} primaryEmail={primaryEmail} />
         </SettingRow>
       </PageSection>
     </Page>
+  );
+}
+
+/** Picks which connected account the composer defaults its From to. "Primary
+ *  inbox" (null) keeps the old behaviour: fall back to the signed-in address. */
+function SendFromControl({
+  accounts,
+  primaryEmail,
+}: {
+  accounts: Account[];
+  primaryEmail?: string;
+}) {
+  const { defaultSendFrom } = useSettings();
+  const sendable = accounts.filter((account) => account.email);
+  const selected =
+    sendable.find((account) => account.accountId === defaultSendFrom) ?? null;
+  const label = selected
+    ? selected.email
+    : primaryEmail
+      ? `Primary (${primaryEmail})`
+      : "Primary inbox";
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <Button variant="outline" size="sm" className="max-w-56 font-mono" />
+        }
+      >
+        <span className="truncate">{label}</span>
+        <ChevronDownIcon />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-64">
+        <DropdownMenuItem
+          onClick={() => updateSettings({ defaultSendFrom: null })}
+        >
+          <span className="text-[13px]">Primary inbox</span>
+          {primaryEmail && (
+            <span className="ml-auto truncate font-mono text-[11px] text-muted-foreground">
+              {primaryEmail}
+            </span>
+          )}
+          {defaultSendFrom === null && (
+            <CheckIcon className="size-3.5 shrink-0 text-primary" />
+          )}
+        </DropdownMenuItem>
+        {sendable.map((account) => (
+          <DropdownMenuItem
+            key={account.accountId}
+            onClick={() =>
+              updateSettings({ defaultSendFrom: account.accountId })
+            }
+          >
+            <span className="truncate font-mono text-[12px]">
+              {account.email}
+            </span>
+            {defaultSendFrom === account.accountId && (
+              <CheckIcon className="ml-auto size-3.5 shrink-0 text-primary" />
+            )}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 

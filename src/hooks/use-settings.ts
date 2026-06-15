@@ -33,6 +33,8 @@ export type Settings = {
   readerMode: ReaderMode;
   /** Popout = floating bottom-right panel; pane = a draggable tile in the board. */
   composerMode: ComposerMode;
+  /** accountId the composer should default its From to; null = primary inbox. */
+  defaultSendFrom: string | null;
   /** Off by default — the account dot already carries the account color. */
   inboxAvatars: boolean;
   /** Inbox can never be hidden. */
@@ -57,6 +59,7 @@ const DEFAULT_SETTINGS: Settings = {
   markRead: "1s",
   readerMode: "shared",
   composerMode: "popout",
+  defaultSendFrom: null,
   inboxAvatars: false,
   hiddenNav: [],
   devTools: false,

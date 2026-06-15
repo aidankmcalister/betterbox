@@ -20,6 +20,7 @@ import type { Editor } from "@tiptap/react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { useSession } from "@/lib/auth-client";
+import { useSettings } from "@/hooks/use-settings";
 import { cn } from "@/lib/utils";
 import type { Account } from "@/lib/account";
 import {
@@ -108,6 +109,7 @@ export function Composer({
 }) {
   const { data: session } = useSession();
   const queryClient = useQueryClient();
+  const { defaultSendFrom } = useSettings();
   // Any inbox with an address can be the From. Test/demo accounts are included
   // so the picker shows them — sending from one is a sealed no-op (see `send`).
   const sendable = useMemo(() => accounts.filter((a) => a.email), [accounts]);
@@ -133,8 +135,11 @@ export function Composer({
     };
   }, [editor]);
 
+  // From: an explicit pick (fromId) wins; otherwise the configured default
+  // send-from account, then the primary inbox, then the first sendable one.
   const from =
     sendable.find((a) => a.accountId === fromId) ??
+    sendable.find((a) => a.accountId === defaultSendFrom) ??
     sendable.find((a) => a.email === session?.user.email) ??
     sendable[0] ??
     null;
