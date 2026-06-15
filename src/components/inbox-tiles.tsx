@@ -575,9 +575,10 @@ function ReaderPane({
 }) {
   const { accounts, folder } = useTiles();
   const beginHeaderDrag = useTileDrag();
-  const { showTechnicalMetadata, clock, markRead } = useSettings();
+  const { showTechnicalMetadata, clock, markRead, rawByDefault } =
+    useSettings();
   const queryClient = useQueryClient();
-  const [raw, setRaw] = useState(false);
+  const [raw, setRaw] = useState(rawByDefault);
   const [busy, setBusy] = useState(false);
   const [starred, setStarred] = useState(false);
   const [replyOpen, setReplyOpen] = useState(false);

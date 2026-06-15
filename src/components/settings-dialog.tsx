@@ -718,9 +718,11 @@ function DeveloperPage() {
         <SettingRow
           label="Open messages in raw view"
           description="MIME source + headers by default"
-          soon
         >
-          <Switch checked={false} disabled />
+          <Switch
+            checked={settings.rawByDefault}
+            onCheckedChange={(rawByDefault) => updateSettings({ rawByDefault })}
+          />
         </SettingRow>
         <SettingRow
           label="Show technical metadata"

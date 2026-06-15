@@ -25,6 +25,8 @@ export type Settings = {
   /** Gmail label id → index into the tag color palette; client-side only (label name still derives a default color). */
   tagColors: Record<string, number>;
   showTechnicalMetadata: boolean;
+  /** Open messages in raw MIME view by default instead of the rendered body. */
+  rawByDefault: boolean;
   exportFormat: ExportFormat;
   clock: Clock;
   markRead: MarkRead;
@@ -49,6 +51,7 @@ const DEFAULT_SETTINGS: Settings = {
   accountColors: {},
   tagColors: {},
   showTechnicalMetadata: true,
+  rawByDefault: false,
   exportFormat: "md",
   clock: "12h",
   markRead: "1s",

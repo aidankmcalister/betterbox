@@ -1,11 +1,10 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import {
   CheckIcon,
   ChevronDownIcon,
   CodeIcon,
   EyeIcon,
   GripVerticalIcon,
-  LinkIcon,
   PaperclipIcon,
   PencilIcon,
   PenLineIcon,
@@ -17,6 +16,7 @@ import {
 import DOMPurify from "dompurify";
 import { toast } from "sonner";
 
+import type { Editor } from "@tiptap/react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { useSession } from "@/lib/auth-client";
@@ -106,6 +106,18 @@ export function Composer({
   const [error, setError] = useState<string | null>(null);
   // Preview renders the body as the recipient sees it (rich text → HTML).
   const [preview, setPreview] = useState(false);
+  // The live editor instance, so the footer code-block button can drive it.
+  const [editor, setEditor] = useState<Editor | null>(null);
+  // Re-render on editor transactions so the code-block button's active state
+  // (below) tracks the selection without the editor owning the footer.
+  const [, bumpEditorState] = useReducer((n: number) => n + 1, 0);
+  useEffect(() => {
+    if (!editor) return;
+    editor.on("transaction", bumpEditorState);
+    return () => {
+      editor.off("transaction", bumpEditorState);
+    };
+  }, [editor]);
 
   const from =
     sendable.find((a) => a.accountId === fromId) ??
@@ -335,6 +347,7 @@ export function Composer({
           <RichTextEditor
             value={body}
             onChange={(next) => onContentChange({ body: next })}
+            onEditorReady={setEditor}
             placeholder="Write your message…"
             minHeight={inPane ? 320 : 200}
             // The editor fills edge-to-edge in both modes — drop the rounded
@@ -383,14 +396,10 @@ export function Composer({
           />
           <FooterIcon
             icon={CodeIcon}
-            title="Code block (soon)"
-            disabled
-            className="hidden sm:inline-flex"
-          />
-          <FooterIcon
-            icon={LinkIcon}
-            title="Link (soon)"
-            disabled
+            title="Code block"
+            disabled={!editor || preview}
+            active={editor?.isActive("codeBlock") ?? false}
+            onClick={() => editor?.chain().focus().toggleCodeBlock().run()}
             className="hidden sm:inline-flex"
           />
           <FooterIcon
