@@ -192,15 +192,6 @@ export function makeDemoAccounts() {
   ];
 }
 
-/** A deliberately maximal HTML email shown as the first inbox message on the
- *  demo/test accounts so the reader's HTML rendering can be eyeballed end to
- *  end. Content (and the other demo mail below) lives in `@/data/demo-mail`. */
-const FEATURE_TEST = demoMail.featureTest;
-
-function isFeatureTestId(emailId: string): boolean {
-  return emailId.endsWith("-inbox-0");
-}
-
 export function makeTestFullEmail(accountId: string, emailId: string) {
   // A composer-authored draft resolves from the store, not the seeded set.
   const stored = getTestDraft(emailId);
@@ -229,29 +220,26 @@ export function makeTestFullEmail(accountId: string, emailId: string) {
     (email) => email.id === emailId,
   );
   const index = Number(accountId.replace(TEST_ACCOUNT_PREFIX, "")) || 1;
-  const feature = isFeatureTestId(emailId);
   // Drafts open in the composer — give them just their own text (no reader
   // boilerplate) and an empty recipient to fill in.
   const isDraft = folder === "drafts";
   return {
     id: emailId,
-    from: feature
-      ? FEATURE_TEST.from
-      : (row?.from ?? "Test <test@example.dev>"),
+    from: row?.from ?? "Test <test@example.dev>",
     to: isDraft ? "" : `test${index}@example.dev`,
-    subject: feature ? FEATURE_TEST.subject : (row?.subject ?? "(no subject)"),
+    subject: row?.subject ?? "(no subject)",
     date: row?.date ?? "",
     messageId: `<${emailId}@example.dev>`,
     threadId: emailId,
     references: "",
     starred: false,
-    snippet: feature ? FEATURE_TEST.snippet : row?.snippet,
+    snippet: row?.snippet,
     unread: row?.unread ?? false,
     labelIds: getTestEmailLabelIds(accountId, emailId),
     body: isDraft
       ? (row?.snippet ?? "")
       : `${row?.snippet ?? ""}\n\nThis is a generated message on a dev test account — there is no real mail behind it. Use it to exercise the reader pane: drag its header to dock it elsewhere, resize the seams, and toggle technical metadata in Settings → Developer.`,
-    bodyHtml: feature ? FEATURE_TEST.html : undefined,
+    bodyHtml: undefined,
   };
 }
 
@@ -324,22 +312,12 @@ export function makeTestEmails(
   const rows = Array.from({ length: count }, (_, i) => {
     // Non-uniform gaps keyed off account + index so timestamps don't align row-for-row between panes.
     minutesAgo += 28 + ((seed * 17 + i * 13) % 53);
-    // First inbox row is the maximal HTML render-test email.
-    const feature = folder === "inbox" && i === 0;
-    const [name, subject, snippet] = feature
-      ? [FEATURE_TEST.from, FEATURE_TEST.subject, FEATURE_TEST.snippet]
-      : mail[(seed * 5 + i) % mail.length];
-    const from = feature
-      ? FEATURE_TEST.from
-      : self
-        ? `You <test${seed}@example.dev>`
-        : `${name} <noreply@${name.toLowerCase().replace(/[^a-z0-9]/g, "")}.com>`;
+    const [name, subject, snippet] = mail[(seed * 5 + i) % mail.length];
+    const from = self
+      ? `You <test${seed}@example.dev>`
+      : `${name} <noreply@${name.toLowerCase().replace(/[^a-z0-9]/g, "")}.com>`;
     const id = `${accountId}-${folder}-${i}`;
-    const seedUnread = feature
-      ? true
-      : allRead
-        ? false
-        : (seed * 3 + i) % 4 === 0;
+    const seedUnread = allRead ? false : (seed * 3 + i) % 4 === 0;
     return {
       id,
       from,
