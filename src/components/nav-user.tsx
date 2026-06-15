@@ -163,7 +163,7 @@ export function NavUser({
                     className={cn(
                       "h-7 flex-1",
                       theme === option.value
-                        ? "bg-muted text-foreground"
+                        ? "bg-accent text-foreground"
                         : "text-muted-foreground",
                     )}
                   >

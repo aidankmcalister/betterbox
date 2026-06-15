@@ -173,8 +173,10 @@
   --secondary-foreground: var(--color-ink);
   --muted: var(--color-surface-2);
   --muted-foreground: var(--color-ink-subtle);
-  /* surface-4, not -3: highlights must stay visible on popover (surface-3) */
-  --accent: var(--color-surface-4);
+  /* Hover/selected highlight. surface-4 is only ~1 level off the popover
+     (surface-3) so it read as an invisible/muddy patch — use a clearly visible
+     gray lift instead (sits a notch above popover without going bright). */
+  --accent: #23252a;
   --accent-foreground: var(--color-ink);
   --destructive: var(--color-label-red);
   --border: var(--color-hairline);
