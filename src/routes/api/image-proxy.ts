@@ -1,4 +1,3 @@
-import { auth } from "@/lib/auth";
 import { createFileRoute } from "@tanstack/react-router";
 import { isIP } from "node:net";
 import { lookup } from "node:dns/promises";
@@ -90,8 +89,16 @@ export const Route = createFileRoute("/api/image-proxy")({
   server: {
     handlers: {
       GET: async ({ request }: { request: Request }) => {
-        const session = await auth.api.getSession({ headers: request.headers });
-        if (!session) return new Response("Not signed in", { status: 401 });
+        // No session gate: the reader renders email <img> inside a sandboxed
+        // srcdoc iframe whose subresource requests don't reliably carry the
+        // session cookie, so requiring auth here broke every proxied image.
+        // The route is already SSRF-hardened (https-only, private-IP rejection
+        // on every redirect hop, size/time caps). To still refuse use as an
+        // open relay from other sites, drop only blatant cross-site requests —
+        // the reader's same-origin iframe loads are unaffected.
+        if (request.headers.get("sec-fetch-site") === "cross-site") {
+          return new Response("Forbidden", { status: 403 });
+        }
 
         const raw = new URL(request.url).searchParams.get("url") ?? "";
         let target = await safeTarget(raw);
