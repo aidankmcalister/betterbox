@@ -371,13 +371,21 @@ function SendFromControl({
 }) {
   const { defaultSendFrom } = useSettings();
   const sendable = accounts.filter((account) => account.email);
-  const selected =
-    sendable.find((account) => account.accountId === defaultSendFrom) ?? null;
-  const label = selected
-    ? selected.email
-    : primaryEmail
-      ? `Primary (${primaryEmail})`
-      : "Primary inbox";
+  // The primary account is already represented by "Primary inbox", so it isn't
+  // also listed below — pinning it would behave identically to the default.
+  const primaryAccount =
+    sendable.find((account) => account.email === primaryEmail) ?? null;
+  const others = sendable.filter(
+    (account) => account.accountId !== primaryAccount?.accountId,
+  );
+  // Treat "pinned to the primary account" the same as the default (null).
+  const onPrimary =
+    defaultSendFrom === null || defaultSendFrom === primaryAccount?.accountId;
+  const selected = onPrimary
+    ? null
+    : (sendable.find((account) => account.accountId === defaultSendFrom) ??
+      null);
+  const label = selected ? selected.email : "Primary inbox";
 
   return (
     <DropdownMenu>
@@ -399,11 +407,16 @@ function SendFromControl({
               {primaryEmail}
             </span>
           )}
-          {defaultSendFrom === null && (
-            <CheckIcon className="size-3.5 shrink-0 text-primary" />
+          {onPrimary && (
+            <CheckIcon
+              className={cn(
+                "size-3.5 shrink-0 text-primary",
+                !primaryEmail && "ml-auto",
+              )}
+            />
           )}
         </DropdownMenuItem>
-        {sendable.map((account) => (
+        {others.map((account) => (
           <DropdownMenuItem
             key={account.accountId}
             onClick={() =>
