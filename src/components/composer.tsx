@@ -46,14 +46,25 @@ const shortName = (email: string) => email.split("@")[0] || email;
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/** Threading headers that nest a sent message under an existing conversation
+ *  (set by reply / reply-all; null for a fresh compose). */
+export type ReplyContext = {
+  inReplyTo?: string;
+  references?: string;
+  threadId?: string;
+};
+
 /** The composer's editable fields. Lifted to the parent (AppShell) so they
  *  persist when the composer remounts — switching pane↔popout, or navigating to
  *  a page where the board (and its compose pane) isn't mounted. */
 export type ComposerContent = {
   fromId: string | null;
   to: string;
+  cc: string;
   subject: string;
   body: string;
+  /** Present when the composer was opened as a reply-all (threads the send). */
+  reply: ReplyContext | null;
 };
 
 /** True when `value` is one or more comma-separated, well-formed addresses. */
@@ -101,7 +112,10 @@ export function Composer({
   // so the picker shows them — sending from one is a sealed no-op (see `send`).
   const sendable = useMemo(() => accounts.filter((a) => a.email), [accounts]);
 
-  const { fromId, to, subject, body } = content;
+  const { fromId, to, cc, subject, body, reply } = content;
+  // Cc starts hidden for a fresh compose; reply-all seeds cc, so reveal it then.
+  const [ccShown, setCcShown] = useState(false);
+  const showCc = ccShown || cc.trim().length > 0;
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Preview renders the body as the recipient sees it (rich text → HTML).
@@ -131,9 +145,11 @@ export function Composer({
   if (!open) return null;
 
   // Require at least one well-formed address (comma-separated allowed) before
-  // Send is enabled — so "d" can't be sent.
+  // Send is enabled — so "d" can't be sent. Cc is optional but, when present,
+  // must be valid too.
   const recipientsValid = isValidRecipients(to);
-  const canSend = !sending && from !== null && recipientsValid;
+  const ccValid = cc.trim().length === 0 || isValidRecipients(cc);
+  const canSend = !sending && from !== null && recipientsValid && ccValid;
 
   const hasContent =
     to.trim().length > 0 || subject.trim().length > 0 || body.length > 0;
@@ -145,7 +161,15 @@ export function Composer({
   };
 
   const reset = () => {
-    onContentChange({ fromId: null, to: "", subject: "", body: "" });
+    onContentChange({
+      fromId: null,
+      to: "",
+      cc: "",
+      subject: "",
+      body: "",
+      reply: null,
+    });
+    setCcShown(false);
     setError(null);
     setSending(false);
     setPreview(false);
@@ -189,9 +213,13 @@ export function Composer({
       await sendNewEmail({
         accountId: from.accountId,
         to: to.trim(),
+        cc: cc.trim() || undefined,
         subject,
         body: "",
         html: body,
+        inReplyTo: reply?.inReplyTo,
+        references: reply?.references,
+        threadId: reply?.threadId,
       });
       // A sent draft leaves the Drafts folder.
       if (draft) {
@@ -319,7 +347,27 @@ export function Composer({
           onChange={(next) => onContentChange({ to: next })}
           contacts={contacts}
         />
+        {!showCc && (
+          <button
+            type="button"
+            onClick={() => setCcShown(true)}
+            className="shrink-0 cursor-pointer rounded px-1 text-[12px] text-muted-foreground/70 hover:text-foreground"
+          >
+            Cc
+          </button>
+        )}
       </div>
+
+      {showCc && (
+        <div className="flex min-h-10 items-center gap-2.5 border-b px-4 py-1.5">
+          <FieldLabel>Cc</FieldLabel>
+          <RecipientField
+            value={cc}
+            onChange={(next) => onContentChange({ cc: next })}
+            contacts={contacts}
+          />
+        </div>
+      )}
 
       <div className="flex h-10 items-center gap-2.5 border-b px-4">
         <FieldLabel>Subject</FieldLabel>
@@ -371,11 +419,12 @@ export function Composer({
           <Kbd>⌘</Kbd>
           <Kbd>↵</Kbd>
         </KbdGroup>
-        {!error && to.trim().length > 0 && !recipientsValid && (
-          <span className="min-w-0 truncate font-mono text-[11px] text-muted-foreground/70">
-            Enter a valid email address
-          </span>
-        )}
+        {!error &&
+          ((to.trim().length > 0 && !recipientsValid) || !ccValid) && (
+            <span className="min-w-0 truncate font-mono text-[11px] text-muted-foreground/70">
+              Enter a valid email address
+            </span>
+          )}
         {error && (
           <span className="min-w-0 truncate font-mono text-[11px] text-label-red">
             {error}

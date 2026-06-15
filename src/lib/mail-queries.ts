@@ -23,6 +23,8 @@ import {
 
 export type FullEmail = ThreadRowEmail & {
   to: string;
+  /** Original Cc recipients (carried over by reply-all). Absent on demo mail. */
+  cc?: string;
   messageId: string;
   threadId: string;
   references: string;
@@ -391,6 +393,7 @@ export async function setEmailLabel(
 export async function sendNewEmail(options: {
   accountId: string;
   to: string;
+  cc?: string;
   subject: string;
   body: string;
   html?: string;

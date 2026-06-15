@@ -562,6 +562,45 @@ function parseAddress(from: string): { name: string; address: string } {
   return { name: from, address: from };
 }
 
+/** Split a header address list ("A <a@x>, B <b@y>") into bare addresses,
+ *  respecting commas inside a quoted display name. */
+function splitAddresses(list: string): string[] {
+  if (!list) return [];
+  const parts: string[] = [];
+  let buf = "";
+  let inQuote = false;
+  for (const ch of list) {
+    if (ch === '"') inQuote = !inQuote;
+    if (ch === "," && !inQuote) {
+      parts.push(buf);
+      buf = "";
+    } else {
+      buf += ch;
+    }
+  }
+  if (buf.trim()) parts.push(buf);
+  return parts.map((part) => parseAddress(part).address).filter(Boolean);
+}
+
+const escapeHtml = (text: string) =>
+  text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+/** A quoted-reply body: a blank line to type into, an attribution line, then the
+ *  original message in a blockquote. Returned as HTML to seed the rich editor. */
+function quotedReplyHtml(message: FullEmail): string {
+  const who = parseAddress(message.from);
+  const attribution = `On ${escapeHtml(message.date)}, ${escapeHtml(
+    who.name,
+  )} &lt;${escapeHtml(who.address)}&gt; wrote:`;
+  const original = escapeHtml(message.body || message.snippet || "")
+    .split("\n")
+    .join("<br>");
+  return `<p></p><p>${attribution}</p><blockquote>${original}</blockquote>`;
+}
+
 function ReaderPane({
   paneId,
   accountId,
@@ -667,6 +706,52 @@ function ReaderPane({
       replyRef.current?.scrollIntoView({
         behavior: "smooth",
         block: "nearest",
+      }),
+    );
+  };
+
+  // Reply to everyone on the thread's latest message: To = original sender +
+  // To recipients, Cc = original Cc, both minus our own address and dupes.
+  // Opens the composer (via the same event forward uses) with threading headers.
+  const startReplyAll = () => {
+    const target = lastMessage;
+    if (!target) return;
+    const self = (
+      accounts.find((a) => a.accountId === accountId)?.email ?? ""
+    ).toLowerCase();
+    const seen = new Set<string>();
+    if (self) seen.add(self);
+    const dedupe = (addresses: string[]) =>
+      addresses.filter((address) => {
+        const key = address.toLowerCase();
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    const to = dedupe([
+      parseAddress(target.from).address,
+      ...splitAddresses(target.to ?? ""),
+    ]);
+    const cc = dedupe(splitAddresses(target.cc ?? ""));
+    const subject = /^re:/i.test(target.subject)
+      ? target.subject
+      : `Re: ${target.subject}`;
+    window.dispatchEvent(
+      new CustomEvent("open-compose", {
+        detail: {
+          accountId,
+          to: to.join(", "),
+          cc: cc.join(", "),
+          subject,
+          html: quotedReplyHtml(target),
+          reply: {
+            inReplyTo: target.messageId || undefined,
+            references:
+              [target.references, target.messageId].filter(Boolean).join(" ") ||
+              undefined,
+            threadId: target.threadId || undefined,
+          },
+        },
       }),
     );
   };
@@ -1023,8 +1108,12 @@ function ReaderPane({
           <button type="button" onClick={startReply} className={FBTN_PRIMARY}>
             <ReplyIcon /> Reply
           </button>
-          <Hint label="Reply all (soon)">
-            <button type="button" disabled className={FBTN_ICON}>
+          <Hint label="Reply all">
+            <button
+              type="button"
+              onClick={startReplyAll}
+              className={FBTN_ICON}
+            >
               <ReplyAllIcon />
             </button>
           </Hint>

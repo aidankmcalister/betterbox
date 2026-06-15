@@ -29,6 +29,7 @@ import {
   Composer,
   plainToHtml,
   type ComposerContent,
+  type ReplyContext,
 } from "@/components/composer";
 import { InboxTiles, type Reading } from "@/components/inbox-tiles";
 import { LandingPage } from "@/components/landing";
@@ -68,8 +69,10 @@ const DEV_PATHS = new Set(["/pull-requests", "/webhooks", "/api"]);
 const EMPTY_COMPOSE: ComposerContent = {
   fromId: null,
   to: "",
+  cc: "",
   subject: "",
   body: "",
+  reply: null,
 };
 
 function AppShell() {
@@ -192,11 +195,13 @@ function AppShell() {
         setComposeContent({
           fromId: accountId,
           to: full.to ?? "",
+          cc: full.cc ?? "",
           subject:
             !full.subject || full.subject === "(no subject)"
               ? ""
               : full.subject,
           body: full.bodyHtml ?? (full.body ? plainToHtml(full.body) : ""),
+          reply: null,
         });
         setDraftRef({ accountId, emailId });
         setComposeOpen(true);
@@ -213,13 +218,25 @@ function AppShell() {
   useEffect(() => {
     const onOpenCompose = (e: Event) => {
       const detail = (e as CustomEvent)?.detail as
-        | { to?: string; subject?: string; body?: string }
+        | {
+            accountId?: string;
+            to?: string;
+            cc?: string;
+            subject?: string;
+            /** Plain text (gets escaped) — used by forward. */
+            body?: string;
+            /** Pre-built HTML (used as-is) — used by reply-all's quoted body. */
+            html?: string;
+            reply?: ReplyContext;
+          }
         | undefined;
       setComposeContent({
-        fromId: null,
+        fromId: detail?.accountId ?? null,
         to: detail?.to ?? "",
+        cc: detail?.cc ?? "",
         subject: detail?.subject ?? "",
-        body: detail?.body ? plainToHtml(detail.body) : "",
+        body: detail?.html ?? (detail?.body ? plainToHtml(detail.body) : ""),
+        reply: detail?.reply ?? null,
       });
       setDraftRef(null);
       setComposeOpen(true);

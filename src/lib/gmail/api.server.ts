@@ -245,6 +245,7 @@ async function fetchEmail(accessToken: string, id: string): Promise<Email> {
 
 export type FullEmail = Email & {
   to: string;
+  cc: string;
   messageId: string;
   /** Used to thread replies. */
   threadId: string;
@@ -281,6 +282,7 @@ function parseMessage(message: RawMessage): FullEmail {
     id: message.id ?? "",
     from: header("From"),
     to: header("To"),
+    cc: header("Cc"),
     subject: header("Subject"),
     date: header("Date"),
     messageId: header("Message-ID"),
@@ -386,6 +388,7 @@ export async function sendEmail(
   accessToken: string,
   options: {
     to: string;
+    cc?: string;
     subject: string;
     body: string;
     html?: string;
@@ -408,6 +411,9 @@ export async function sendEmail(
     `Subject: ${encodeSubject(options.subject)}`,
     "MIME-Version: 1.0",
   ];
+  // Cc is visible to every recipient (unlike Bcc); reply-all carries it over.
+  if (options.cc?.trim())
+    headerLines.splice(2, 0, `Cc: ${headerSafe(options.cc)}`);
   // Threading headers make Gmail (and every other client) nest the reply
   // under the original conversation instead of starting a new one.
   if (options.inReplyTo)

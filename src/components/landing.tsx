@@ -370,8 +370,10 @@ function LandingDemo() {
   const [composeContent, setComposeContent] = useState<ComposerContent>({
     fromId: null,
     to: "",
+    cc: "",
     subject: "",
     body: "",
+    reply: null,
   });
   const patchComposeContent = useCallback(
     (patch: Partial<ComposerContent>) =>
@@ -380,7 +382,14 @@ function LandingDemo() {
   );
 
   const openCompose = useCallback(() => {
-    setComposeContent({ fromId: null, to: "", subject: "", body: "" });
+    setComposeContent({
+      fromId: null,
+      to: "",
+      cc: "",
+      subject: "",
+      body: "",
+      reply: null,
+    });
     setDraftRef(null);
     setComposeOpen(true);
   }, []);
@@ -395,9 +404,11 @@ function LandingDemo() {
       setComposeContent({
         fromId: accountId,
         to: full.to ?? "",
+        cc: full.cc ?? "",
         subject:
           !full.subject || full.subject === "(no subject)" ? "" : full.subject,
         body: full.bodyHtml ?? (full.body ? plainToHtml(full.body) : ""),
+        reply: null,
       });
       setDraftRef({ accountId, emailId });
       setComposeOpen(true);
@@ -405,7 +416,14 @@ function LandingDemo() {
     } catch {
       /* fall through to an empty composer pointed at this draft */
     }
-    setComposeContent({ fromId: accountId, to: "", subject: "", body: "" });
+    setComposeContent({
+      fromId: accountId,
+      to: "",
+      cc: "",
+      subject: "",
+      body: "",
+      reply: null,
+    });
     setDraftRef({ accountId, emailId });
     setComposeOpen(true);
   }, []);
