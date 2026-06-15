@@ -560,6 +560,14 @@ const SPEC_CELLS: { label: React.ReactNode; body: React.ReactNode }[] = [
       </>
     ),
   },
+  {
+    label: "private by design",
+    body: "Every remote subresource in an email, images, stylesheets, fonts, media, is stripped or proxied. Trackers never see your IP.",
+  },
+  {
+    label: "pull requests",
+    body: "Connect GitHub and your open PRs show up alongside your inbox. Reviews, CI status, and what needs your attention, without leaving mail.",
+  },
 ];
 
 function Spec() {
