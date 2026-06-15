@@ -1038,6 +1038,7 @@ function ReaderPane({
                 <ThreadMessage
                   key={message.id}
                   message={message}
+                  accountId={accountId}
                   expanded={expandedIds.has(message.id)}
                   onToggle={() => toggleExpand(message.id)}
                   accountColor={accountColor}
@@ -1251,6 +1252,7 @@ function ReaderPane({
 
 function ThreadMessage({
   message,
+  accountId,
   expanded,
   onToggle,
   accountColor,
@@ -1258,6 +1260,7 @@ function ThreadMessage({
   narrow,
 }: {
   message: FullEmail;
+  accountId: string;
   expanded: boolean;
   onToggle: () => void;
   accountColor: string;
@@ -1368,7 +1371,12 @@ function ThreadMessage({
       {/* Native email — framed as a floating paper card */}
       <div className="mt-3.5 overflow-hidden rounded-xl border bg-card shadow-lg shadow-black/30">
         {message.bodyHtml ? (
-          <HtmlBody html={message.bodyHtml} />
+          <HtmlBody
+            html={message.bodyHtml}
+            accountId={accountId}
+            messageId={message.id}
+            inlineAttachments={message.inlineAttachments}
+          />
         ) : (
           <div className="px-5 py-4">
             {(message.body || message.snippet || "(empty message)")

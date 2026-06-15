@@ -253,6 +253,9 @@ export type FullEmail = Email & {
   starred: boolean;
   labelIds: string[];
   hasAttachment: boolean;
+  /** cid (Content-ID, sans angle brackets) → attachment, for rendering inline
+   *  images referenced as <img src="cid:…">. */
+  inlineAttachments: Record<string, InlineAttachment>;
   body: string;
   bodyHtml?: string;
 };
@@ -260,9 +263,13 @@ export type FullEmail = Email & {
 type MessagePart = {
   mimeType?: string;
   filename?: string;
-  body?: { data?: string };
+  headers?: { name: string; value: string }[];
+  body?: { data?: string; attachmentId?: string };
   parts?: MessagePart[];
 };
+
+/** An inline (Content-ID) attachment — fetched on demand to render cid: images. */
+export type InlineAttachment = { attachmentId: string; mimeType: string };
 
 type RawMessage = {
   id?: string;
@@ -291,6 +298,7 @@ function parseMessage(message: RawMessage): FullEmail {
     starred: message.labelIds?.includes("STARRED") ?? false,
     labelIds: message.labelIds ?? [],
     hasAttachment: message.payload ? hasAttachmentPart(message.payload) : false,
+    inlineAttachments: message.payload ? collectInline(message.payload) : {},
     snippet: message.snippet,
     unread: message.labelIds?.includes("UNREAD") ?? false,
     ...extractBody(message.payload),
@@ -301,6 +309,45 @@ function parseMessage(message: RawMessage): FullEmail {
 function hasAttachmentPart(part: MessagePart): boolean {
   if (part.filename && part.filename.length > 0) return true;
   return (part.parts ?? []).some(hasAttachmentPart);
+}
+
+/** Walk the MIME tree collecting parts that carry a Content-ID and a fetchable
+ *  attachmentId — these back <img src="cid:…"> inline images. */
+function collectInline(
+  part: MessagePart,
+  out: Record<string, InlineAttachment> = {},
+): Record<string, InlineAttachment> {
+  const cid = part.headers?.find(
+    (h) => h.name.toLowerCase() === "content-id",
+  )?.value;
+  if (cid && part.body?.attachmentId) {
+    const key = cid.trim().replace(/^<|>$/g, "");
+    out[key] = {
+      attachmentId: part.body.attachmentId,
+      mimeType: part.mimeType ?? "application/octet-stream",
+    };
+  }
+  for (const child of part.parts ?? []) collectInline(child, out);
+  return out;
+}
+
+/** Raw bytes of one attachment (Gmail base64url-decoded). */
+export async function getAttachment(
+  accessToken: string,
+  messageId: string,
+  attachmentId: string,
+): Promise<ArrayBuffer> {
+  const res = await gmailFetch(
+    accessToken,
+    `/messages/${messageId}/attachments/${attachmentId}`,
+  );
+  if (!res.ok) throw new Error(`Gmail attachment failed (${res.status})`);
+  const { data = "" } = (await res.json()) as { data?: string };
+  const buf = Buffer.from(data, "base64url");
+  return buf.buffer.slice(
+    buf.byteOffset,
+    buf.byteOffset + buf.byteLength,
+  ) as ArrayBuffer;
 }
 
 export async function getFullEmail(

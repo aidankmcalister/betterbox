@@ -42,12 +42,16 @@ function sanitizeEmail(html: string): string {
       if (node.tagName === "IMG") {
         node.removeAttribute("srcset");
         const src = node.getAttribute("src");
-        if (src && /^https?:\/\//i.test(src)) {
+        // Proxy absolute http(s) AND protocol-relative ("//host/…") srcs.
+        // cid: (inline attachment) srcs are left for the parent to resolve in
+        // onLoad, where the message id/account are available.
+        if (src && /^(https?:)?\/\//i.test(src)) {
+          const abs = src.startsWith("//") ? `https:${src}` : src;
           // Absolute origin, not root-relative: inside the srcdoc iframe a
           // "/api/…" path resolves against about:srcdoc, not the app, and 404s.
           node.setAttribute(
             "src",
-            `${window.location.origin}/api/image-proxy?url=${encodeURIComponent(src)}`,
+            `${window.location.origin}/api/image-proxy?url=${encodeURIComponent(abs)}`,
           );
         }
       }
@@ -99,7 +103,19 @@ function sanitizeEmail(html: string): string {
  * frame, no inner scrollbars) and auto-sizes to its content height like Gmail.
  * allow-scripts is intentionally omitted so allow-same-origin stays safe.
  */
-export function HtmlBody({ html }: { html: string }) {
+export function HtmlBody({
+  html,
+  accountId,
+  messageId,
+  inlineAttachments,
+}: {
+  html: string;
+  /** With messageId + inlineAttachments, lets cid: images resolve to the
+   *  Gmail attachment endpoint. Omitted (e.g. demo mail) → cid: left as-is. */
+  accountId?: string;
+  messageId?: string;
+  inlineAttachments?: Record<string, { attachmentId: string; mimeType: string }>;
+}) {
   const ref = useRef<HTMLIFrameElement>(null);
   const observerRef = useRef<ResizeObserver | null>(null);
   const [doc, setDoc] = useState("");
@@ -111,6 +127,22 @@ export function HtmlBody({ html }: { html: string }) {
     const iframe = ref.current;
     const idoc = iframe?.contentDocument;
     if (!iframe || !idoc?.body) return;
+
+    // Resolve inline (cid:) images to the Gmail attachment endpoint — these are
+    // real attachments, not URLs, so the image proxy can't reach them.
+    if (accountId && messageId && inlineAttachments) {
+      idoc.querySelectorAll("img").forEach((img) => {
+        const src = img.getAttribute("src") ?? "";
+        if (!src.toLowerCase().startsWith("cid:")) return;
+        const cid = src.slice(4).replace(/^<|>$/g, "");
+        const att = inlineAttachments[cid];
+        if (!att) return;
+        img.setAttribute(
+          "src",
+          `${window.location.origin}/api/message?accountId=${encodeURIComponent(accountId)}&id=${encodeURIComponent(messageId)}&attachment=${encodeURIComponent(att.attachmentId)}&mime=${encodeURIComponent(att.mimeType)}`,
+        );
+      });
+    }
 
     const base = idoc.createElement("base");
     base.target = "_blank";

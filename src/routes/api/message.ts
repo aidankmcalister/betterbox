@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import {
   actOnEmail,
+  getAttachment,
   getFullEmail,
   getRawEmail,
   getThread,
@@ -24,6 +25,7 @@ export const Route = createFileRoute("/api/message")({
         const accountId = url.searchParams.get("accountId") ?? undefined;
         const thread = url.searchParams.get("thread");
         const id = url.searchParams.get("id");
+        const attachment = url.searchParams.get("attachment");
         if (!thread && !id) return json({ error: "id is required" }, 400);
 
         const accessToken = await getGoogleToken(
@@ -36,6 +38,21 @@ export const Route = createFileRoute("/api/message")({
         try {
           if (thread) {
             return json({ messages: await getThread(accessToken, thread) });
+          }
+          // Inline (cid:) attachment bytes for the reader's image rendering.
+          if (attachment && id) {
+            const bytes = await getAttachment(accessToken, id, attachment);
+            const mime = url.searchParams.get("mime") ?? "";
+            // Only honor an image type (these render in <img>); else generic.
+            const type = /^image\/[\w.+-]+$/i.test(mime)
+              ? mime
+              : "application/octet-stream";
+            return new Response(bytes, {
+              headers: {
+                "content-type": type,
+                "cache-control": "private, max-age=86400",
+              },
+            });
           }
           if (url.searchParams.get("format") === "raw") {
             return json({ raw: await getRawEmail(accessToken, id!) });
