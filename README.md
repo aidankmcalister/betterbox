@@ -74,7 +74,7 @@ bun run db:push   # set up the database
 bun run dev       # http://localhost:3000
 ```
 
-Then open `http://localhost:3000`. In self-host mode (the default above) `/` redirects straight to `/temp-sign-in`, where you sign in with Google. To control who can get in, set `ALLOWED_EMAILS` to a comma-separated list of addresses; only those can create an account (leave it empty to allow anyone).
+Then open `http://localhost:3000`. In self-host mode (the default above) `/` redirects straight to `/sign-in`, where you sign in with Google. To control who can get in, set `ALLOWED_EMAILS` to a comma-separated list of addresses; only those can create an account (leave it empty to allow anyone).
 
 That's it. Want the owner-only tools (seeded test accounts + demo mode)? Run `bun run set-owner you@example.com`.
 

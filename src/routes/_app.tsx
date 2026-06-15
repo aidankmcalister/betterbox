@@ -47,7 +47,7 @@ export const Route = createFileRoute("/_app")({
     // Self-hosted instances have no marketing layer: an unauthenticated
     // visitor goes straight to sign-in instead of the landing page.
     if (IS_SELF_HOSTED && !session) {
-      throw redirect({ to: "/temp-sign-in" });
+      throw redirect({ to: "/sign-in" });
     }
     return { session };
   },
