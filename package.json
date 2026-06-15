@@ -22,7 +22,7 @@
     "db:studio": "bun --env-file=.env ./node_modules/.bin/prisma studio",
     "encrypt-tokens": "bun --env-file=.env scripts/encrypt-oauth-tokens.ts",
     "set-owner": "bun --env-file=.env scripts/set-owner.ts",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate && prisma generate --config prisma.waitlist.config.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
