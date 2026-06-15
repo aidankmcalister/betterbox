@@ -44,6 +44,9 @@ ALLOWED_EMAILS=you@example.com
 # optional — enables the Pull requests page
 GITHUB_CLIENT_ID=...
 GITHUB_CLIENT_SECRET=...
+# self-host mode (default): straight to the app, no landing page or waitlist.
+# comment out to run the hosted marketing layer instead.
+IS_SELF_HOSTED=true
 ```
 
 In the Google Cloud console: enable the Gmail API, add the `gmail.modify` scope, and set the redirect URI to `http://localhost:3000/api/auth/callback/google`.
@@ -53,9 +56,19 @@ bun run db:push   # set up the database
 bun run dev       # http://localhost:3000
 ```
 
-Then open `http://localhost:3000/temp-sign-in` to sign in with Google. The landing page at `/` is waitlist-gated, so `/temp-sign-in` is the sign-in entry point when self-hosting. To control who can get in, set `ALLOWED_EMAILS` to a comma-separated list of addresses; only those can create an account (leave it empty to allow anyone).
+Then open `http://localhost:3000`. In self-host mode (the default above) `/` redirects straight to `/temp-sign-in`, where you sign in with Google. To control who can get in, set `ALLOWED_EMAILS` to a comma-separated list of addresses; only those can create an account (leave it empty to allow anyone).
 
 That's it. Want the owner-only tools (seeded test accounts + demo mode)? Run `bun run set-owner you@example.com`.
+
+## Self-host mode
+
+The example `.env` ships with `IS_SELF_HOSTED=true`, so self-hosted instances skip the marketing layer: `/` redirects directly to sign-in, and the landing page and waitlist are not accessible.
+
+The official hosted deployment leaves the variable unset, which falls back to hosted mode (landing page + waitlist). To run that locally, comment the line out:
+
+```bash
+# IS_SELF_HOSTED=true
+```
 
 ## Features
 

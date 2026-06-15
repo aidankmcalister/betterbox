@@ -1,6 +1,7 @@
 import {
   createFileRoute,
   Outlet,
+  redirect,
   useLocation,
   useMatchRoute,
   useNavigate,
@@ -20,6 +21,7 @@ import {
   useAccountsQuery,
 } from "@/lib/mail-queries";
 import { toFolder, type Folder } from "@/lib/folders";
+import { IS_SELF_HOSTED } from "@/lib/env";
 import { makeDemoAccounts, makeTestAccount } from "@/lib/test-account";
 import { useSession } from "../lib/auth-client";
 import { fetchSession } from "@/lib/auth-session";
@@ -40,7 +42,15 @@ import { Toaster } from "@/components/ui/sonner";
 export const Route = createFileRoute("/_app")({
   // Resolve the session on the server so the first paint already knows whether
   // to show the app or the landing — no authenticated-content flash.
-  beforeLoad: async () => ({ session: await fetchSession() }),
+  beforeLoad: async () => {
+    const session = await fetchSession();
+    // Self-hosted instances have no marketing layer: an unauthenticated
+    // visitor goes straight to sign-in instead of the landing page.
+    if (IS_SELF_HOSTED && !session) {
+      throw redirect({ to: "/temp-sign-in" });
+    }
+    return { session };
+  },
   component: AppShell,
 });
 

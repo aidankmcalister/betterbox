@@ -8,7 +8,7 @@ import {
 } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { MailIcon, PlayIcon, Sparkles } from "lucide-react";
+import { MailIcon, PlayIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { AppSidebar } from "@/components/app-sidebar";
@@ -93,9 +93,21 @@ function Wordmark({ small }: { small?: boolean }) {
 
 const WL_KEY = "betterbox-waitlist-email";
 
-/** Waitlist capture: idle → open (email field) → done. Persists in
- *  localStorage so every instance agrees on reload. */
-function Waitlist({ big = false }: { big?: boolean }) {
+/** Smooth-scroll the page to the plan section (hosted column / waitlist). */
+function scrollToPlan() {
+  const el = document.getElementById("v6-plan");
+  if (el)
+    window.scrollTo({
+      top: el.getBoundingClientRect().top + window.scrollY - 24,
+      behavior: "smooth",
+    });
+}
+
+/** Waitlist capture: idle → open (email field) → done. Submits to /api/waitlist
+ *  (tagged with `source` so we can see which placement converts) and also
+ *  mirrors the email to localStorage so every instance shows the success state
+ *  on reload. */
+function Waitlist({ big = false, source }: { big?: boolean; source: string }) {
   const stored = (() => {
     try {
       return localStorage.getItem(WL_KEY);
@@ -107,23 +119,49 @@ function Waitlist({ big = false }: { big?: boolean }) {
     stored ? "done" : "idle",
   );
   const [email, setEmail] = useState(stored || "");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (phase === "open") inputRef.current?.focus();
   }, [phase]);
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     if (!/.+@.+\..+/.test(email)) {
+      setError("That does not look like a valid email.");
       inputRef.current?.focus();
       return;
     }
+    setSubmitting(true);
     try {
-      localStorage.setItem(WL_KEY, email);
+      const res = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email, source }),
+      });
+      if (res.status === 400) {
+        setError("That does not look like a valid email.");
+        return;
+      }
+      if (!res.ok) {
+        setError("Something went wrong. Try again.");
+        return;
+      }
+      // ok or already_registered → same success state. Mirror to localStorage
+      // (belt and suspenders) so the success state survives a reload.
+      try {
+        localStorage.setItem(WL_KEY, email);
+      } catch {
+        /* ignore */
+      }
+      setPhase("done");
     } catch {
-      /* ignore */
+      setError("Something went wrong. Try again.");
+    } finally {
+      setSubmitting(false);
     }
-    setPhase("done");
   };
 
   const height = big ? "h-11" : "h-10";
@@ -138,34 +176,42 @@ function Waitlist({ big = false }: { big?: boolean }) {
         )}
       >
         <span className="text-success">✓</span>
-        <span>you're on the list. One email at launch, that's it</span>
+        <span>you're on the list. One email at launch, that's it.</span>
       </div>
     );
   }
 
   if (phase === "open") {
     return (
-      <form onSubmit={submit} className={cn("flex justify-center gap-2", minH)}>
-        <input
-          ref={inputRef}
-          type="email"
-          value={email}
-          placeholder="you@yourdomain.dev"
-          onChange={(e) => setEmail(e.target.value)}
-          className={cn(
-            "rounded-lg border border-input bg-card px-3.5 text-sm text-foreground outline-none focus:border-ring",
-            height,
-            big ? "w-72" : "w-60",
-          )}
-        />
-        <Button
-          type="submit"
-          size={big ? "lg" : "default"}
-          className={cn(height, big && "px-6 text-base")}
+      <div className="flex flex-col items-center gap-2">
+        <form
+          onSubmit={submit}
+          className={cn("flex justify-center gap-2", minH)}
         >
-          Notify me
-        </Button>
-      </form>
+          <input
+            ref={inputRef}
+            type="email"
+            value={email}
+            placeholder="you@yourdomain.dev"
+            onChange={(e) => setEmail(e.target.value)}
+            className={cn(
+              "rounded-lg border border-input bg-card px-3.5 text-sm text-foreground outline-none focus:border-ring",
+              height,
+              big ? "w-72" : "w-60",
+            )}
+          />
+          <Button
+            type="submit"
+            size={big ? "lg" : "default"}
+            className={cn(height, big && "px-6 text-base")}
+          >
+            {submitting ? "…" : "Notify me"}
+          </Button>
+        </form>
+        {error && (
+          <p className="font-mono text-xs text-destructive">{error}</p>
+        )}
+      </div>
     );
   }
 
@@ -177,7 +223,7 @@ function Waitlist({ big = false }: { big?: boolean }) {
         onClick={() => setPhase("open")}
         className={cn(height, big && "px-6 text-base")}
       >
-        Join the waitlist
+        Join the waitlist →
       </Button>
     </div>
   );
@@ -228,12 +274,7 @@ function Wrap({
 function Header() {
   const toPlan = (e: React.MouseEvent) => {
     e.preventDefault();
-    const el = document.getElementById("v6-plan");
-    if (el)
-      window.scrollTo({
-        top: el.getBoundingClientRect().top + window.scrollY - 24,
-        behavior: "smooth",
-      });
+    scrollToPlan();
   };
   return (
     <div className={COL}>
@@ -279,8 +320,21 @@ function Hero() {
         built on the Gmail API, not another email service.
       </p>
 
-      <div className="mt-8">
-        <Waitlist big />
+      <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+        <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer">
+          <Button size="lg" className="h-11 px-6 text-base">
+            Self-host free →
+          </Button>
+        </a>
+        <Button
+          type="button"
+          variant="outline"
+          size="lg"
+          onClick={scrollToPlan}
+          className="h-11 px-6 text-base"
+        >
+          Join hosted waitlist →
+        </Button>
       </div>
     </section>
   );
@@ -567,7 +621,7 @@ const SPEC_CELLS: { label: React.ReactNode; body: React.ReactNode }[] = [
   },
   {
     label: "open source",
-    body: "The full client is on GitHub. Self-host it free with your own OAuth app, or let us run it.",
+    body: "The full client is on GitHub. Self-host it free with your own OAuth app. Hosted is coming once there is enough demand to cover it.",
   },
   {
     label: "exports",
@@ -623,42 +677,42 @@ function Plans() {
               Free
             </span>
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-pretty text-muted-foreground">
-              Full source code. Run it on your own infra with your own Google
-              OAuth app.
+              Full source on GitHub. Your own OAuth app. Your own database.
+              Available today.
             </p>
             <a
-              href="https://github.com/aidankmcalister/betterbox"
+              href={GITHUB_URL}
+              target="_blank"
+              rel="noopener noreferrer"
               className="mt-6 font-mono text-xs text-foreground underline underline-offset-2"
             >
-              View on GitHub
+              View on GitHub →
             </a>
           </div>
 
-          {/* Hosted — $5, the recommended paid plan */}
-          <div className="relative flex flex-col items-center border-t border-l border-border px-8 py-10 text-center">
-            <span className="absolute top-4 right-4 inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 font-mono text-[11px] font-medium tracking-wide text-primary uppercase">
-              <Sparkles className="size-3" />
-              recommended
-            </span>
+          {/* Hosted — $5/mo, waitlisted while demand is gauged */}
+          <div className="flex flex-col items-center border-t border-l border-border px-8 py-10 text-center">
             <span className="font-mono text-xs tracking-wide text-muted-foreground/60 uppercase">
               hosted
             </span>
             <div className="mt-3 flex items-baseline gap-1.5">
               <span className="text-4xl font-semibold tracking-tight text-foreground">
-                $5
+                $5/mo
               </span>
-              <span className="text-sm text-muted-foreground">/month</span>
+              <span className="text-sm text-muted-foreground">· waitlist</span>
             </div>
-            <p className="mt-4 max-w-xs text-sm leading-relaxed text-pretty text-muted-foreground">
-              Everything, running. No setup, no ops. 7-day trial, no card
-              required.
+            <p className="mt-4 max-w-sm text-sm leading-relaxed text-pretty text-muted-foreground">
+              Google requires an annual security assessment (~$750/yr) for any
+              third-party app that accesses Gmail on behalf of other users. I
+              need enough interest to justify that cost.
+            </p>
+            <p className="mt-3 max-w-sm text-sm leading-relaxed text-pretty text-muted-foreground">
+              Roughly 13 paying users covers it. If you'd pay for a hosted
+              version, join the waitlist below.
             </p>
             <div className="mt-6">
-              <Waitlist big />
+              <Waitlist big source="plan" />
             </div>
-            <span className="mt-4 font-mono text-xs text-muted-foreground/60">
-              cancel any time
-            </span>
           </div>
         </div>
       </div>
@@ -673,7 +727,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "Self-host or hosted: what's the difference?",
-    a: "Two ways to run the same client. Self-host is free and open source: bring your own Google OAuth app and run it on your own infra. Hosted is $5/month: we run and update it, you just sign in. 7-day trial, no card.",
+    a: "Two ways to run the same client. Self-host is free and open source: bring your own Google OAuth app and run it on your own infra. Hosted is $5/mo: we run and update it, you just sign in. Hosted is waitlisted while I gauge demand.",
   },
   {
     q: "Is it really open source?",
@@ -681,7 +735,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "Why is there a waitlist?",
-    a: "The waitlist is for the hosted plan. Hosted is going through Google's API verification; until it clears, sign-ins are limited to allow-listed accounts. Self-host isn't gated: your own OAuth app, your own queue.",
+    a: "The waitlist is for the hosted plan. Google requires an annual security assessment (~$750/yr) for any third-party app that accesses Gmail on behalf of other users. I cannot justify that cost before knowing there is enough demand to cover it. Self-host is available today with no such requirement.",
   },
   {
     q: "Does BetterBox store my mail?",
@@ -689,7 +743,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "When does hosted launch?",
-    a: "When verification clears and the client is ready. Waitlist members get access first, in order. Self-host works today, straight from source.",
+    a: "When enough people on the waitlist say they would pay for it. At $5/mo, roughly 13 paying users covers the annual assessment cost. That is the number I am watching. Self-host works today, straight from the repo.",
   },
 ];
 
@@ -720,8 +774,7 @@ function Footer() {
       <div className="flex flex-col items-start gap-4 border-t border-border pt-6 sm:flex-row sm:items-center sm:gap-5">
         <Wordmark small />
         <span className="font-mono text-xs text-muted-foreground/60">
-          in development · restricted to test accounts while Google verification
-          is pending
+          in development · self-host is open · hosted is waitlisted
         </span>
         <div className="flex items-center gap-4 font-mono text-xs sm:ml-auto">
           <a href="mailto:help@betterbox.dev" className="text-muted-foreground">
