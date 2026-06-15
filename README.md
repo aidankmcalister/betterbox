@@ -39,6 +39,8 @@ BETTER_AUTH_URL=http://localhost:3000
 BETTER_AUTH_SECRET=...          # also encrypts OAuth tokens at rest
 GOOGLE_CLIENT_ID=...
 GOOGLE_CLIENT_SECRET=...
+# optional: comma-separated emails allowed to sign in (empty = anyone)
+ALLOWED_EMAILS=you@example.com
 # optional — enables the Pull requests page
 GITHUB_CLIENT_ID=...
 GITHUB_CLIENT_SECRET=...
@@ -51,7 +53,7 @@ bun run db:push   # set up the database
 bun run dev       # http://localhost:3000
 ```
 
-Then open `http://localhost:3000/temp-sign-in` to sign in with Google. The landing page at `/` is waitlist-gated, so `/temp-sign-in` is the sign-in entry point when self-hosting.
+Then open `http://localhost:3000/temp-sign-in` to sign in with Google. The landing page at `/` is waitlist-gated, so `/temp-sign-in` is the sign-in entry point when self-hosting. To control who can get in, set `ALLOWED_EMAILS` to a comma-separated list of addresses; only those can create an account (leave it empty to allow anyone).
 
 That's it. Want the owner-only tools (seeded test accounts + demo mode)? Run `bun run set-owner you@example.com`.
 

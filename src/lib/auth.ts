@@ -1,7 +1,19 @@
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { betterAuth } from "better-auth";
+import { APIError } from "better-auth/api";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import prisma from "./prisma.server";
+
+// Sign-in allowlist. Comma-separated emails in ALLOWED_EMAILS may create an
+// account; everyone else is rejected at account creation. Empty or unset means
+// open (convenient for local dev). Existing users are unaffected: this only
+// gates first-time account creation, not subsequent sign-ins.
+const ALLOWED_EMAILS = new Set(
+  (process.env.ALLOWED_EMAILS ?? "")
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean),
+);
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
@@ -43,6 +55,25 @@ export const auth = betterAuth({
       enabled: true,
       trustedProviders: ["google", "github"],
       allowDifferentEmails: true, // let a second, different Gmail (or GitHub) link
+    },
+  },
+  databaseHooks: {
+    user: {
+      create: {
+        // Reject account creation for any email not on ALLOWED_EMAILS. Runs
+        // after Google OAuth but before the user row is written, so a
+        // non-allowlisted account is never created and no session is issued.
+        before: async (user) => {
+          if (
+            ALLOWED_EMAILS.size > 0 &&
+            !ALLOWED_EMAILS.has(user.email.toLowerCase())
+          ) {
+            throw new APIError("FORBIDDEN", {
+              message: "This account isn't on the access list yet.",
+            });
+          }
+        },
+      },
     },
   },
   plugins: [tanstackStartCookies()],
