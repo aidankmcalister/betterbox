@@ -10,7 +10,7 @@ import { signIn } from "@/lib/auth-client";
  * purpose while Google API verification is pending.
  */
 export const Route = createFileRoute("/temp-sign-in")({
-  head: () => ({ meta: [{ title: "Sign in — BetterBox" }] }),
+  head: () => ({ meta: [{ title: "Sign in · BetterBox" }] }),
   component: TempSignIn,
 });
 

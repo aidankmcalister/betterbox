@@ -223,9 +223,7 @@ function MobileCard({ pr, now }: { pr: PullRequest; now: number }) {
         <span className="flex-none font-mono text-[11.5px] text-muted-foreground/60">
           #{pr.num}
         </span>
-        {pr.awaitsYou && (
-          <EyeIcon className="size-3 flex-none text-primary" />
-        )}
+        {pr.awaitsYou && <EyeIcon className="size-3 flex-none text-primary" />}
         <span className="ml-auto flex-none font-mono text-[11px] text-muted-foreground/60">
           {relTime(pr.updated, now)}
         </span>
@@ -273,7 +271,7 @@ function Kpi({
   sub: string;
 }) {
   return (
-    <div className="border-l border-border px-3 pt-[9px] pb-2.5 nth-[odd]:border-l-0 nth-[n+3]:border-t sm:px-5 sm:nth-[odd]:border-l sm:nth-[n+3]:border-t-0 sm:first:border-l-0">
+    <div className="border-l border-border px-3 pt-[9px] pb-2.5 nth-[n+3]:border-t nth-[odd]:border-l-0 sm:px-5 sm:first:border-l-0 sm:nth-[n+3]:border-t-0 sm:nth-[odd]:border-l">
       <div className="mb-1 text-[11px] text-muted-foreground/80">{label}</div>
       <div className="flex items-baseline gap-2">
         <span
@@ -462,7 +460,7 @@ export function PullRequestsPage({
 
       {/* filter bar */}
       <div className="flex flex-none items-center gap-3 border-b border-border px-3 py-[9px] sm:px-5">
-        <div className="no-scrollbar -mx-1 min-w-0 flex-1 overflow-x-auto px-1 sm:flex-none">
+        <div className="-mx-1 no-scrollbar min-w-0 flex-1 overflow-x-auto px-1 sm:flex-none">
           <Segmented value={filter} onChange={setFilter} items={items} />
         </div>
         <span className="ml-auto hidden font-mono text-[10.5px] whitespace-nowrap text-muted-foreground/60 sm:inline">
@@ -527,7 +525,7 @@ function LoadingState() {
         {Array.from({ length: 4 }).map((_, i) => (
           <div
             key={i}
-            className="border-l border-border px-3 py-3 nth-[odd]:border-l-0 nth-[n+3]:border-t sm:px-5 sm:nth-[odd]:border-l sm:nth-[n+3]:border-t-0 sm:first:border-l-0"
+            className="border-l border-border px-3 py-3 nth-[n+3]:border-t nth-[odd]:border-l-0 sm:px-5 sm:first:border-l-0 sm:nth-[n+3]:border-t-0 sm:nth-[odd]:border-l"
           >
             <div className="mb-2 h-2.5 w-24 animate-pulse rounded bg-muted" />
             <div className="h-5 w-10 animate-pulse rounded bg-muted" />
@@ -561,8 +559,8 @@ function ConnectState() {
           Connect GitHub
         </h2>
         <p className="text-[13px] leading-relaxed text-muted-foreground">
-          Link your GitHub account to BetterBox — no new account, just a sign-in
-          — and your pull requests show up here: open, awaiting your review,
+          Link your GitHub account to BetterBox (no new account, just a sign-in)
+          and your pull requests show up here: open, awaiting your review,
           approved, and merged, across every repo you touch.
         </p>
         <Button onClick={linkGithub} className="mt-1">

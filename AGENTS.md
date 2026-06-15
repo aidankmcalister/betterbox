@@ -24,15 +24,15 @@ decisions already made.
 - **Never store mail or private info in the database.** The schema is the
   Better Auth tables (`User`, `Session`, `Account`, `Verification`) plus a
   `role` enum on `User` (`USER|OWNER`, via Better Auth `additionalFields` with
-  `input:false` so a client can never self-assign) and a `Rule` table
-  (automation config only — conditions + actions, never message bodies).
+  `input:false` so a client can never self-assign).
   OAuth tokens on `Account` are encrypted at rest (`account.encryptOAuthTokens`,
   key = `BETTER_AUTH_SECRET`). Better Auth owns auth-table writes; direct
-  Prisma writes also happen for **rules** (`/api/rules`) and the maintenance
+  Prisma writes also happen for the maintenance
   scripts (`set-owner`, `encrypt-tokens`). Gmail data is still fetched live and
   never persisted — subjects, senders, snippets exist only in HTTP responses
   and React state. Adding any persistence of message data is a deliberate
   product decision the user must make, not a refactor.
+- **Rules: not yet built.**
 - **Commits: no attribution.** Never append "Generated with Claude Code" or
   `Co-Authored-By` trailers. Conventional-ish subjects, lowercase, body
   bullets. Commit only when asked.
@@ -109,6 +109,6 @@ decisions already made.
 `⌘K` palette · `G` then `I` inbox/all accounts · `⌥1–9` switch account
 (`⌘1–9` is browser-reserved — don't try). Global handlers live in
 `_app.tsx`; reader handlers (`Esc`, `R`) live in `inbox-tiles.tsx`. Raw MIME
-toggles via the reader toolbar **Raw** button only — **`⌥R` is Soon**
-(Settings → Keyboard marks it; macOS Option remaps `R` so the shortcut isn't
-wired). New global actions belong in both the palette and Settings → Keyboard.
+toggles via the reader toolbar **Raw** button or **`⌥R`** (handled in
+`inbox-tiles.tsx`). New global actions belong in both the palette and
+Settings → Keyboard.

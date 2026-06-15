@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 export const Route = createFileRoute("/privacy")({
   head: () => ({
     meta: [
-      { title: "Privacy Policy — BetterBox" },
+      { title: "Privacy Policy · BetterBox" },
       {
         name: "description",
         content:
@@ -53,7 +53,7 @@ function Privacy() {
         <Callout>
           BetterBox is in active development and currently restricted to
           approved test accounts while Google verification is pending. It is a
-          client for Gmail — not a new email service. Your email continues to
+          client for Gmail, not a new email service. Your email continues to
           live in your Google account.
         </Callout>
 
@@ -65,8 +65,8 @@ function Privacy() {
           <List>
             <li>
               <strong>Basic profile:</strong> your name, email address, profile
-              picture, and Google account identifier — used to show who is
-              signed in and to label your inboxes.
+              picture, and Google account identifier, used to show who is signed
+              in and to label your inboxes.
             </li>
             <li>
               <strong>OAuth tokens:</strong> the access and refresh tokens
@@ -95,7 +95,7 @@ function Privacy() {
           <List>
             <li>
               <strong>Session &amp; technical data:</strong> a session token,
-              your IP address, browser user-agent, and timestamps — used to keep
+              your IP address, browser user-agent, and timestamps, used to keep
               you signed in and to protect the account against abuse.
             </li>
           </List>
@@ -124,7 +124,7 @@ function Privacy() {
           </p>
         </Section>
 
-        <Section title="3. Google API Services — Limited Use">
+        <Section title="3. Google API Services: Limited Use">
           <p>
             BetterBox&rsquo;s use and transfer of information received from
             Google APIs adheres to the{" "}
@@ -187,7 +187,7 @@ function Privacy() {
               then deleted.
             </li>
             <li>
-              <strong>Email contents:</strong> not retained — fetched on demand
+              <strong>Email contents:</strong> not retained, fetched on demand
               and not persisted on our servers.
             </li>
           </List>
@@ -213,7 +213,7 @@ function Privacy() {
             are a <strong>California resident</strong> (CCPA/CPRA), you have the
             right to know what personal information we collect, to request
             deletion, and not to be discriminated against for exercising those
-            rights — and we confirm we do not sell or share your personal
+            rights, and we confirm we do not sell or share your personal
             information. If you are in the <strong>EEA or UK</strong> (GDPR),
             you have rights to access, correct, delete, restrict, and port your
             data, and to object to processing; our legal bases are your consent

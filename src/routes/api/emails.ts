@@ -21,7 +21,10 @@ export const Route = createFileRoute("/api/emails")({
         const accountId = url.searchParams.get("accountId") ?? undefined;
         // Clamp so a crafted `max` can't amplify one request into a huge Gmail
         // fan-out (Gmail itself caps at 500; we keep it tighter).
-        const max = Math.min(Math.max(Number(url.searchParams.get("max")) || 50, 1), 100);
+        const max = Math.min(
+          Math.max(Number(url.searchParams.get("max")) || 50, 1),
+          100,
+        );
         const pageToken = url.searchParams.get("pageToken") ?? undefined;
         const q = url.searchParams.get("q")?.trim();
         const folderQuery =

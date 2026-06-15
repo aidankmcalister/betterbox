@@ -187,7 +187,7 @@ export function Composer({
         refreshDrafts(from.accountId);
       }
       if (sandbox) {
-        toast("Demo — message not sent", {
+        toast("Demo: message not sent", {
           description: "This is a sandbox. Nothing actually left BetterBox.",
         });
       } else {
@@ -238,7 +238,7 @@ export function Composer({
         <span className="text-[13.5px] font-semibold">
           {draft ? "Edit draft" : "New message"}
         </span>
-        <Hint label="Close — saves to drafts">
+        <Hint label="Close, saves to drafts">
           <button
             type="button"
             onClick={close}
@@ -377,19 +377,19 @@ export function Composer({
           />
           <FooterIcon
             icon={PaperclipIcon}
-            title="Attachments — soon"
+            title="Attachments (soon)"
             disabled
             className="hidden sm:inline-flex"
           />
           <FooterIcon
             icon={CodeIcon}
-            title="Code block — soon"
+            title="Code block (soon)"
             disabled
             className="hidden sm:inline-flex"
           />
           <FooterIcon
             icon={LinkIcon}
-            title="Link — soon"
+            title="Link (soon)"
             disabled
             className="hidden sm:inline-flex"
           />
@@ -496,7 +496,12 @@ function RecipientField({
               tabIndex={-1}
               aria-label={`Remove ${chip}`}
               onMouseDown={(event) => event.preventDefault()}
-              onClick={() => commit(chips.filter((_, idx) => idx !== i), draft)}
+              onClick={() =>
+                commit(
+                  chips.filter((_, idx) => idx !== i),
+                  draft,
+                )
+              }
               className="inline-flex size-4 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground/70 hover:bg-muted hover:text-foreground"
             >
               <XIcon className="size-3" />
@@ -632,7 +637,7 @@ function PreviewBody({ html, minHeight }: { html: string; minHeight: number }) {
         className="px-3.5 py-3 text-[13px] text-muted-foreground/60"
         style={{ minHeight }}
       >
-        Nothing to preview yet — write a message first.
+        Nothing to preview yet. Write a message first.
       </div>
     );
   }

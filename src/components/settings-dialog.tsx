@@ -138,22 +138,24 @@ export function SettingsDialog({
             it. */}
         <div className="flex shrink-0 items-center border-b bg-sidebar sm:hidden">
           <nav className="no-scrollbar flex min-w-0 flex-1 items-center gap-1 overflow-x-auto p-2">
-            {nav.flatMap((group) => group.pages).map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setPage(item.id)}
-                className={cn(
-                  "flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[13px] whitespace-nowrap",
-                  page === item.id
-                    ? "bg-muted text-foreground"
-                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-                )}
-              >
-                <item.icon className="size-4 shrink-0" />
-                {item.label}
-              </button>
-            ))}
+            {nav
+              .flatMap((group) => group.pages)
+              .map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setPage(item.id)}
+                  className={cn(
+                    "flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[13px] whitespace-nowrap",
+                    page === item.id
+                      ? "bg-muted text-foreground"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+                  )}
+                >
+                  <item.icon className="size-4 shrink-0" />
+                  {item.label}
+                </button>
+              ))}
             <button
               type="button"
               onClick={openPrivacy}
@@ -250,7 +252,7 @@ function GithubIntegration() {
   return (
     <SettingRow
       label="GitHub"
-      description="Powers the Pull requests page — read-only PR access"
+      description="Powers the Pull requests page, read-only PR access"
     >
       {linked.isLoading ? (
         <span className="font-mono text-xs text-muted-foreground/60">…</span>
@@ -345,7 +347,7 @@ function AccountsPage({ accounts }: { accounts: Account[] }) {
           description="Used when composing from the unified view"
           soon
         >
-          <SoonControl label={primaryEmail ?? "—"} mono />
+          <SoonControl label={primaryEmail ?? "None"} mono />
         </SettingRow>
       </PageSection>
     </Page>
@@ -758,7 +760,7 @@ function OwnerPage() {
   return (
     <Page
       title="Owner tools"
-      description="Only visible to owners — toggles for development affordances"
+      description="Only visible to owners. Toggles for development affordances"
     >
       <PageSection title="Access">
         <SettingRow
@@ -779,7 +781,7 @@ function OwnerPage() {
             <div className="min-w-0">
               <p className="text-[13px] font-medium">Demo mode</p>
               <p className="text-xs text-muted-foreground">
-                Hide real accounts and run on generated mail — flip it on before
+                Hide real accounts and run on generated mail. Flip it on before
                 recording, off when you’re done.
               </p>
             </div>
@@ -806,12 +808,12 @@ function OwnerPage() {
   );
 }
 
-const SHORTCUTS = [
+const SHORTCUTS: { label: string; keys: string[]; soon?: boolean }[] = [
   { label: "Command palette", keys: ["⌘", "K"] },
   { label: "Compose", keys: ["C"] },
   { label: "Go to inbox (all accounts)", keys: ["G", "I"] },
   { label: "Switch account 1–9", keys: ["⌥", "1–9"] },
-  { label: "Toggle raw source", keys: ["⌥", "R"], soon: true },
+  { label: "Toggle raw source", keys: ["⌥", "R"] },
 ];
 
 function KeyboardPage() {

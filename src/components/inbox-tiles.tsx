@@ -670,6 +670,19 @@ function ReaderPane({
     );
   };
 
+  // Build a forward draft from the open message and ask the app shell to open
+  // the composer. Reused by the reader footer button and the start-forward
+  // event (row context menu).
+  const startForward = () => {
+    if (!email) return;
+    const fwdBody = `\n\n---- Forwarded message ----\nFrom: ${sender?.name ?? ""} <${sender?.address ?? ""}>\nDate: ${email.date}\nSubject: ${email.subject}\n\n${email.body || email.snippet || ""}`;
+    window.dispatchEvent(
+      new CustomEvent("open-compose", {
+        detail: { to: "", subject: `Fwd: ${email.subject}`, body: fwdBody },
+      }),
+    );
+  };
+
   const sendReply = async () => {
     const target = lastMessage;
     if (!target || !replySender || replySending || !replyBody.trim()) return;
@@ -694,7 +707,7 @@ function ReaderPane({
       setReplyBody("");
       setReplySent(true);
       if (sandbox) {
-        toast("Demo — reply not sent", {
+        toast("Demo: reply not sent", {
           description: "This is a sandbox. Nothing actually left BetterBox.",
         });
       } else {
@@ -737,7 +750,7 @@ function ReaderPane({
       );
       queryClient.invalidateQueries({ queryKey: accountsQueryKey });
       const label = action === "archive" ? "Archived" : "Moved to trash";
-      toast(sandbox ? `Demo — ${label.toLowerCase()} in sandbox only` : label);
+      toast(sandbox ? `Demo: ${label.toLowerCase()} in sandbox only` : label);
       onClose();
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -793,14 +806,7 @@ function ReaderPane({
       if (!detail) return;
       if (detail.accountId !== accountId) return;
       if (detail.emailId && detail.emailId !== emailId) return;
-      // Prepare a compose draft and ask AppShell to open composer
-      if (!email) return;
-      const fwdBody = `\n\n---- Forwarded message ----\nFrom: ${sender!.name} <${sender!.address}>\nDate: ${email.date}\nSubject: ${email.subject}\n\n${email.body || email.snippet || ""}`;
-      window.dispatchEvent(
-        new CustomEvent("open-compose", {
-          detail: { to: "", subject: `Fwd: ${email.subject}`, body: fwdBody },
-        }),
-      );
+      startForward();
     };
 
     window.addEventListener("start-reply", onStartReply);
@@ -1002,8 +1008,8 @@ function ReaderPane({
                 >
                   <CheckIcon className="size-3.5" />
                   {isTestAccount(accountId)
-                    ? "Demo — nothing was actually sent. Reply again?"
-                    : "Reply sent — it’ll appear in this thread. Reply again?"}
+                    ? "Demo: nothing was actually sent. Reply again?"
+                    : "Reply sent. It’ll appear in this thread. Reply again?"}
                 </button>
               ) : null}
             </div>
@@ -1016,13 +1022,13 @@ function ReaderPane({
           <button type="button" onClick={startReply} className={FBTN_PRIMARY}>
             <ReplyIcon /> Reply
           </button>
-          <Hint label="Reply all — soon">
+          <Hint label="Reply all (soon)">
             <button type="button" disabled className={FBTN_ICON}>
               <ReplyAllIcon />
             </button>
           </Hint>
-          <Hint label="Forward — soon">
-            <button type="button" disabled className={FBTN_ICON}>
+          <Hint label="Forward">
+            <button type="button" onClick={startForward} className={FBTN_ICON}>
               <ForwardIcon />
             </button>
           </Hint>
@@ -1308,7 +1314,7 @@ function PaneHeader({
             onKeyDown={(event) => {
               if (event.key === "Escape") onCloseSearch();
             }}
-            placeholder="Search this inbox — try in:important"
+            placeholder="Search this inbox, try in:important"
             className="min-w-0 flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground/50"
           />
           {refreshing && (

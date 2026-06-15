@@ -138,7 +138,7 @@ function Waitlist({ big = false }: { big?: boolean }) {
         )}
       >
         <span className="text-success">✓</span>
-        <span>you're on the list — one email at launch, that's it</span>
+        <span>you're on the list. One email at launch, that's it</span>
       </div>
     );
   }
@@ -266,7 +266,7 @@ function Hero() {
       <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-card px-3.5 py-1.5 whitespace-nowrap">
         <PulseDot />
         <span className="text-sm text-muted-foreground">
-          In development — waitlist open
+          In development. Waitlist open
         </span>
       </div>
 
@@ -276,7 +276,7 @@ function Hero() {
 
       <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-pretty text-muted-foreground sm:text-lg">
         A fast, dense client for every Google inbox you have. Keyboard-first,
-        built on the Gmail API — not another email service.
+        built on the Gmail API, not another email service.
       </p>
 
       <div className="mt-8">
@@ -545,26 +545,18 @@ const SPEC_CELLS: { label: React.ReactNode; body: React.ReactNode }[] = [
         <Kbd>K</Kbd>
       </KbdGroup>
     ),
-    body: "Compose, switch accounts, export, search — every action is a keystroke.",
+    body: "Compose, switch accounts, export, search. Every action is a keystroke.",
   },
   {
     label: "open source",
     body: "The full client is on GitHub. Self-host it free with your own OAuth app, or let us run it.",
   },
   {
-    label: "webhooks",
-    body: "New-mail events delivered to your endpoint, signed and retried.",
-  },
-  {
-    label: "api log",
-    body: "Every Gmail API call on the record — status, latency, units.",
-  },
-  {
     label: "exports",
     body: (
       <>
-        Any thread as Markdown, JSON, or plain text — or the raw MIME source,
-        one <Kbd>⌥R</Kbd> away.
+        Any thread as Markdown, JSON, or plain text, or the raw MIME source, one{" "}
+        <Kbd>⌥R</Kbd> away.
       </>
     ),
   },
@@ -654,20 +646,20 @@ const FAQ_ITEMS = [
     a: "No. BetterBox is a client for the Gmail accounts you already have, built on the Gmail API. Nothing migrates; your mail stays in Google.",
   },
   {
-    q: "Self-host or hosted — what's the difference?",
-    a: "Two ways to run the same client. Self-host is free and open source: bring your own Google OAuth app and run it on your own infra. Hosted is $5/month — we run and update it, you just sign in. 7-day trial, no card.",
+    q: "Self-host or hosted: what's the difference?",
+    a: "Two ways to run the same client. Self-host is free and open source: bring your own Google OAuth app and run it on your own infra. Hosted is $5/month: we run and update it, you just sign in. 7-day trial, no card.",
   },
   {
     q: "Is it really open source?",
-    a: "Yes. The full client is on GitHub — audit every line, self-host it for free, or fork it. Hosted runs the same code, maintained by us.",
+    a: "Yes. The full client is on GitHub: audit every line, self-host it for free, or fork it. Hosted runs the same code, maintained by us.",
   },
   {
     q: "Why is there a waitlist?",
-    a: "The waitlist is for the hosted plan. Hosted is going through Google's API verification; until it clears, sign-ins are limited to allow-listed accounts. Self-host isn't gated — your own OAuth app, your own queue.",
+    a: "The waitlist is for the hosted plan. Hosted is going through Google's API verification; until it clears, sign-ins are limited to allow-listed accounts. Self-host isn't gated: your own OAuth app, your own queue.",
   },
   {
     q: "Does BetterBox store my mail?",
-    a: "On either plan, messages are fetched live from the Gmail API when you open the app. Webhook and analytics data is metadata — counts, timings, statuses — not message content.",
+    a: "Messages are fetched live from the Gmail API when you open the app and are never stored on our servers. The only data we store is your account tokens, session records, and settings.",
   },
   {
     q: "When does hosted launch?",
@@ -681,10 +673,7 @@ function Faq() {
       <div className="overflow-hidden rounded-2xl border border-border">
         <div className="-m-px grid grid-cols-1 md:grid-cols-2">
           {FAQ_ITEMS.map((it) => (
-            <div
-              key={it.q}
-              className="border-t border-l border-border p-6"
-            >
+            <div key={it.q} className="border-t border-l border-border p-6">
               <h4 className="mb-2 text-[15px] font-medium tracking-tight text-foreground">
                 {it.q}
               </h4>
@@ -709,11 +698,8 @@ function Footer() {
           is pending
         </span>
         <div className="flex items-center gap-4 font-mono text-xs sm:ml-auto">
-          <a
-            href="mailto:hello@betterbox.dev"
-            className="text-muted-foreground"
-          >
-            hello@betterbox.dev
+          <a href="mailto:help@betterbox.dev" className="text-muted-foreground">
+            help@betterbox.dev
           </a>
           <Link to="/privacy" className="text-muted-foreground">
             Privacy

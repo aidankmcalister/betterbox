@@ -5,34 +5,41 @@ export const Route = createFileRoute("/_app/webhooks")({
   component: () => (
     <DeveloperPage title="Webhooks">
       <div className="max-w-lg space-y-6">
-        <p className="text-sm leading-relaxed text-zinc-400">
-          Pipe incoming emails into any system that accepts an HTTP POST. Define
-          a filter, point it at a URL, and BetterBox delivers a signed JSON
-          payload the moment a matching message arrives — no polling required.
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          Webhooks will pipe incoming emails into any system that accepts an
+          HTTP POST. You'll define a filter, point it at a URL, and BetterBox
+          will deliver a signed JSON payload the moment a matching message
+          arrives, no polling required.
         </p>
-        <ul className="space-y-3 text-sm text-zinc-500">
+        <ul className="space-y-3 text-sm text-muted-foreground">
           <li className="flex gap-3">
-            <span className="text-zinc-600 select-none">—</span>
+            <span className="text-muted-foreground/60 select-none">·</span>
             Forward Datadog or PagerDuty alerts to a Slack bot
           </li>
           <li className="flex gap-3">
-            <span className="text-zinc-600 select-none">—</span>
+            <span className="text-muted-foreground/60 select-none">·</span>
             Auto-create Linear tickets from support emails
           </li>
           <li className="flex gap-3">
-            <span className="text-zinc-600 select-none">—</span>
-            Payloads are HMAC-signed — verify on your end, replay from the log
+            <span className="text-muted-foreground/60 select-none">·</span>
+            Payloads will be HMAC-signed: verify on your end, replay from the
+            log
           </li>
         </ul>
-        <div className="rounded-md border border-zinc-800 bg-zinc-950 p-4 font-mono text-xs leading-relaxed text-zinc-500">
-          <span className="text-zinc-600">POST </span>
-          <span className="text-zinc-300">
+        <div className="rounded-md border border-border bg-muted p-4 font-mono text-xs leading-relaxed text-muted-foreground">
+          <span className="text-muted-foreground/60">POST </span>
+          <span className="text-foreground">
             https://your-server.com/hooks/email
           </span>
           <br />
-          <span className="text-zinc-600">X-BetterBox-Signature: </span>
-          <span className="text-zinc-400">sha256=abc123...</span>
+          <span className="text-muted-foreground/60">
+            X-BetterBox-Signature:{" "}
+          </span>
+          <span className="text-muted-foreground">sha256=abc123...</span>
         </div>
+        <p className="font-mono text-xs text-muted-foreground/60">
+          illustrative, not yet live
+        </p>
       </div>
     </DeveloperPage>
   ),

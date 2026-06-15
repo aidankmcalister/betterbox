@@ -161,9 +161,8 @@ function AppShell() {
   /* The composer's editable fields live here (not in the Composer) so they
      survive it remounting — switching pane↔popout, or visiting a page where the
      board/compose pane isn't mounted. */
-  const [composeContent, setComposeContent] = useState<ComposerContent>(
-    EMPTY_COMPOSE,
-  );
+  const [composeContent, setComposeContent] =
+    useState<ComposerContent>(EMPTY_COMPOSE);
   const patchComposeContent = useCallback(
     (patch: Partial<ComposerContent>) =>
       setComposeContent((current) => ({ ...current, ...patch })),

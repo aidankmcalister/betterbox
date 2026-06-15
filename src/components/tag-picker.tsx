@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   createLabel,
   deleteLabel,
@@ -89,6 +90,7 @@ export function useTagActions(accountId: string, email: FullEmail | undefined) {
         await setEmailLabel(accountId, email.id, label.id, on);
       } catch {
         patchLabels(email.id, label.id, !on);
+        toast.error("Couldn't update tag.");
       }
       // The Labeled view (grouped by label) is a separate query — refresh it so
       // the message appears/disappears under the tag immediately.
@@ -114,6 +116,7 @@ export function useTagActions(accountId: string, email: FullEmail | undefined) {
         await setEmailLabel(accountId, email.id, label.id, true);
       } catch {
         patchLabels(email.id, label.id, false);
+        toast.error("Couldn't create tag.");
       }
       queryClient.invalidateQueries({
         queryKey: ["emails-label", accountId, label.id],
@@ -135,6 +138,7 @@ export function useTagActions(accountId: string, email: FullEmail | undefined) {
         await renameLabel(accountId, label.id, trimmed);
       } catch {
         /* leave the optimistic name; a refetch reconciles */
+        toast.error("Couldn't rename tag.");
       }
     },
     [accountId, queryClient],
@@ -176,6 +180,7 @@ export function useTagActions(accountId: string, email: FullEmail | undefined) {
         await deleteLabel(accountId, label.id);
       } catch {
         /* optimistic removal stands */
+        toast.error("Couldn't delete tag.");
       }
     },
     [accountId, queryClient],
@@ -391,7 +396,7 @@ export function TagPicker({
                 <div className="no-scrollbar max-h-56 overflow-y-auto p-1">
                   {labels.length === 0 ? (
                     <p className="px-2 py-2 text-[12px] text-muted-foreground">
-                      No tags yet — create one below.
+                      No tags yet. Create one below.
                     </p>
                   ) : (
                     labels.map((label) => (

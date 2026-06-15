@@ -26,7 +26,7 @@ export const Route = createRootRoute({
       {
         name: "description",
         content:
-          "BetterBox — a faster, denser client for your Google inboxes, built on the Gmail API.",
+          "BetterBox: a faster, denser client for your Google inboxes, built on the Gmail API.",
       },
       {
         name: "google-site-verification",

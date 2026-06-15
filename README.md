@@ -19,7 +19,7 @@ A fast, dense, keyboard-first client for every Google inbox you have — built o
 > [!WARNING]
 > **Mega-alpha.** BetterBox is in active development and moves fast — expect rough edges and the occasional `Soon` badge. Self-host works today, straight from source; the hosted plan is behind a [waitlist](https://betterbox.dev) while Google verifies the app.
 
-Your mail already lives in Gmail. BetterBox doesn't move it, migrate it, or store it — it's a _better client_ for the accounts you already have. Think tiling window manager for your inboxes: every account on one screen, every action a keystroke away, with real developer tooling (pull requests, webhooks, API logs, raw MIME) built in.
+Your mail already lives in Gmail. BetterBox doesn't move it, migrate it, or store it — it's a _better client_ for the accounts you already have. Think tiling window manager for your inboxes: every account on one screen, every action a keystroke away, with real developer tooling (pull requests, raw MIME, exports) built in.
 
 ## Quick start
 
@@ -51,15 +51,17 @@ bun run db:push   # set up the database
 bun run dev       # http://localhost:3000
 ```
 
+Then open `http://localhost:3000/temp-sign-in` to sign in with Google. The landing page at `/` is waitlist-gated, so `/temp-sign-in` is the sign-in entry point when self-hosting.
+
 That's it. Want the owner-only tools (seeded test accounts + demo mode)? Run `bun run set-owner you@example.com`.
 
 ## Features
 
 - **Every inbox, one screen.** Link multiple Gmail accounts and arrange them as panes you drag, split, and resize like a tiling WM. Colored dots keep accounts apart; composed views merge them.
-- **Read fast.** A movable reading pane renders the whole conversation with inline reply. HTML email renders in a sanitized, sandboxed iframe with remote images proxied (trackers never see your IP); raw MIME is one keystroke away.
+- **Read fast.** A movable reading pane renders the whole conversation with inline reply. HTML email renders in a sanitized, sandboxed iframe: remote images are proxied and every other remote subresource (stylesheets, web fonts, media, CSS `url()`) is stripped, so trackers never see your IP. Raw MIME is one keystroke away.
 - **`⌘K` everything.** A command palette for compose, account switching, search, export, and settings — plus `G I` to inbox and `⌥1–9` to jump between accounts.
 - **Pull requests.** Link GitHub (an account link, not a new login) and see your PRs — open, awaiting your review, approved, merged — in a dense list pulled live from the GitHub API.
-- **Developer tooling.** Webhooks, an API call log, and exports to Markdown / JSON / plain text.
+- **Developer tooling.** Raw MIME view and exports to Markdown / JSON / plain text.
 - **Tags are Gmail labels.** Create, apply, rename, recolor, and delete labels; the **Labeled** view groups mail per tag. BetterBox stores nothing about them.
 - **Private by design.** Mail is fetched live and held only in your browser — never on our servers. OAuth tokens are encrypted at rest. No analytics.
 
@@ -70,7 +72,7 @@ That's it. Want the owner-only tools (seeded test accounts + demo mode)? Run `bu
 | Framework | [TanStack Start](https://tanstack.com/start) (React 19, SSR)                              |
 | Styling   | Tailwind CSS v4 + shadcn/ui (on [Base UI](https://base-ui.com))                           |
 | Auth      | [Better Auth](https://better-auth.com) — Google + GitHub, multi-account, encrypted tokens |
-| Database  | [Prisma Postgres](https://prisma.io/postgres) via [Prisma](https://prisma.io) 7           |
+| Database  | PostgreSQL via [Prisma](https://prisma.io) 7 (`@prisma/adapter-pg`)                       |
 | Runtime   | [Bun](https://bun.sh) · deployed with Nitro                                               |
 | Tooling   | Prettier (format), Biome (lint), Vitest / `bun test`                                      |
 

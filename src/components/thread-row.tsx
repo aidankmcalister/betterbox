@@ -1,4 +1,5 @@
 import { BadgeCheckIcon } from "lucide-react";
+import { toast } from "sonner";
 
 import { AccountDot, useAccountColor } from "@/components/account-dot";
 import { SenderAvatar } from "@/components/sender-avatar";
@@ -107,7 +108,10 @@ export function ThreadRow({
   const copyId = async () => {
     try {
       await navigator.clipboard.writeText(email.id);
-    } catch {}
+      toast("Copied message ID");
+    } catch {
+      toast.error("Couldn't copy ID.");
+    }
   };
 
   const { snippetFont, showSnippets, clock, inboxAvatars } = useSettings();
@@ -210,7 +214,9 @@ export function ThreadRow({
           </ContextMenuTrigger>
           <ContextMenuContent container={portalContainer}>
             <ContextMenuGroup>
-              <ContextMenuItem onClick={runMarkRead}>Mark read</ContextMenuItem>
+              <ContextMenuItem onClick={runMarkRead}>
+                Mark as read
+              </ContextMenuItem>
               <ContextMenuItem onClick={runReply}>Reply</ContextMenuItem>
               <ContextMenuItem onClick={runForward}>Forward</ContextMenuItem>
             </ContextMenuGroup>
@@ -265,7 +271,9 @@ export function ThreadRow({
         </ContextMenuTrigger>
         <ContextMenuContent container={portalContainer}>
           <ContextMenuGroup>
-            <ContextMenuItem onClick={runMarkRead}>Mark read</ContextMenuItem>
+            <ContextMenuItem onClick={runMarkRead}>
+              Mark as read
+            </ContextMenuItem>
             <ContextMenuItem onClick={runReply}>Reply</ContextMenuItem>
             <ContextMenuItem onClick={runForward}>Forward</ContextMenuItem>
           </ContextMenuGroup>
