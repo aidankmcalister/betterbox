@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { WrapTextIcon } from "lucide-react";
 import { Hint } from "@/components/ui/tooltip";
+import { CopyButton } from "@/components/ui/copy-button";
 import { cn } from "@/lib/utils";
 
 /**
@@ -29,6 +30,12 @@ export function RawView({ mime }: { mime: string }) {
         <span className="ml-auto font-mono text-[10.5px] text-muted-foreground/60 tabular-nums">
           {bytes} bytes
         </span>
+        <CopyButton
+          value={mime}
+          label="Copy"
+          title="Copy raw source"
+          className="h-[22px] text-[10.5px]"
+        />
         <Hint label={wrap ? "Show exact line structure" : "Wrap long lines"}>
           <button
             type="button"

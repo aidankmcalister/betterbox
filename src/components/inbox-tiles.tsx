@@ -584,10 +584,7 @@ function splitAddresses(list: string): string[] {
 }
 
 const escapeHtml = (text: string) =>
-  text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+  text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 /** A quoted-reply body: a blank line to type into, an attribution line, then the
  *  original message in a blockquote. Returned as HTML to seed the rich editor. */
@@ -1024,7 +1021,9 @@ function ReaderPane({
               className={cn(
                 "font-semibold tracking-[-0.6px]",
                 tags.appliedTags.length > 0 && "mt-2",
-                narrow ? "text-[21px] leading-[1.22]" : "text-[26px] leading-[1.2]",
+                narrow
+                  ? "text-[21px] leading-[1.22]"
+                  : "text-[26px] leading-[1.2]",
               )}
             >
               {email.subject || "(no subject)"}
@@ -1152,7 +1151,11 @@ function ReaderPane({
           <DropdownMenu>
             <DropdownMenuTrigger
               render={
-                <button type="button" title="More actions" className={BAR_ICON} />
+                <button
+                  type="button"
+                  title="More actions"
+                  className={BAR_ICON}
+                />
               }
             >
               <MoreHorizontalIcon />
@@ -1196,6 +1199,26 @@ function ReaderPane({
                     <CheckIcon className="ml-auto size-3.5 text-accent-2-hover" />
                   )}
                 </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    void navigator.clipboard.writeText(email.messageId);
+                    toast("Copied message ID");
+                  }}
+                >
+                  <ClipboardIcon />
+                  <span className="font-mono text-xs">Copy message-ID</span>
+                  <KbdGroup className="ml-auto">
+                    <Kbd>⇧</Kbd>
+                    <Kbd>⌘</Kbd>
+                    <Kbd>C</Kbd>
+                  </KbdGroup>
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+                <DropdownMenuLabel className="font-mono text-[9.5px] tracking-[0.5px] text-muted-foreground/70 uppercase">
+                  Export
+                </DropdownMenuLabel>
                 <DropdownMenuItem onClick={() => exportEmail(email, "md")}>
                   <HashIcon />
                   <span className="font-mono text-xs">Export as Markdown</span>
@@ -1204,7 +1227,7 @@ function ReaderPane({
                   </span>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => exportEmail(email, "json")}>
-                  <BracesIcon className="text-accent-2-hover" />
+                  <BracesIcon />
                   <span className="font-mono text-xs">Export as JSON</span>
                   <span className="ml-auto font-mono text-[10.5px] text-muted-foreground/70">
                     .json
@@ -1216,20 +1239,6 @@ function ReaderPane({
                   <span className="ml-auto font-mono text-[10.5px] text-muted-foreground/70">
                     .txt
                   </span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => {
-                    void navigator.clipboard.writeText(email.messageId);
-                    toast("Copied message ID");
-                  }}
-                >
-                  <ClipboardIcon className="text-accent-2-hover" />
-                  <span className="font-mono text-xs">Copy message-ID</span>
-                  <KbdGroup className="ml-auto">
-                    <Kbd>⇧</Kbd>
-                    <Kbd>⌘</Kbd>
-                    <Kbd>C</Kbd>
-                  </KbdGroup>
                 </DropdownMenuItem>
               </DropdownMenuGroup>
             </DropdownMenuContent>
