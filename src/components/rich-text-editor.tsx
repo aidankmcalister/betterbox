@@ -31,7 +31,6 @@ export function RichTextEditor({
   onChange,
   placeholder = "Write something…",
   onSubmit,
-  onEditorReady,
   autoFocus = false,
   minHeight = 120,
   className,
@@ -41,9 +40,6 @@ export function RichTextEditor({
   placeholder?: string;
   /** Cmd/Ctrl+Enter handler (e.g. send). */
   onSubmit?: () => void;
-  /** Hands the live editor instance up so callers can drive it (e.g. a footer
-   *  control that toggles a code block). Receives null when the editor unmounts. */
-  onEditorReady?: (editor: Editor | null) => void;
   autoFocus?: boolean;
   minHeight?: number;
   className?: string;
@@ -105,12 +101,6 @@ export function RichTextEditor({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, editor]);
-
-  // Publish the editor instance to the caller (and clear it on unmount).
-  useEffect(() => {
-    onEditorReady?.(editor);
-    return () => onEditorReady?.(null);
-  }, [editor, onEditorReady]);
 
   if (!editor) return null;
 
