@@ -93,14 +93,13 @@ function Wordmark({ small }: { small?: boolean }) {
 
 const WL_KEY = "betterbox-waitlist-email";
 
-/** Smooth-scroll the page to the plan section (hosted column / waitlist). */
+/** Smooth-scroll to the plan section (hosted column / waitlist). The landing is
+ *  its own `overflow-y-auto` container, not the window — so scrollIntoView (which
+ *  scrolls the real scroll ancestor) is used instead of window.scrollTo. */
 function scrollToPlan() {
-  const el = document.getElementById("v6-plan");
-  if (el)
-    window.scrollTo({
-      top: el.getBoundingClientRect().top + window.scrollY - 24,
-      behavior: "smooth",
-    });
+  document
+    .getElementById("v6-plan")
+    ?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 /** Waitlist capture: idle → open (email field) → done. Submits to /api/waitlist
@@ -316,8 +315,7 @@ function Hero() {
       </h1>
 
       <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-pretty text-muted-foreground sm:text-lg">
-        A keyboard-driven workspace for developers. Email, pull requests, and
-        issues without the tab-switching.
+        Email, pull requests, and issues in one place. Stop switching tabs.
       </p>
 
       <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -719,12 +717,8 @@ function Plans() {
 
 const FAQ_ITEMS = [
   {
-    q: "Is BetterBox a new email service?",
-    a: "No. BetterBox is a client for the Gmail accounts you already have, built on the Gmail API. Nothing migrates; your mail stays in Google.",
-  },
-  {
-    q: "Is this just a Gmail client?",
-    a: "It started that way. The goal is one tab for everything a developer checks during the day: email, pull requests, and issues. GitHub is connected now. Linear is next.",
+    q: "What is BetterBox exactly?",
+    a: "A client for the Gmail accounts you already have, built on the Gmail API. Nothing migrates, your mail stays in Google. It started as a Gmail client and is expanding into a workspace: email, pull requests, and issues in one tab. GitHub is connected now. Linear is next.",
   },
   {
     q: "Self-host or hosted: what's the difference?",
