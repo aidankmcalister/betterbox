@@ -15,7 +15,10 @@ export const Route = createRootRoute({
       },
       {
         name: "viewport",
-        content: "width=device-width, initial-scale=1",
+        // viewport-fit=cover lets the app go edge-to-edge; the mobile chrome
+        // below pads itself with env(safe-area-inset-*) so nothing hides under
+        // the notch or home indicator.
+        content: "width=device-width, initial-scale=1, viewport-fit=cover",
       },
       {
         title: "BetterBox",

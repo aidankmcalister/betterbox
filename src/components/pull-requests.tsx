@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 import { linkGithub } from "@/lib/auth-client";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { usePullRequestsQuery, type PullRequest } from "@/lib/github-queries";
 import demoPullRequests from "@/data/demo-pull-requests.json";
 import { GithubMark } from "@/components/github-mark";
@@ -196,6 +197,70 @@ function Row({ pr, now }: { pr: PullRequest; now: number }) {
   );
 }
 
+/** Mobile rendering of a PR — stacked instead of a wide table row, so the title
+ *  is fully readable and the metrics wrap onto their own line. */
+function MobileCard({ pr, now }: { pr: PullRequest; now: number }) {
+  const { Icon, cls } = STATE_ICON[pr.state];
+  const dim = pr.state === "merged" || pr.state === "closed";
+  const navigable = !!pr.url && pr.url !== "#";
+  return (
+    <a
+      href={navigable ? pr.url : undefined}
+      target={navigable ? "_blank" : undefined}
+      rel="noopener noreferrer"
+      className={cn(
+        "flex flex-col gap-1.5 border-b border-l-2 border-border px-4 py-3 hover:bg-muted/50",
+        pr.awaitsYou ? "border-l-primary" : "border-l-transparent",
+        navigable ? "cursor-pointer" : "cursor-default",
+      )}
+    >
+      {/* repo · #num · when */}
+      <div className="flex items-center gap-2">
+        <Icon className={cn("size-4 flex-none", cls)} />
+        <span className="min-w-0 truncate font-mono text-[11.5px] text-muted-foreground">
+          {pr.repo}
+        </span>
+        <span className="flex-none font-mono text-[11.5px] text-muted-foreground/60">
+          #{pr.num}
+        </span>
+        {pr.awaitsYou && (
+          <EyeIcon className="size-3 flex-none text-primary" />
+        )}
+        <span className="ml-auto flex-none font-mono text-[11px] text-muted-foreground/60">
+          {relTime(pr.updated, now)}
+        </span>
+      </div>
+
+      {/* title + branch */}
+      <div>
+        <p
+          className={cn(
+            "line-clamp-2 text-[13.5px] leading-snug",
+            pr.awaitsYou ? "font-semibold" : "font-medium",
+            dim ? "text-muted-foreground/70" : "text-foreground",
+          )}
+        >
+          {pr.title}
+        </p>
+        <p className="truncate font-mono text-[11px] text-muted-foreground/60">
+          {pr.branch}
+        </p>
+      </div>
+
+      {/* metrics row */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 pt-0.5">
+        <ReviewPill pr={pr} />
+        <DiffStat pr={pr} />
+        <span className="inline-flex items-center gap-1 font-mono text-[11px] text-muted-foreground/60">
+          <MessageSquareIcon className="size-3" />
+          {pr.comments}
+        </span>
+        <CiDot ci={pr.ci} />
+      </div>
+    </a>
+  );
+}
+
 function Kpi({
   label,
   value,
@@ -208,7 +273,7 @@ function Kpi({
   sub: string;
 }) {
   return (
-    <div className="border-l border-border px-5 pt-[9px] pb-2.5 first:border-l-0">
+    <div className="border-l border-border px-3 pt-[9px] pb-2.5 nth-[odd]:border-l-0 nth-[n+3]:border-t sm:px-5 sm:nth-[odd]:border-l sm:nth-[n+3]:border-t-0 sm:first:border-l-0">
       <div className="mb-1 text-[11px] text-muted-foreground/80">{label}</div>
       <div className="flex items-baseline gap-2">
         <span
@@ -310,6 +375,7 @@ export function PullRequestsPage({
   demo?: boolean;
 }) {
   const [filter, setFilter] = useState<FilterId>("open");
+  const isMobile = useIsMobile();
   const query = usePullRequestsQuery(signedIn && !demo);
   const now = useMemo(() => Date.now(), [query.dataUpdatedAt]);
   const demoPrs = useMemo(() => (demo ? makeDemoPullRequests() : []), [demo]);
@@ -355,19 +421,19 @@ export function PullRequestsPage({
   return (
     <div className="flex h-full min-w-0 flex-col bg-background">
       {/* page header */}
-      <div className="flex h-[52px] flex-none items-center gap-2.5 border-b border-border px-5">
+      <div className="flex h-[52px] flex-none items-center gap-2.5 border-b border-border px-3 sm:px-5">
         <h2 className="text-lg font-semibold tracking-[-0.4px] whitespace-nowrap">
           Pull requests
         </h2>
-        <span className="font-mono text-[11.5px] text-muted-foreground/60">
+        <span className="hidden font-mono text-[11.5px] whitespace-nowrap text-muted-foreground/60 sm:inline">
           {nOpen} open · {nReview} awaiting you
         </span>
-        <div className="ml-auto flex items-center gap-3.5 font-mono text-[11px] text-muted-foreground/80">
+        <div className="ml-auto flex items-center gap-2 font-mono text-[11px] text-muted-foreground/80 sm:gap-3.5">
           <span className="inline-flex items-center gap-1.5 text-success">
             <span className="size-1.5 rounded-full bg-success shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-success)_20%,transparent)]" />
             live
           </span>
-          {login && <span>@{login}</span>}
+          {login && <span className="hidden sm:inline">@{login}</span>}
           <button
             type="button"
             onClick={refresh}
@@ -382,7 +448,7 @@ export function PullRequestsPage({
       </div>
 
       {/* KPI strip */}
-      <div className="grid flex-none grid-cols-4 border-b border-border">
+      <div className="grid flex-none grid-cols-2 border-b border-border sm:grid-cols-4">
         <Kpi label="Open" value={nOpen} sub="incl. drafts" />
         <Kpi
           label="Awaiting your review"
@@ -395,16 +461,19 @@ export function PullRequestsPage({
       </div>
 
       {/* filter bar */}
-      <div className="flex flex-none items-center gap-3 border-b border-border px-5 py-[9px]">
-        <Segmented value={filter} onChange={setFilter} items={items} />
-        <span className="ml-auto font-mono text-[10.5px] text-muted-foreground/60">
+      <div className="flex flex-none items-center gap-3 border-b border-border px-3 py-[9px] sm:px-5">
+        <div className="no-scrollbar -mx-1 min-w-0 flex-1 overflow-x-auto px-1 sm:flex-none">
+          <Segmented value={filter} onChange={setFilter} items={items} />
+        </div>
+        <span className="ml-auto hidden font-mono text-[10.5px] whitespace-nowrap text-muted-foreground/60 sm:inline">
           {rows.length} shown
         </span>
       </div>
 
       {/* list */}
       <div className="flex-1 overflow-y-auto">
-        <div className="sticky top-0 z-1 flex h-[30px] items-center gap-4 border-b border-l-2 border-border border-l-transparent bg-background px-5 text-[10.5px] tracking-[0.4px] text-muted-foreground/60 uppercase">
+        {/* Column header — desktop table only; mobile uses stacked cards. */}
+        <div className="sticky top-0 z-1 hidden h-[30px] items-center gap-4 border-b border-l-2 border-border border-l-transparent bg-background px-5 text-[10.5px] tracking-[0.4px] text-muted-foreground/60 uppercase md:flex">
           <span className="w-4 flex-none" />
           <span className="w-[152px] flex-none">Repository</span>
           <span className="min-w-0 flex-1 truncate">Pull request</span>
@@ -428,9 +497,13 @@ export function PullRequestsPage({
           </div>
         ) : (
           <>
-            {rows.map((pr) => (
-              <Row key={pr.id} pr={pr} now={now} />
-            ))}
+            {rows.map((pr) =>
+              isMobile ? (
+                <MobileCard key={pr.id} pr={pr} now={now} />
+              ) : (
+                <Row key={pr.id} pr={pr} now={now} />
+              ),
+            )}
             <div className="flex items-center justify-center gap-2 p-3.5 font-mono text-[10.5px] text-muted-foreground/60">
               <GithubMark className="size-3" />
               live from the GitHub API
@@ -445,16 +518,16 @@ export function PullRequestsPage({
 function LoadingState() {
   return (
     <div className="flex h-full flex-col bg-background">
-      <div className="flex h-[52px] flex-none items-center gap-2.5 border-b border-border px-5">
+      <div className="flex h-[52px] flex-none items-center gap-2.5 border-b border-border px-3 sm:px-5">
         <h2 className="text-lg font-semibold tracking-[-0.4px]">
           Pull requests
         </h2>
       </div>
-      <div className="grid flex-none grid-cols-4 border-b border-border">
+      <div className="grid flex-none grid-cols-2 border-b border-border sm:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
           <div
             key={i}
-            className="border-l border-border px-5 py-3 first:border-l-0"
+            className="border-l border-border px-3 py-3 nth-[odd]:border-l-0 nth-[n+3]:border-t sm:px-5 sm:nth-[odd]:border-l sm:nth-[n+3]:border-t-0 sm:first:border-l-0"
           >
             <div className="mb-2 h-2.5 w-24 animate-pulse rounded bg-muted" />
             <div className="h-5 w-10 animate-pulse rounded bg-muted" />
@@ -463,7 +536,10 @@ function LoadingState() {
       </div>
       <div className="flex-1 space-y-px p-px">
         {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="flex h-[34px] items-center gap-2.5 px-5">
+          <div
+            key={i}
+            className="flex h-[34px] items-center gap-2.5 px-3 sm:px-5"
+          >
             <div className="size-4 animate-pulse rounded-full bg-muted" />
             <div className="h-3 w-32 animate-pulse rounded bg-muted" />
             <div className="h-3 flex-1 animate-pulse rounded bg-muted/60" />

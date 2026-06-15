@@ -7,8 +7,9 @@ import {
 } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { MailIcon } from "lucide-react";
+import { MailIcon, PenLineIcon, SearchIcon } from "lucide-react";
 import { useAccountScope } from "@/hooks/use-account-scope";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { Account } from "@/lib/account";
 import { useApplyAccent, useSettings } from "@/hooks/use-settings";
 import {
@@ -32,7 +33,7 @@ import {
 import { InboxTiles, type Reading } from "@/components/inbox-tiles";
 import { LandingPage } from "@/components/landing";
 import { SettingsDialog } from "@/components/settings-dialog";
-import { SidebarInset } from "@/components/ui/sidebar";
+import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/sonner";
 
 export const Route = createFileRoute("/_app")({
@@ -73,6 +74,7 @@ const EMPTY_COMPOSE: ComposerContent = {
 
 function AppShell() {
   useApplyAccent();
+  const isMobile = useIsMobile();
   const { devTools, demoMode, composerMode } = useSettings();
   // The server already resolved the session (beforeLoad); use it until the
   // client query settles so the auth branch is correct on the very first paint.
@@ -302,9 +304,9 @@ function AppShell() {
         accounts={allAccounts ?? []}
       />
       {/* Pane mode docks the composer in the board (below). But the board isn't
-          mounted on dev pages, so fall back to the popout there so compose still
-          works. */}
-      {(composerMode === "popout" || onDevPage) && (
+          mounted on dev pages, and the mobile board has no room for a compose
+          tile, so fall back to the (full-screen on mobile) popout in both. */}
+      {(composerMode === "popout" || onDevPage || isMobile) && (
         <Composer
           open={composeOpen}
           onOpenChange={setComposeOpen}
@@ -327,8 +329,37 @@ function AppShell() {
         onAddTestAccount={onAddTestAccount}
         loading={booting}
       />
-      <SidebarInset className="min-w-0">
-        <div className="h-svh min-h-0 w-full max-w-full overflow-hidden">
+      <SidebarInset className="h-svh min-w-0">
+        {/* Mobile chrome: a hamburger (opens the sidebar sheet) + quick search
+            and compose. Hidden on md+, where the persistent sidebar is shown. */}
+        <header className="flex h-[calc(3rem+env(safe-area-inset-top))] shrink-0 items-center gap-1 border-b px-2 pt-[env(safe-area-inset-top)] md:hidden">
+          <SidebarTrigger className="size-9" />
+          <div className="flex items-center gap-2 pl-1">
+            <span className="flex size-[22px] items-center justify-center rounded-md bg-primary text-on-primary">
+              <MailIcon className="size-3.5" />
+            </span>
+            <span className="font-mono text-[13px] font-semibold">
+              BetterBox
+            </span>
+          </div>
+          <button
+            type="button"
+            aria-label="Search"
+            onClick={() => setCmdOpen(true)}
+            className="ml-auto inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            <SearchIcon className="size-[18px]" />
+          </button>
+          <button
+            type="button"
+            aria-label="Compose"
+            onClick={openCompose}
+            className="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            <PenLineIcon className="size-[18px]" />
+          </button>
+        </header>
+        <div className="relative min-h-0 w-full max-w-full flex-1 overflow-hidden">
           {onDevPage ? null : allAccounts === null ? (
             <LoadingScreen label="Loading accounts" fill />
           ) : (
@@ -342,7 +373,7 @@ function AppShell() {
               onCloseReader={closeReader}
               onRemovePane={toggle}
               compose={
-                composerMode === "pane"
+                composerMode === "pane" && !isMobile
                   ? {
                       open: composeOpen,
                       draftRef,

@@ -69,6 +69,7 @@ import {
   type MessageAction,
 } from "@/lib/mail-queries";
 import { MARK_READ_MS, useSettings } from "@/hooks/use-settings";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Composer, type ComposerContent } from "@/components/composer";
 import { AppliedTags, TagPicker, useTagActions } from "@/components/tag-picker";
 import { LabeledView } from "@/components/labeled-view";
@@ -199,9 +200,12 @@ export function InboxTiles({
   const idsKey = ids.join(",");
 
   const { readerMode } = useSettings();
+  const isMobile = useIsMobile();
 
   const [openEmails, setOpenEmails] = useState<Record<string, string>>({});
-  const split = readerMode === "split";
+  // Mobile is single-column: force the shared reader (one at a time) so opening
+  // a message routes through the URL and overlays full-screen, never a 2nd pane.
+  const split = readerMode === "split" && !isMobile;
 
   const openEmail = useCallback(
     (accountId: string, emailId: string) => {
@@ -378,15 +382,105 @@ export function InboxTiles({
 
   return (
     <TilesContext.Provider value={ctx}>
-      <TileBoard
-        paneIds={paneIds}
-        renderPane={renderPane}
-        storage={storage}
-        renderDragLabel={renderDragLabel}
-        resetEvent={RESET_TILE_LAYOUT_EVENT}
-        emptyLabel="No linked accounts."
-      />
+      {isMobile ? (
+        <MobileBoard
+          accounts={accounts}
+          accountIds={ids}
+          reading={reading}
+          renderPane={renderPane}
+        />
+      ) : (
+        <TileBoard
+          paneIds={paneIds}
+          renderPane={renderPane}
+          storage={storage}
+          renderDragLabel={renderDragLabel}
+          resetEvent={RESET_TILE_LAYOUT_EVENT}
+          emptyLabel="No linked accounts."
+        />
+      )}
     </TilesContext.Provider>
+  );
+}
+
+/**
+ * Single-column board for phones. Shows one account's inbox at a time (a
+ * horizontally-scrollable tab strip switches between them when several are in
+ * view), and slides the shared reader in full-screen over the list when a
+ * message is open. No drag-to-arrange, no side-by-side panes.
+ */
+function MobileBoard({
+  accounts,
+  accountIds,
+  reading,
+  renderPane,
+}: {
+  accounts: Account[];
+  accountIds: string[];
+  reading: Reading | null;
+  renderPane: (paneId: string) => React.ReactNode;
+}) {
+  const [active, setActive] = useState<string | null>(accountIds[0] ?? null);
+
+  // Keep the active tab valid as accounts come/go from view.
+  useEffect(() => {
+    if (!active || !accountIds.includes(active)) {
+      setActive(accountIds[0] ?? null);
+    }
+  }, [accountIds, active]);
+
+  if (accountIds.length === 0) {
+    return (
+      <p className="p-6 text-sm text-muted-foreground">No linked accounts.</p>
+    );
+  }
+
+  const scoped = accounts.filter((a) => accountIds.includes(a.accountId));
+
+  return (
+    <div className="flex h-full min-h-0 w-full flex-col">
+      {scoped.length > 1 && (
+        <div className="no-scrollbar flex shrink-0 items-center gap-1 overflow-x-auto border-b px-2 py-1.5">
+          {scoped.map((account) => {
+            const on = active === account.accountId;
+            return (
+              <button
+                key={account.accountId}
+                type="button"
+                onClick={() => setActive(account.accountId)}
+                className={cn(
+                  "flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs whitespace-nowrap transition-colors",
+                  on
+                    ? "bg-accent text-foreground"
+                    : "text-muted-foreground hover:bg-muted/60",
+                )}
+              >
+                <AccountDot
+                  colorIndex={accounts.indexOf(account)}
+                  accountId={account.accountId}
+                />
+                <span className="font-mono">
+                  {account.email.split("@")[0] || account.accountId}
+                </span>
+                {account.unread > 0 && (
+                  <span className="font-mono font-medium text-primary">
+                    {formatCount(account.unread)}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      <div className="relative min-h-0 flex-1">
+        {active && renderPane(active)}
+        {reading && (
+          <div className="absolute inset-0 z-40 bg-background">
+            {renderPane(READER_PANE_ID)}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -724,9 +818,9 @@ function ReaderPane({
     <div className="flex h-full min-w-0 flex-col bg-background">
       <div
         onPointerDown={(event) => beginHeaderDrag(event, paneId)}
-        className="flex h-9 shrink-0 cursor-grab touch-none items-center gap-[9px] border-b px-2.5 select-none active:cursor-grabbing"
+        className="flex h-9 shrink-0 items-center gap-[9px] border-b px-2.5 select-none md:cursor-grab md:touch-none md:active:cursor-grabbing"
       >
-        <GripVerticalIcon className="size-3.5 shrink-0 text-muted-foreground/70" />
+        <GripVerticalIcon className="hidden size-3.5 shrink-0 text-muted-foreground/70 md:block" />
         <MailOpenIcon className="size-3.5 shrink-0 text-muted-foreground/70" />
         <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold">
           {email?.subject || "Reading"}
@@ -918,7 +1012,7 @@ function ReaderPane({
       </div>
 
       {email && (
-        <div className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-[3px] rounded-[10px] border bg-popover p-1 shadow-2xl">
+        <div className="absolute bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-30 flex -translate-x-1/2 items-center gap-[3px] rounded-[10px] border bg-popover p-1 shadow-2xl">
           <button type="button" onClick={startReply} className={FBTN_PRIMARY}>
             <ReplyIcon /> Reply
           </button>
@@ -1253,9 +1347,9 @@ function PaneHeader({
   return (
     <div
       onPointerDown={(event) => beginHeaderDrag(event, account.accountId)}
-      className="flex h-9 shrink-0 cursor-grab touch-none items-center gap-2 border-b px-2.5 select-none active:cursor-grabbing"
+      className="flex h-9 shrink-0 items-center gap-2 border-b px-2.5 select-none md:cursor-grab md:touch-none md:active:cursor-grabbing"
     >
-      <GripVerticalIcon className="size-3.5 shrink-0 text-muted-foreground/70" />
+      <GripVerticalIcon className="hidden size-3.5 shrink-0 text-muted-foreground/70 md:block" />
       <AccountDot colorIndex={dotIndex} accountId={account.accountId} />
       <span className="min-w-0 truncate font-mono text-xs font-medium">
         {label}

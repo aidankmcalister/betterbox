@@ -107,12 +107,17 @@ export function RichTextEditor({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-lg border bg-background focus-within:border-ring/60",
+        "flex flex-col overflow-hidden rounded-lg border bg-background focus-within:border-ring/60",
         className,
       )}
     >
       <Toolbar editor={editor} />
-      <EditorContent editor={editor} />
+      {/* flex-1 so the editable surface fills the box's height when the parent
+          gives it one (compose pane / full-screen mobile composer). */}
+      <EditorContent
+        editor={editor}
+        className="min-h-0 flex-1 overflow-y-auto [&_.tiptap]:min-h-full"
+      />
     </div>
   );
 }

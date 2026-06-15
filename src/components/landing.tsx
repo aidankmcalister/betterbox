@@ -8,7 +8,7 @@ import {
 } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { MailIcon, Sparkles } from "lucide-react";
+import { MailIcon, PlayIcon, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 import { AppSidebar } from "@/components/app-sidebar";
@@ -59,7 +59,7 @@ function useSystemTheme(): "dark" | "light" {
  * animated "live" pulse dot.
  */
 
-const COL = "mx-auto max-w-6xl px-10";
+const COL = "mx-auto max-w-6xl px-5 sm:px-8 md:px-10";
 
 /** The animated "live" status dot, reused across hero/demo/loading. */
 function PulseDot() {
@@ -237,9 +237,9 @@ function Header() {
   };
   return (
     <div className={COL}>
-      <header className="flex h-16 items-center gap-4">
+      <header className="flex h-16 items-center gap-3 sm:gap-4">
         <Wordmark />
-        <span className="ml-auto font-mono text-xs text-muted-foreground/60">
+        <span className="ml-auto hidden font-mono text-xs text-muted-foreground/60 sm:inline">
           in development
         </span>
         <a
@@ -247,12 +247,13 @@ function Header() {
           target="_blank"
           rel="noopener noreferrer"
           aria-label="BetterBox on GitHub"
-          className="inline-flex size-9 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-card hover:text-foreground"
+          className="ml-auto inline-flex size-9 shrink-0 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-card hover:text-foreground sm:ml-0"
         >
           <GithubMark className="size-[18px]" />
         </a>
-        <Button type="button" onClick={toPlan}>
-          Join the waitlist
+        <Button type="button" onClick={toPlan} className="shrink-0">
+          <span className="hidden sm:inline">Join the waitlist</span>
+          <span className="sm:hidden">Waitlist</span>
         </Button>
       </header>
     </div>
@@ -261,7 +262,7 @@ function Header() {
 
 function Hero() {
   return (
-    <section className={cn(COL, "pt-16 text-center")}>
+    <section className={cn(COL, "pt-10 text-center sm:pt-16")}>
       <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-card px-3.5 py-1.5 whitespace-nowrap">
         <PulseDot />
         <span className="text-sm text-muted-foreground">
@@ -269,11 +270,11 @@ function Hero() {
         </span>
       </div>
 
-      <h1 className="mx-auto max-w-3xl text-6xl leading-tight font-semibold tracking-tight text-balance text-foreground">
+      <h1 className="mx-auto max-w-3xl text-4xl leading-tight font-semibold tracking-tight text-balance text-foreground sm:text-5xl md:text-6xl">
         Gmail, at developer speed.
       </h1>
 
-      <p className="mx-auto mt-5 max-w-xl text-lg leading-relaxed text-pretty text-muted-foreground">
+      <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-pretty text-muted-foreground sm:text-lg">
         A fast, dense client for every Google inbox you have. Keyboard-first,
         built on the Gmail API — not another email service.
       </p>
@@ -287,14 +288,31 @@ function Hero() {
 
 function Demo() {
   return (
-    <section className={cn(COL, "py-16")}>
+    <section className={cn(COL, "py-10 sm:py-16")}>
       <div className="mb-3 flex items-center gap-2 font-mono text-xs text-muted-foreground">
         <PulseDot />
         live demo · sample data
       </div>
-      <div className="rounded-2xl border border-border bg-card p-2.5">
+      {/* Desktop: the full live app, in a box. */}
+      <div className="hidden rounded-2xl border border-border bg-card p-2.5 md:block">
         <div className="relative h-[680px] overflow-hidden rounded-lg bg-background">
           <LandingDemo />
+        </div>
+      </div>
+      {/* Mobile: the live multi-pane app isn't meaningful at phone widths — the
+          README walkthrough video goes here instead. Boilerplate placeholder
+          until the video exists. */}
+      <div className="rounded-2xl border border-border bg-card p-2.5 md:hidden">
+        <div className="flex aspect-video w-full flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border bg-background px-6 text-center">
+          <span className="flex size-12 items-center justify-center rounded-full bg-muted">
+            <PlayIcon className="size-5 translate-x-px text-muted-foreground/70" />
+          </span>
+          <p className="text-sm text-pretty text-muted-foreground">
+            Walkthrough video coming soon.
+          </p>
+          <p className="font-mono text-[11px] text-muted-foreground/60">
+            try it on a desktop for the live demo
+          </p>
         </div>
       </div>
     </section>
@@ -556,12 +574,9 @@ function Spec() {
   return (
     <Wrap label="what it is" caption="the short version">
       <div className="overflow-hidden rounded-2xl border border-border">
-        <div className="grid grid-cols-3">
+        <div className="-m-px grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {SPEC_CELLS.map((cell, i) => (
-            <div
-              key={i}
-              className="border-t border-l border-border p-5 nth-[-n+3]:border-t-0 nth-[3n+1]:border-l-0"
-            >
+            <div key={i} className="border-t border-l border-border p-5">
               <div className="mb-2 flex h-5 items-center font-mono text-xs font-medium tracking-wide text-muted-foreground/60 uppercase">
                 {cell.label}
               </div>
@@ -580,9 +595,9 @@ function Plans() {
   return (
     <Wrap id="v6-plan" label="plan" caption="two plans">
       <div className="overflow-hidden rounded-2xl border border-border bg-card">
-        <div className="grid grid-cols-2 divide-x divide-border">
+        <div className="-m-px grid grid-cols-1 md:grid-cols-2">
           {/* Free — self-host */}
-          <div className="flex flex-col items-center px-8 py-10 text-center">
+          <div className="flex flex-col items-center border-t border-l border-border px-8 py-10 text-center">
             <span className="font-mono text-xs tracking-wide text-muted-foreground/60 uppercase">
               self-host
             </span>
@@ -602,7 +617,7 @@ function Plans() {
           </div>
 
           {/* Hosted — $5, the recommended paid plan */}
-          <div className="relative flex flex-col items-center px-8 py-10 text-center">
+          <div className="relative flex flex-col items-center border-t border-l border-border px-8 py-10 text-center">
             <span className="absolute top-4 right-4 inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 font-mono text-[11px] font-medium tracking-wide text-primary uppercase">
               <Sparkles className="size-3" />
               recommended
@@ -664,11 +679,11 @@ function Faq() {
   return (
     <Wrap label="faq">
       <div className="overflow-hidden rounded-2xl border border-border">
-        <div className="grid grid-cols-2">
+        <div className="-m-px grid grid-cols-1 md:grid-cols-2">
           {FAQ_ITEMS.map((it) => (
             <div
               key={it.q}
-              className="border-t border-l border-border p-6 odd:border-l-0 nth-[-n+2]:border-t-0"
+              className="border-t border-l border-border p-6"
             >
               <h4 className="mb-2 text-[15px] font-medium tracking-tight text-foreground">
                 {it.q}
@@ -687,13 +702,13 @@ function Faq() {
 function Footer() {
   return (
     <footer className={cn(COL, "pb-10")}>
-      <div className="flex items-center gap-5 border-t border-border pt-6">
+      <div className="flex flex-col items-start gap-4 border-t border-border pt-6 sm:flex-row sm:items-center sm:gap-5">
         <Wordmark small />
         <span className="font-mono text-xs text-muted-foreground/60">
           in development · restricted to test accounts while Google verification
           is pending
         </span>
-        <div className="ml-auto flex items-center gap-4 font-mono text-xs">
+        <div className="flex items-center gap-4 font-mono text-xs sm:ml-auto">
           <a
             href="mailto:hello@betterbox.dev"
             className="text-muted-foreground"

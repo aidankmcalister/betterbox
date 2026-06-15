@@ -217,7 +217,8 @@ export function Composer({
         "flex flex-col overflow-hidden bg-secondary",
         inPane
           ? "h-full w-full"
-          : "fixed right-5 bottom-5 z-40 w-[520px] max-w-[calc(100vw-2.5rem)] rounded-xl border border-input shadow-2xl",
+          : // Full-screen on phones; the floating bottom-right popout on sm+.
+            "fixed inset-0 z-50 w-full rounded-none border-0 sm:inset-auto sm:right-5 sm:bottom-5 sm:z-40 sm:w-[520px] sm:max-w-[calc(100vw-2.5rem)] sm:rounded-xl sm:border sm:border-input sm:shadow-2xl",
       )}
     >
       <header
@@ -318,7 +319,16 @@ export function Composer({
         />
       </div>
 
-      <div className={cn(inPane && "min-h-0 flex-1", preview && "overflow-y-auto")}>
+      <div
+        className={cn(
+          // Pane + full-screen mobile: editor grows to fill. Desktop popout
+          // (sm+): content-sized, as before.
+          inPane
+            ? "flex min-h-0 flex-1 flex-col"
+            : "flex min-h-0 flex-1 flex-col sm:block sm:flex-none",
+          preview && "overflow-y-auto",
+        )}
+      >
         {preview ? (
           <PreviewBody html={body} minHeight={inPane ? 320 : 200} />
         ) : (
@@ -329,17 +339,22 @@ export function Composer({
             minHeight={inPane ? 320 : 200}
             // The editor fills edge-to-edge in both modes — drop the rounded
             // border so it isn't an inset box (the rows divide it instead).
-            className={cn("rounded-none border-0", inPane && "h-full")}
+            // Fills the full height in pane + full-screen mobile; content-sized
+            // in the desktop popout.
+            className={cn(
+              "rounded-none border-0",
+              inPane ? "h-full" : "h-full sm:h-auto",
+            )}
           />
         )}
       </div>
 
-      <footer className="flex items-center gap-2 border-t px-3.5 py-[11px]">
+      <footer className="flex items-center gap-2 border-t px-3.5 pt-[11px] pb-[max(11px,env(safe-area-inset-bottom))] sm:pb-[11px]">
         <Button size="sm" disabled={!canSend} onClick={() => void send()}>
           <SendIcon data-icon="inline-start" />
           {sending ? "Sending…" : "Send"}
         </Button>
-        <KbdGroup>
+        <KbdGroup className="hidden sm:inline-flex">
           <Kbd>⌘</Kbd>
           <Kbd>↵</Kbd>
         </KbdGroup>
@@ -364,9 +379,20 @@ export function Composer({
             icon={PaperclipIcon}
             title="Attachments — soon"
             disabled
+            className="hidden sm:inline-flex"
           />
-          <FooterIcon icon={CodeIcon} title="Code block — soon" disabled />
-          <FooterIcon icon={LinkIcon} title="Link — soon" disabled />
+          <FooterIcon
+            icon={CodeIcon}
+            title="Code block — soon"
+            disabled
+            className="hidden sm:inline-flex"
+          />
+          <FooterIcon
+            icon={LinkIcon}
+            title="Link — soon"
+            disabled
+            className="hidden sm:inline-flex"
+          />
           <FooterIcon
             icon={Trash2Icon}
             title={draft ? "Delete draft" : "Discard"}
@@ -563,12 +589,14 @@ function FooterIcon({
   onClick,
   disabled = false,
   active = false,
+  className,
 }: {
   icon: typeof PaperclipIcon;
   title: string;
   onClick?: () => void;
   disabled?: boolean;
   active?: boolean;
+  className?: string;
 }) {
   return (
     <Hint label={title}>
@@ -585,6 +613,7 @@ function FooterIcon({
             ? "cursor-default opacity-40"
             : "cursor-pointer hover:bg-popover hover:text-foreground",
           active && "bg-popover text-foreground",
+          className,
         )}
       >
         <Icon className="size-[15px]" />

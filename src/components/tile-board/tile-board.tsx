@@ -53,8 +53,14 @@ function useBoard(): BoardCtx {
   return ctx;
 }
 
+const NOOP_DRAG = () => {};
+
+/** The pane-header drag starter. Returns a no-op when used outside a
+ *  <TileBoard> (e.g. the single-column mobile board renders panes directly), so
+ *  ReaderPane / PaneHeader / ComposePane can render without a board. */
 export function useTileDrag() {
-  return useBoard().beginHeaderDrag;
+  const ctx = useContext(BoardContext);
+  return ctx?.beginHeaderDrag ?? NOOP_DRAG;
 }
 
 function zoneWithinPane(rect: DOMRect, x: number, y: number): DropZone {

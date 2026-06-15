@@ -39,13 +39,17 @@ function SheetContent({
   children,
   side = "right",
   showCloseButton = true,
+  container,
   ...props
 }: SheetPrimitive.Popup.Props & {
   side?: "top" | "right" | "bottom" | "left";
   showCloseButton?: boolean;
+  /** Portal target — keeps the sheet inside a bounded container (e.g. the
+   *  landing demo box) instead of escaping to <body>. */
+  container?: SheetPrimitive.Portal.Props["container"];
 }) {
   return (
-    <SheetPortal>
+    <SheetPortal container={container}>
       <SheetOverlay />
       <SheetPrimitive.Popup
         data-slot="sheet-content"

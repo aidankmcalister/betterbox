@@ -13,6 +13,7 @@ import {
   SquareTerminal,
   CircleUserRound,
   Wrench,
+  XIcon,
 } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 
@@ -40,6 +41,7 @@ import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { Hint } from "@/components/ui/tooltip";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -108,13 +110,73 @@ export function SettingsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex h-[560px] max-h-[85vh] gap-0 overflow-hidden p-0 sm:max-w-3xl">
+      <DialogContent
+        showCloseButton={false}
+        className="flex h-[88vh] max-h-[88vh] flex-col gap-0 overflow-hidden p-0 sm:h-[560px] sm:max-h-[85vh] sm:max-w-3xl sm:flex-row"
+      >
         <DialogHeader className="sr-only">
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription>BetterBox preferences</DialogDescription>
         </DialogHeader>
 
-        <nav className="flex w-48 shrink-0 flex-col gap-1 border-r bg-sidebar p-3">
+        {/* Desktop close — the mobile one lives inside the tab row below. */}
+        <DialogClose
+          render={
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="absolute top-2 right-2 z-10 hidden sm:flex"
+            />
+          }
+        >
+          <XIcon />
+          <span className="sr-only">Close</span>
+        </DialogClose>
+
+        {/* Mobile: a scrollable strip of pages (the desktop column doesn't fit),
+            with the close button pinned to the right so tabs never slide under
+            it. */}
+        <div className="flex shrink-0 items-center border-b bg-sidebar sm:hidden">
+          <nav className="no-scrollbar flex min-w-0 flex-1 items-center gap-1 overflow-x-auto p-2">
+            {nav.flatMap((group) => group.pages).map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setPage(item.id)}
+                className={cn(
+                  "flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[13px] whitespace-nowrap",
+                  page === item.id
+                    ? "bg-muted text-foreground"
+                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+                )}
+              >
+                <item.icon className="size-4 shrink-0" />
+                {item.label}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={openPrivacy}
+              className="flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[13px] whitespace-nowrap text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+            >
+              <ShieldCheck className="size-4 shrink-0" />
+              Privacy
+            </button>
+          </nav>
+          <DialogClose
+            render={
+              <button
+                type="button"
+                className="mr-1 inline-flex size-9 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+              />
+            }
+          >
+            <XIcon className="size-[18px]" />
+            <span className="sr-only">Close</span>
+          </DialogClose>
+        </div>
+
+        <nav className="hidden w-48 shrink-0 flex-col gap-1 border-r bg-sidebar p-3 sm:flex">
           <div className="flex items-center gap-2 px-1.5 pt-1 pb-3">
             <span className="flex size-[18px] items-center justify-center rounded bg-primary text-on-primary">
               <MailIcon className="size-3" />
@@ -154,7 +216,7 @@ export function SettingsDialog({
           </button>
         </nav>
 
-        <div className="min-w-0 flex-1 overflow-y-auto p-6">
+        <div className="min-w-0 flex-1 overflow-y-auto p-4 sm:p-6">
           {page === "accounts" && <AccountsPage accounts={accounts} />}
           {page === "appearance" && <AppearancePage />}
           {page === "inbox" && <InboxPage />}
@@ -392,7 +454,7 @@ function AppearancePage() {
   return (
     <Page title="Appearance" description="Choose how BetterBox looks">
       <InterfacePreview />
-      <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+      <div className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
         <Field label="Theme">
           <ThemeSegmented />
         </Field>
@@ -419,7 +481,7 @@ function AppearancePage() {
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-4">
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
       <span className="text-[13px]">{label}</span>
       <div className="shrink-0">{children}</div>
     </div>
@@ -842,7 +904,7 @@ function SettingRow({
   return (
     <div
       className={cn(
-        "flex items-center justify-between gap-6",
+        "flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-6",
         soon && "opacity-60",
       )}
     >

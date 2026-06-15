@@ -16,6 +16,7 @@ import {
 import { useLocation, useNavigate } from "@tanstack/react-router";
 
 import { linkGoogle } from "@/lib/auth-client";
+import { cn } from "@/lib/utils";
 import { useSettings } from "@/hooks/use-settings";
 import { formatCount } from "@/lib/format";
 import { NavUser } from "@/components/nav-user";
@@ -36,7 +37,9 @@ import {
   SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 
 const mailbox: { id: Folder; title: string; icon: typeof Inbox }[] = [
   { id: "inbox", title: "Inbox", icon: Inbox },
@@ -123,6 +126,7 @@ export function AppSidebar({
   loading = false,
   embedded = false,
   demoUser,
+  container,
 }: {
   accounts: Account[];
   scopeIds: string[];
@@ -146,10 +150,24 @@ export function AppSidebar({
   embedded?: boolean;
   /** Signed-out demo persona for the profile block (landing page). */
   demoUser?: { name: string; email: string; image: string | null };
+  /** Portal target for the mobile sheet — keeps it inside the landing demo box
+   *  instead of escaping to <body>. */
+  container?: React.ComponentProps<typeof SheetContent>["container"];
 }) {
   const { hiddenNav } = useSettings();
+  const { openMobile, setOpenMobile } = useSidebar();
   const navigate = useNavigate();
   const pathname = useLocation({ select: (location) => location.pathname });
+
+  // On mobile the sidebar is an off-canvas sheet — dismiss it after any action
+  // that takes you elsewhere (picking a folder, composing, opening settings).
+  const closeMobile = () => setOpenMobile(false);
+  const after =
+    <T extends unknown[]>(fn: (...args: T) => void) =>
+    (...args: T) => {
+      fn(...args);
+      closeMobile();
+    };
   const onLiveDev = embedded
     ? !!activeDevId
     : developer.some((item) => item.to === pathname);
@@ -174,15 +192,8 @@ export function AppSidebar({
   );
   // const visibleMisc = misc.filter((item) => !hiddenNav.includes(item.id));
 
-  return (
-    <Sidebar
-      collapsible="none"
-      className={
-        embedded
-          ? "h-full w-64 shrink-0 border-r"
-          : "sticky top-0 h-svh w-64 shrink-0 border-r"
-      }
-    >
+  const inner = (
+    <>
       <SidebarHeader className="gap-1.5 p-2.5">
         <div className="flex items-center gap-2 px-1.5 pt-1 pb-2">
           <div className="flex size-[22px] items-center justify-center rounded-md bg-primary text-on-primary">
@@ -191,14 +202,14 @@ export function AppSidebar({
           <span className="font-mono text-[13px] font-semibold">BetterBox</span>
         </div>
 
-        <Button className="w-full" onClick={onCompose}>
+        <Button className="w-full" onClick={after(onCompose)}>
           <PenLine />
           Compose
         </Button>
 
         <button
           type="button"
-          onClick={onOpenCommand}
+          onClick={after(onOpenCommand)}
           className="flex h-8 w-full items-center gap-2 rounded-[7px] border bg-card px-[9px] text-[12.5px] text-muted-foreground transition-colors hover:bg-muted"
         >
           <Search className="size-[13px]" />
@@ -219,7 +230,7 @@ export function AppSidebar({
                 <SidebarMenuItem key={item.id}>
                   <SidebarMenuButton
                     isActive={!onLiveDev && folder === item.id}
-                    onClick={() => onFolder(item.id)}
+                    onClick={after(() => onFolder(item.id))}
                     className={navButton}
                   >
                     <item.icon />
@@ -253,11 +264,11 @@ export function AppSidebar({
                         isActive={
                           embedded ? activeDevId === item.id : pathname === to
                         }
-                        onClick={() =>
+                        onClick={after(() =>
                           embedded && onOpenDevPage
                             ? onOpenDevPage(item.id)
-                            : navigate({ to: to as string })
-                        }
+                            : navigate({ to: to as string }),
+                        )}
                         className={navButton}
                       >
                         <item.icon />
@@ -335,13 +346,44 @@ export function AppSidebar({
         )}
       </SidebarContent>
 
-      <SidebarFooter className="border-t">
+      <SidebarFooter className="border-t pb-[max(0.5rem,env(safe-area-inset-bottom))]">
         <NavUser
-          onOpenSettings={onOpenSettings}
+          onOpenSettings={after(onOpenSettings)}
           loading={loading}
           demoUser={demoUser}
         />
       </SidebarFooter>
-    </Sidebar>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop: a persistent column. Hidden on mobile, where the off-canvas
+          sheet below takes over (toggled by the mobile top bar's hamburger).
+          The landing demo (embedded) fills its box instead of pinning to svh. */}
+      <Sidebar
+        collapsible="none"
+        className={cn(
+          "hidden w-64 shrink-0 border-r md:flex",
+          embedded ? "h-full" : "sticky top-0 h-svh",
+        )}
+      >
+        {inner}
+      </Sidebar>
+      {/* Mobile: the same sidebar, slid in from the left as a sheet. In the
+          landing demo, container keeps it inside the scaled box. */}
+      <Sheet open={openMobile} onOpenChange={setOpenMobile}>
+        <SheetContent
+          side="left"
+          container={container}
+          showCloseButton={false}
+          className="w-[18rem] max-w-[85vw] gap-0 border-r bg-sidebar p-0 md:hidden"
+        >
+          <Sidebar collapsible="none" className="h-full w-full">
+            {inner}
+          </Sidebar>
+        </SheetContent>
+      </Sheet>
+    </>
   );
 }
