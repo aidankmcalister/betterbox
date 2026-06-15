@@ -11,15 +11,14 @@ import {
   BadgeCheckIcon,
   BracesIcon,
   CheckIcon,
-  ChevronUpIcon,
   ClipboardIcon,
   CodeXmlIcon,
-  DownloadIcon,
   FileTextIcon,
   ForwardIcon,
   GripVerticalIcon,
   HashIcon,
   MailOpenIcon,
+  MoreHorizontalIcon,
   PencilIcon,
   RefreshCwIcon,
   ReplyAllIcon,
@@ -93,11 +92,12 @@ import { ThreadRow } from "@/components/thread-row";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { CopyButton } from "@/components/ui/copy-button";
 import {
   Dialog,
   DialogContent,
@@ -614,10 +614,22 @@ function ReaderPane({
 }) {
   const { accounts, folder } = useTiles();
   const beginHeaderDrag = useTileDrag();
-  const { showTechnicalMetadata, clock, markRead, rawByDefault } =
-    useSettings();
+  const { clock, markRead, rawByDefault } = useSettings();
   const queryClient = useQueryClient();
   const [raw, setRaw] = useState(rawByDefault);
+  // Measure our own width so the action bar can collapse (reply-all/forward fold
+  // into the overflow, the message-id copy goes icon-only) on a narrow pane.
+  const paneRef = useRef<HTMLDivElement>(null);
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    const el = paneRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver((entries) =>
+      setNarrow(entries[0].contentRect.width < 560),
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
   const [busy, setBusy] = useState(false);
   const [starred, setStarred] = useState(false);
   const [replyOpen, setReplyOpen] = useState(false);
@@ -907,7 +919,7 @@ function ReaderPane({
   }, [onClose, email, sender, replyOpen, emailId, accountId]);
 
   return (
-    <div className="flex h-full min-w-0 flex-col bg-background">
+    <div ref={paneRef} className="flex h-full min-w-0 flex-col bg-background">
       <div
         onPointerDown={(event) => beginHeaderDrag(event, paneId)}
         className="flex h-9 shrink-0 items-center gap-[9px] border-b px-2.5 select-none md:cursor-grab md:touch-none md:active:cursor-grabbing"
@@ -935,26 +947,6 @@ function ReaderPane({
               className="size-[15px]"
               fill={starred ? "currentColor" : "none"}
             />
-          </button>
-        </Hint>
-        <Hint label="Archive">
-          <button
-            type="button"
-            disabled={!email || busy}
-            onClick={() => runAction("archive")}
-            className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:hover:bg-transparent"
-          >
-            <ArchiveIcon className="size-[15px]" />
-          </button>
-        </Hint>
-        <Hint label="Trash">
-          <button
-            type="button"
-            disabled={!email || busy}
-            onClick={() => runAction("trash")}
-            className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:hover:bg-transparent"
-          >
-            <Trash2Icon className="size-[15px]" />
           </button>
         </Hint>
         <span className="h-[18px] w-px shrink-0 bg-border" />
@@ -1017,19 +1009,28 @@ function ReaderPane({
             </div>
           </div>
         ) : (
-          <article className="mx-auto max-w-[720px] px-[34px] pt-[22px] pb-24">
-            <h2 className="text-[21px] leading-[1.3] font-semibold tracking-[-0.5px]">
-              {email.subject || "(no subject)"}
-            </h2>
-
+          <article
+            className={cn(
+              "mx-auto max-w-[720px] pb-10",
+              narrow ? "px-3.5 pt-5" : "px-6 pt-7",
+            )}
+          >
+            {/* Hero — labels then the big subject */}
             <AppliedTags tags={tags} />
-
+            <h1
+              className={cn(
+                "mt-3 font-semibold tracking-[-0.6px]",
+                narrow ? "text-[21px] leading-[1.22]" : "text-[26px] leading-[1.2]",
+              )}
+            >
+              {email.subject || "(no subject)"}
+            </h1>
             {messages.length > 1 && (
-              <p className="mt-1 font-mono text-[11px] text-muted-foreground/70">
+              <p className="mt-1.5 font-mono text-[11px] text-muted-foreground/70">
                 {messages.length} messages
               </p>
             )}
-            <div className="mt-3">
+            <div className="mt-5 flex flex-col gap-4">
               {messages.map((message) => (
                 <ThreadMessage
                   key={message.id}
@@ -1038,7 +1039,7 @@ function ReaderPane({
                   onToggle={() => toggleExpand(message.id)}
                   accountColor={accountColor}
                   hour12={clock === "12h"}
-                  showTechnicalMetadata={showTechnicalMetadata}
+                  narrow={narrow}
                 />
               ))}
             </div>
@@ -1104,85 +1105,127 @@ function ReaderPane({
       </div>
 
       {email && (
-        <div className="absolute bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-30 flex -translate-x-1/2 items-center gap-[3px] rounded-[10px] border bg-popover p-1 shadow-2xl">
-          <button type="button" onClick={startReply} className={FBTN_PRIMARY}>
+        <div className="flex shrink-0 items-center gap-2 border-t bg-card px-3 py-2.5">
+          <button
+            type="button"
+            onClick={startReply}
+            className={cn(BAR_PRIMARY, narrow && "flex-1")}
+          >
             <ReplyIcon /> Reply
           </button>
-          <Hint label="Reply all">
+          {!narrow && (
+            <>
+              <button type="button" onClick={startReplyAll} className={BAR_SEC}>
+                <ReplyAllIcon /> Reply all
+              </button>
+              <button type="button" onClick={startForward} className={BAR_SEC}>
+                <ForwardIcon /> Forward
+              </button>
+              <div className="flex-1" />
+            </>
+          )}
+          <Hint label="Archive">
             <button
               type="button"
-              onClick={startReplyAll}
-              className={FBTN_ICON}
+              disabled={busy}
+              onClick={() => runAction("archive")}
+              className={BAR_ICON}
             >
-              <ReplyAllIcon />
+              <ArchiveIcon />
             </button>
           </Hint>
-          <Hint label="Forward">
-            <button type="button" onClick={startForward} className={FBTN_ICON}>
-              <ForwardIcon />
-            </button>
-          </Hint>
-          <span className="mx-1 h-5 w-px shrink-0 bg-border" />
-          <Hint label="Toggle raw MIME source">
+          <Hint label="Delete">
             <button
               type="button"
-              aria-pressed={raw}
-              onClick={() => setRaw((current) => !current)}
-              className={cn(FBTN_MONO, raw && FBTN_MONO_ON)}
+              disabled={busy}
+              onClick={() => runAction("trash")}
+              className={BAR_ICON}
             >
-              <CodeXmlIcon /> Raw
+              <Trash2Icon />
             </button>
           </Hint>
+          {/* Raw + Export + Copy message-ID tucked into the ··· overflow, opens upward */}
           <DropdownMenu>
             <DropdownMenuTrigger
-              render={<button type="button" className={FBTN_MONO} />}
+              render={
+                <button type="button" title="More actions" className={BAR_ICON} />
+              }
             >
-              <DownloadIcon /> Export
-              <ChevronUpIcon className="size-3 text-muted-foreground/70" />
+              <MoreHorizontalIcon />
             </DropdownMenuTrigger>
             <DropdownMenuContent
               side="top"
               align="end"
               sideOffset={8}
-              className="w-52"
+              className="w-60"
             >
-              <DropdownMenuGroup>
-                <DropdownMenuItem onClick={() => exportEmail(email, "md")}>
-                  <HashIcon />
-                  Markdown
-                  <span className="ml-auto font-mono text-[10.5px] text-muted-foreground/70">
-                    .md
-                  </span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => exportEmail(email, "json")}>
-                  <BracesIcon className="text-accent-2-hover" />
-                  <span className="font-mono text-xs">JSON</span>
-                  <span className="ml-auto font-mono text-[10.5px] text-muted-foreground/70">
-                    .json
-                  </span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => exportEmail(email, "txt")}>
-                  <FileTextIcon />
-                  Plain text
-                  <span className="ml-auto font-mono text-[10.5px] text-muted-foreground/70">
-                    .txt
-                  </span>
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
+              <DropdownMenuItem onClick={startReplyAll}>
+                <ReplyAllIcon />
+                Reply all
+                <KbdGroup className="ml-auto">
+                  <Kbd>⇧</Kbd>
+                  <Kbd>⌘</Kbd>
+                  <Kbd>R</Kbd>
+                </KbdGroup>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={startForward}>
+                <ForwardIcon />
+                Forward
+                <KbdGroup className="ml-auto">
+                  <Kbd>⌘</Kbd>
+                  <Kbd>F</Kbd>
+                </KbdGroup>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuGroup>
-                <DropdownMenuItem
-                  onClick={() => navigator.clipboard.writeText(email.messageId)}
-                >
-                  <ClipboardIcon className="text-accent-2-hover" />
-                  <span className="font-mono text-xs">Copy message-ID</span>
-                  <KbdGroup className="ml-auto">
-                    <Kbd>⌘</Kbd>
-                    <Kbd>⇧</Kbd>
-                    <Kbd>C</Kbd>
-                  </KbdGroup>
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
+              <DropdownMenuLabel className="font-mono text-[9.5px] tracking-[0.5px] text-muted-foreground/70 uppercase">
+                Developer
+              </DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => setRaw((current) => !current)}>
+                <CodeXmlIcon
+                  className={raw ? "text-accent-2-hover" : undefined}
+                />
+                <span className="font-mono text-xs">
+                  {raw ? "Hide raw source" : "View raw source"}
+                </span>
+                {raw && (
+                  <CheckIcon className="ml-auto size-3.5 text-accent-2-hover" />
+                )}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => exportEmail(email, "md")}>
+                <HashIcon />
+                <span className="font-mono text-xs">Export as Markdown</span>
+                <span className="ml-auto font-mono text-[10.5px] text-muted-foreground/70">
+                  .md
+                </span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => exportEmail(email, "json")}>
+                <BracesIcon className="text-accent-2-hover" />
+                <span className="font-mono text-xs">Export as JSON</span>
+                <span className="ml-auto font-mono text-[10.5px] text-muted-foreground/70">
+                  .json
+                </span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => exportEmail(email, "txt")}>
+                <FileTextIcon />
+                <span className="font-mono text-xs">Export as text</span>
+                <span className="ml-auto font-mono text-[10.5px] text-muted-foreground/70">
+                  .txt
+                </span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  void navigator.clipboard.writeText(email.messageId);
+                  toast("Copied message ID");
+                }}
+              >
+                <ClipboardIcon className="text-accent-2-hover" />
+                <span className="font-mono text-xs">Copy message-ID</span>
+                <KbdGroup className="ml-auto">
+                  <Kbd>⇧</Kbd>
+                  <Kbd>⌘</Kbd>
+                  <Kbd>C</Kbd>
+                </KbdGroup>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -1197,23 +1240,24 @@ function ThreadMessage({
   onToggle,
   accountColor,
   hour12,
-  showTechnicalMetadata,
+  narrow,
 }: {
   message: FullEmail;
   expanded: boolean;
   onToggle: () => void;
   accountColor: string;
   hour12: boolean;
-  showTechnicalMetadata: boolean;
+  narrow: boolean;
 }) {
   const sender = parseAddress(message.from);
 
+  // Collapsed thread message — a compact one-line row.
   if (!expanded) {
     return (
       <button
         type="button"
         onClick={onToggle}
-        className="flex w-full items-center gap-3 border-b py-3 text-left hover:bg-muted/40"
+        className="flex w-full items-center gap-3 rounded-lg border border-transparent px-1 py-2 text-left hover:bg-muted/40"
       >
         <SenderAvatar
           name={sender.name}
@@ -1226,110 +1270,146 @@ function ThreadMessage({
           {message.snippet}
         </span>
         <span className="shrink-0 font-mono text-[11px] text-muted-foreground/70">
-          {shortDate(message.date, hour12)}
+          {relativeTime(message.date)}
         </span>
       </button>
     );
   }
 
+  // Expanded — the two-tier sender card, then the email framed as paper.
   return (
-    <div className="border-b py-3 first:pt-0">
-      <div className="flex items-start gap-2.5">
-        <SenderAvatar
-          name={sender.name}
-          address={sender.address}
-          color={accountColor}
-          className="mt-0.5 size-8"
-        />
-        <div className="min-w-0 flex-1">
-          {/* Line 1 — who + when */}
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={onToggle}
-              className="cursor-pointer truncate text-[13px] font-semibold hover:underline"
-            >
-              {sender.name}
-            </button>
-            {isVerifiedSender(sender.address) && (
-              <Hint label="Verified sender">
-                <BadgeCheckIcon className="size-3.5 shrink-0 text-label-blue" />
-              </Hint>
-            )}
-            <Hint label={isoDate(message.date)}>
-              <span className="ml-auto shrink-0 font-mono text-[10.5px] text-muted-foreground/70">
-                {shortDate(message.date, hour12)}
-              </span>
-            </Hint>
-          </div>
-          {/* Line 2 — address · to recipient */}
-          <div className="mt-0.5 flex min-w-0 items-center gap-1.5 font-mono text-[11px] text-muted-foreground/80">
-            <span className="truncate">{sender.address}</span>
-            <span className="shrink-0 text-muted-foreground/35">·</span>
-            <span className="shrink-0 text-muted-foreground/55">to</span>
-            <span
-              className="size-1.5 shrink-0 rounded-full"
-              style={{ background: accountColor }}
-            />
-            <span className="truncate">{message.to || "—"}</span>
-          </div>
-          {showTechnicalMetadata && message.messageId && (
-            <div className="mt-1 font-mono text-[10px] break-all text-muted-foreground/55">
-              message-id:{" "}
-              <span className="text-label-blue/80">{message.messageId}</span>
+    <div>
+      <div className="overflow-hidden rounded-xl border bg-card">
+        {/* Tier 1 — logo · name + verified + email · time */}
+        <div
+          className={cn(
+            "flex items-center gap-3",
+            narrow ? "px-3.5 py-3.5" : "px-[18px] py-4",
+          )}
+        >
+          <SenderAvatar
+            name={sender.name}
+            address={sender.address}
+            color={accountColor}
+            className="size-11"
+          />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onToggle}
+                className="cursor-pointer truncate text-[16px] font-semibold tracking-[-0.2px] hover:underline"
+              >
+                {sender.name}
+              </button>
+              {isVerifiedSender(sender.address) && (
+                <Hint label="Verified sender">
+                  <BadgeCheckIcon className="size-4 shrink-0 text-label-blue" />
+                </Hint>
+              )}
             </div>
+            <div className="mt-[3px] truncate font-mono text-[11.5px] text-muted-foreground">
+              &lt;{sender.address}&gt;
+            </div>
+          </div>
+          <Hint label={isoDate(message.date)}>
+            <div className="shrink-0 text-right">
+              <div className="font-mono text-[12px] text-muted-foreground">
+                {timeOnly(message.date, hour12)}
+              </div>
+              <div className="mt-0.5 font-mono text-[10.5px] text-muted-foreground/70">
+                {relativeTime(message.date)}
+              </div>
+            </div>
+          </Hint>
+        </div>
+        {/* Tier 2 — recipient strip + copy message-id */}
+        <div
+          className={cn(
+            "flex items-center gap-2 border-t bg-secondary py-2.5",
+            narrow ? "px-3.5" : "px-[18px]",
+          )}
+        >
+          <span className="shrink-0 text-[11.5px] text-muted-foreground/70">
+            to
+          </span>
+          <span
+            className="size-1.5 shrink-0 rounded-full"
+            style={{ background: accountColor }}
+          />
+          <span className="min-w-0 flex-1 truncate font-mono text-[11.5px] text-muted-foreground">
+            {message.to || "—"}
+          </span>
+          {message.messageId && (
+            <CopyButton
+              value={message.messageId}
+              label="Copy message ID"
+              iconOnly={narrow}
+            />
           )}
         </div>
       </div>
-      <div className="pt-[18px]">
+
+      {/* Native email — framed as a floating paper card */}
+      <div className="mt-3.5 overflow-hidden rounded-xl border bg-card shadow-lg shadow-black/30">
         {message.bodyHtml ? (
           <HtmlBody html={message.bodyHtml} />
         ) : (
-          (message.body || message.snippet || "(empty message)")
-            .split("\n")
-            .map((line, i) =>
-              line.trim() === "" ? (
-                <div key={i} className="h-3" />
-              ) : (
-                <p
-                  key={i}
-                  className="m-0 text-sm leading-[1.65] text-pretty text-foreground/85"
-                >
-                  {line}
-                </p>
-              ),
-            )
+          <div className="px-5 py-4">
+            {(message.body || message.snippet || "(empty message)")
+              .split("\n")
+              .map((line, i) =>
+                line.trim() === "" ? (
+                  <div key={i} className="h-3" />
+                ) : (
+                  <p
+                    key={i}
+                    className="m-0 text-sm leading-[1.65] text-pretty text-foreground/85"
+                  >
+                    {line}
+                  </p>
+                ),
+              )}
+          </div>
         )}
       </div>
     </div>
   );
 }
 
-const FBTN_PRIMARY =
-  "inline-flex h-[30px] cursor-pointer items-center gap-[7px] rounded-[7px] bg-primary px-[13px] text-[12.5px] font-medium text-on-primary transition-colors hover:bg-primary-hover [&_svg]:size-3.5";
-const FBTN_ICON =
-  "inline-flex size-[30px] cursor-pointer items-center justify-center rounded-[7px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground [&_svg]:size-3.5 disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted-foreground";
-const FBTN_MONO =
-  "inline-flex h-[30px] cursor-pointer items-center gap-[7px] rounded-[7px] border border-transparent px-2 font-mono text-[11.5px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground [&_svg]:size-3.5";
-const FBTN_MONO_ON =
-  "border-accent-2-focus bg-accent-2/15 text-accent-2-hover hover:bg-accent-2/15 hover:text-accent-2-hover";
+const BAR_PRIMARY =
+  "inline-flex h-8 cursor-pointer items-center justify-center gap-[7px] rounded-lg bg-primary px-3.5 text-[13px] font-medium text-on-primary transition-colors hover:bg-primary-hover [&_svg]:size-3.5";
+const BAR_SEC =
+  "inline-flex h-8 cursor-pointer items-center gap-[7px] rounded-lg border bg-secondary px-3 text-[12.5px] font-medium text-muted-foreground transition-colors hover:bg-popover hover:text-foreground [&_svg]:size-3.5 [&_svg]:text-muted-foreground";
+const BAR_ICON =
+  "inline-flex size-[30px] cursor-pointer items-center justify-center rounded-[7px] text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground [&_svg]:size-[15px] disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted-foreground";
 
 const isoDate = (raw: string) => {
   const date = new Date(raw);
   return Number.isNaN(date.getTime()) ? raw : date.toISOString();
 };
 
-const shortDate = (raw: string, hour12: boolean) => {
+/** Clock-aware time only, e.g. "10:16" / "10:16 AM". */
+const timeOnly = (raw: string, hour12: boolean) => {
   const date = new Date(raw);
   if (Number.isNaN(date.getTime())) return raw;
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const ymd = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-  const time = date.toLocaleTimeString([], {
+  return date.toLocaleTimeString([], {
     hour: hour12 ? "numeric" : "2-digit",
     minute: "2-digit",
     hour12,
   });
-  return `${ymd} · ${time}`;
+};
+
+/** Compact relative age ("2h ago", "3d ago"); falls back to a short date past a week. */
+const relativeTime = (raw: string) => {
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return raw;
+  const secs = Math.max(0, (Date.now() - date.getTime()) / 1000);
+  if (secs < 60) return "just now";
+  if (secs < 3600) return `${Math.floor(secs / 60)}m ago`;
+  if (secs < 86400) return `${Math.floor(secs / 3600)}h ago`;
+  if (secs < 604800) return `${Math.floor(secs / 86400)}d ago`;
+  return date.toLocaleDateString([], { month: "short", day: "numeric" });
 };
 
 const SEARCH_OPERATORS: { token: string; hint: string }[] = [

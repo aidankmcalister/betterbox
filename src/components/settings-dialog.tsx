@@ -806,17 +806,6 @@ function DeveloperPage() {
             onCheckedChange={(rawByDefault) => updateSettings({ rawByDefault })}
           />
         </SettingRow>
-        <SettingRow
-          label="Show technical metadata"
-          description="Message-IDs and list headers in the reading pane"
-        >
-          <Switch
-            checked={settings.showTechnicalMetadata}
-            onCheckedChange={(showTechnicalMetadata) =>
-              updateSettings({ showTechnicalMetadata })
-            }
-          />
-        </SettingRow>
       </PageSection>
 
       <PageSection title="Export">

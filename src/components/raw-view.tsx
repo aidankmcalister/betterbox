@@ -11,7 +11,11 @@ import { cn } from "@/lib/utils";
  */
 export function RawView({ mime }: { mime: string }) {
   const [wrap, setWrap] = useState(true);
-  const bytes = new Intl.NumberFormat().format(mime.length);
+  // Real byte count of the source (UTF-8), not the JS UTF-16 unit count.
+  const bytes = new Intl.NumberFormat().format(
+    new TextEncoder().encode(mime).length,
+  );
+  const lines = mime.split("\n");
 
   return (
     <div className="min-h-full bg-background text-foreground">
@@ -41,6 +45,9 @@ export function RawView({ mime }: { mime: string }) {
           </button>
         </Hint>
       </div>
+      {/* Verbatim source: lines are coloured with inline spans and joined by
+          real newlines, so the rendered text — and a copy of it — is byte-for-
+          byte what the server returned (no injected placeholders). */}
       <pre
         className={cn(
           "m-0 px-5 pt-4 pb-14 font-mono text-[12px] leading-[1.7] selection:bg-primary/20",
@@ -49,17 +56,17 @@ export function RawView({ mime }: { mime: string }) {
             : "overflow-x-auto whitespace-pre",
         )}
       >
-        {mime.split("\n").map((line, i) => (
-          <RawLine key={i} line={line} />
+        {lines.map((line, i) => (
+          <RawLine key={i} line={line} newline={i < lines.length - 1} />
         ))}
       </pre>
     </div>
   );
 }
 
-function RawLine({ line }: { line: string }) {
+function RawLine({ line, newline }: { line: string; newline: boolean }) {
   let node: ReactNode;
-  if (/^(--|\b[Cc]ontent-)/.test(line) && /^--/.test(line)) {
+  if (/^--/.test(line)) {
     // MIME boundary marker
     node = <span className="font-medium text-label-purple">{line}</span>;
   } else if (/^\s/.test(line)) {
@@ -74,8 +81,14 @@ function RawLine({ line }: { line: string }) {
         <span className="text-muted-foreground">{header[2]}</span>
       </>
     ) : (
-      <span className="text-muted-foreground">{line || "​"}</span>
+      <span className="text-muted-foreground">{line}</span>
     );
   }
-  return <div>{node}</div>;
+  // The literal "\n" (not a <div>) keeps blank lines and exact spacing intact.
+  return (
+    <>
+      {node}
+      {newline ? "\n" : null}
+    </>
+  );
 }
