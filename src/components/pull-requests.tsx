@@ -12,6 +12,8 @@ import {
   XIcon,
 } from "lucide-react";
 
+import { toast } from "sonner";
+
 import { linkGithub } from "@/lib/auth-client";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { usePullRequestsQuery, type PullRequest } from "@/lib/github-queries";
@@ -112,20 +114,46 @@ function DiffStat({ pr }: { pr: PullRequest }) {
   );
 }
 
-function Row({ pr, now }: { pr: PullRequest; now: number }) {
+/** Demo: a PR row would open github.com in the real app. Toast that intent
+ *  instead of navigating (the demo's urls are sealed placeholders). */
+function demoOpenToast(pr: PullRequest) {
+  toast("Opens on GitHub", {
+    icon: <GithubMark className="size-4" />,
+    description: `In the live app, ${pr.repo} #${pr.num} opens on github.com — sealed in this demo.`,
+  });
+}
+
+function Row({
+  pr,
+  now,
+  demo,
+}: {
+  pr: PullRequest;
+  now: number;
+  demo: boolean;
+}) {
   const { Icon, cls } = STATE_ICON[pr.state];
   const dim = pr.state === "merged" || pr.state === "closed";
-  // Demo rows carry a placeholder url — keep them inert (no opening GitHub).
+  // Demo rows carry a placeholder url; clicking toasts the intent rather than
+  // opening GitHub. Real rows link out normally.
   const navigable = !!pr.url && pr.url !== "#";
   return (
     <a
       href={navigable ? pr.url : undefined}
       target={navigable ? "_blank" : undefined}
       rel="noopener noreferrer"
+      onClick={
+        demo
+          ? (event) => {
+              event.preventDefault();
+              demoOpenToast(pr);
+            }
+          : undefined
+      }
       className={cn(
         "flex h-[34px] items-center gap-4 border-b border-l-2 border-border px-5 hover:bg-muted/50",
         pr.awaitsYou ? "border-l-primary" : "border-l-transparent",
-        navigable ? "cursor-pointer" : "cursor-default",
+        navigable || demo ? "cursor-pointer" : "cursor-default",
       )}
     >
       <Icon className={cn("size-4 flex-none", cls)} />
@@ -199,7 +227,15 @@ function Row({ pr, now }: { pr: PullRequest; now: number }) {
 
 /** Mobile rendering of a PR — stacked instead of a wide table row, so the title
  *  is fully readable and the metrics wrap onto their own line. */
-function MobileCard({ pr, now }: { pr: PullRequest; now: number }) {
+function MobileCard({
+  pr,
+  now,
+  demo,
+}: {
+  pr: PullRequest;
+  now: number;
+  demo: boolean;
+}) {
   const { Icon, cls } = STATE_ICON[pr.state];
   const dim = pr.state === "merged" || pr.state === "closed";
   const navigable = !!pr.url && pr.url !== "#";
@@ -208,10 +244,18 @@ function MobileCard({ pr, now }: { pr: PullRequest; now: number }) {
       href={navigable ? pr.url : undefined}
       target={navigable ? "_blank" : undefined}
       rel="noopener noreferrer"
+      onClick={
+        demo
+          ? (event) => {
+              event.preventDefault();
+              demoOpenToast(pr);
+            }
+          : undefined
+      }
       className={cn(
         "flex flex-col gap-1.5 border-b border-l-2 border-border px-4 py-3 hover:bg-muted/50",
         pr.awaitsYou ? "border-l-primary" : "border-l-transparent",
-        navigable ? "cursor-pointer" : "cursor-default",
+        navigable || demo ? "cursor-pointer" : "cursor-default",
       )}
     >
       {/* repo · #num · when */}
@@ -497,9 +541,9 @@ export function PullRequestsPage({
           <>
             {rows.map((pr) =>
               isMobile ? (
-                <MobileCard key={pr.id} pr={pr} now={now} />
+                <MobileCard key={pr.id} pr={pr} now={now} demo={demo} />
               ) : (
-                <Row key={pr.id} pr={pr} now={now} />
+                <Row key={pr.id} pr={pr} now={now} demo={demo} />
               ),
             )}
             <div className="flex items-center justify-center gap-2 p-3.5 font-mono text-[10.5px] text-muted-foreground/60">
