@@ -35,6 +35,8 @@ export type Settings = {
   composerMode: ComposerMode;
   /** accountId the composer should default its From to; null = primary inbox. */
   defaultSendFrom: string | null;
+  /** Vim-style keyboard navigation in the inbox (j/k/o/u/gg/G/// i). */
+  vimMode: boolean;
   /** Off by default — the account dot already carries the account color. */
   inboxAvatars: boolean;
   /** Inbox can never be hidden. */
@@ -60,6 +62,7 @@ const DEFAULT_SETTINGS: Settings = {
   readerMode: "shared",
   composerMode: "popout",
   defaultSendFrom: null,
+  vimMode: false,
   inboxAvatars: false,
   hiddenNav: [],
   devTools: false,

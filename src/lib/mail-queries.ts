@@ -14,6 +14,7 @@ import {
   makeTestRawEmail,
   markTestAccountRead,
   markTestEmailsRead,
+  markTestEmailsUnread,
   removeTestLabel,
   setTestEmailLabel,
   testLabelEmails,
@@ -456,6 +457,19 @@ export async function markEmailsRead(accountId: string, ids: string[]) {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ accountId, ids }),
+  });
+}
+
+export async function markEmailsUnread(accountId: string, ids: string[]) {
+  if (ids.length === 0) return;
+  if (isTestAccount(accountId)) {
+    markTestEmailsUnread(ids);
+    return;
+  }
+  await fetchJson(`/api/emails`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ accountId, ids, unread: true }),
   });
 }
 

@@ -888,15 +888,18 @@ const SHORTCUTS: { label: string; keys: string[]; soon?: boolean }[] = [
 ];
 
 function KeyboardPage() {
+  const settings = useSettings();
   return (
     <Page title="Keyboard" description="Everything reachable without the mouse">
       <PageSection title="Navigation">
         <SettingRow
           label="Vim-style navigation"
-          description="j/k move · o open · gg top"
-          soon
+          description="j/k move · o open · u unread · gg/G ends · / search · i compose"
         >
-          <Switch checked={false} disabled />
+          <Switch
+            checked={settings.vimMode}
+            onCheckedChange={(vimMode) => updateSettings({ vimMode })}
+          />
         </SettingRow>
       </PageSection>
 

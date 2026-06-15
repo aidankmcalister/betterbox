@@ -3,6 +3,7 @@ import {
   listRecentEmails,
   markAccountRead,
   markEmailsRead,
+  markEmailsUnread,
   searchEmails,
 } from "@/lib/gmail/api.server";
 import { getGoogleToken } from "@/lib/gmail/accounts.server";
@@ -63,7 +64,8 @@ export const Route = createFileRoute("/api/emails")({
         }
       },
 
-      /** Mark messages read: { accountId, ids } → batchModify -UNREAD. */
+      /** Mark messages read: { accountId, ids } → batchModify -UNREAD.
+       *  Pass { unread: true } to instead add UNREAD (the vim `u` action). */
       POST: async ({ request }: { request: Request }) => {
         const session = await auth.api.getSession({ headers: request.headers });
         if (!session) return json({ error: "Not signed in" }, 401);
@@ -72,6 +74,7 @@ export const Route = createFileRoute("/api/emails")({
           accountId?: string;
           ids?: unknown;
           all?: boolean;
+          unread?: boolean;
         } | null;
         if (!body?.accountId) {
           return json({ error: "accountId is required" }, 400);
@@ -91,6 +94,10 @@ export const Route = createFileRoute("/api/emails")({
         if (!accessToken) return json({ error: "No Google access token" }, 403);
 
         try {
+          if (body.unread) {
+            await markEmailsUnread(accessToken, ids);
+            return json({ ok: true, count: ids.length });
+          }
           const count = body.all
             ? await markAccountRead(accessToken)
             : (await markEmailsRead(accessToken, ids), ids.length);

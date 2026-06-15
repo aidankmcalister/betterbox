@@ -522,6 +522,22 @@ export async function markEmailsRead(
   if (!res.ok) throw new Error(`Gmail batchModify failed (${res.status})`);
 }
 
+export async function markEmailsUnread(
+  accessToken: string,
+  ids: string[],
+): Promise<void> {
+  if (ids.length === 0) return;
+  const res = await gmailFetch(accessToken, "/messages/batchModify", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      ids: ids.slice(0, 1000),
+      addLabelIds: ["UNREAD"],
+    }),
+  });
+  if (!res.ok) throw new Error(`Gmail batchModify failed (${res.status})`);
+}
+
 /** Pages through all is:unread messages; capped at 10 000 to avoid hanging on a large mailbox. */
 export async function markAccountRead(accessToken: string): Promise<number> {
   let total = 0;

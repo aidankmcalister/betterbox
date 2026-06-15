@@ -61,6 +61,7 @@ export function ThreadRow({
   email,
   density = "comfortable",
   selected = false,
+  cursored = false,
   dotIndex,
   accountId,
   onClick,
@@ -69,6 +70,8 @@ export function ThreadRow({
   email: ThreadRowEmail;
   density?: Density;
   selected?: boolean;
+  /** The vim-navigation keyboard cursor is on this row (distinct from open). */
+  cursored?: boolean;
   dotIndex: number;
   accountId?: string;
   onClick?: () => void;
@@ -134,6 +137,8 @@ export function ThreadRow({
   const rowClass = cn(
     "w-full min-w-0 cursor-pointer overflow-hidden border-b border-border text-left hover:bg-muted",
     selected && "bg-accent shadow-[inset_2px_0_0_var(--color-primary)]",
+    // Vim keyboard cursor: an inset ring so it reads even on a selected row.
+    cursored && "bg-muted shadow-[inset_0_0_0_1.5px_var(--color-ring)]",
   );
   const verified = isVerifiedSender(senderAddress(email.from));
   const sender = (

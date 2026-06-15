@@ -16,6 +16,8 @@ export function isTestAccount(accountId: string): boolean {
 // like a real inbox — no backend, resets on reload.
 const testReadIds = new Set<string>();
 const testReadAccounts = new Set<string>();
+// Explicitly marked-unread ids win over both read sets (the vim `u` action).
+const testUnreadIds = new Set<string>();
 const testEmailLabels = new Map<string, Set<string>>(); // `acct::emailId` -> labelIds
 const seededLabelAccounts = new Set<string>();
 
@@ -23,11 +25,22 @@ const labelKey = (accountId: string, emailId: string) =>
   `${accountId}::${emailId}`;
 
 export function isTestEmailRead(accountId: string, emailId: string): boolean {
+  if (testUnreadIds.has(emailId)) return false;
   return testReadAccounts.has(accountId) || testReadIds.has(emailId);
 }
 
 export function markTestEmailsRead(ids: string[]): void {
-  for (const id of ids) testReadIds.add(id);
+  for (const id of ids) {
+    testReadIds.add(id);
+    testUnreadIds.delete(id);
+  }
+}
+
+export function markTestEmailsUnread(ids: string[]): void {
+  for (const id of ids) {
+    testUnreadIds.add(id);
+    testReadIds.delete(id);
+  }
 }
 
 export function markTestAccountRead(accountId: string): void {

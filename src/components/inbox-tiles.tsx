@@ -59,6 +59,7 @@ import {
   emailsQueryKey,
   flattenEmails,
   markEmailsRead,
+  markEmailsUnread,
   sendNewEmail,
   useEmailsQuery,
   useFullEmailQuery,
@@ -507,11 +508,17 @@ function ComposePane({
   );
 }
 
+/** Vim navigation state surfaced to a pane's header (the mode indicator).
+ *  `active` = this pane currently has keyboard focus. */
+type VimState = { mode: "normal" | "insert"; active: boolean };
+
 function AccountPane({ accountId }: { accountId: string }) {
   const { accounts, paneSearch, openSearch, setSearch, closeSearch } =
     useTiles();
+  const { vimMode } = useSettings();
   const account = accounts.find((a) => a.accountId === accountId);
   const dotIndex = accounts.findIndex((a) => a.accountId === accountId);
+  const [vim, setVim] = useState<VimState>({ mode: "normal", active: false });
 
   const paneRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
@@ -550,8 +557,15 @@ function AccountPane({ accountId }: { accountId: string }) {
         search={search ?? ""}
         onSearchChange={(query) => setSearch(accountId, query)}
         activeQuery={debounced}
+        vim={vimMode ? vim : null}
       />
-      <PaneBody account={account} dotIndex={dotIndex} search={debounced} />
+      <PaneBody
+        account={account}
+        dotIndex={dotIndex}
+        search={debounced}
+        vimMode={vimMode}
+        onVimChange={setVim}
+      />
     </div>
   );
 }
@@ -1354,6 +1368,7 @@ function PaneHeader({
   search,
   onSearchChange,
   activeQuery,
+  vim,
 }: {
   account: Account;
   dotIndex: number;
@@ -1364,6 +1379,8 @@ function PaneHeader({
   search: string;
   onSearchChange: (value: string) => void;
   activeQuery: string;
+  /** Non-null when vim navigation is on; drives the header mode indicator. */
+  vim: VimState | null;
 }) {
   const { removable, onRemovePane, folder } = useTiles();
   const beginHeaderDrag = useTileDrag();
@@ -1454,6 +1471,22 @@ function PaneHeader({
         <span className="shrink-0 font-mono text-[11px] font-medium text-primary">
           {formatCount(account.unread)} new
         </span>
+      )}
+      {vim && (
+        <Hint label="Vim navigation · j/k move · o open · u unread · gg/G ends · / search · i compose">
+          <span
+            className={cn(
+              "shrink-0 rounded px-1.5 py-0.5 font-mono text-[9.5px] font-medium tracking-wide uppercase",
+              vim.active
+                ? vim.mode === "insert"
+                  ? "bg-accent-2/15 text-accent-2-hover"
+                  : "bg-primary/15 text-primary"
+                : "bg-muted text-muted-foreground/60",
+            )}
+          >
+            {vim.mode}
+          </span>
+        </Hint>
       )}
       {folder === "drafts" && (
         <DeleteAllDraftsButton
@@ -1579,13 +1612,19 @@ function PaneBody({
   account,
   dotIndex,
   search,
+  vimMode,
+  onVimChange,
 }: {
   account: Account;
   dotIndex: number;
   search: string;
+  vimMode: boolean;
+  onVimChange: (vim: VimState) => void;
 }) {
-  const { getOpenEmail, openEmail, folder, portalContainer } = useTiles();
+  const { getOpenEmail, openEmail, openSearch, folder, portalContainer } =
+    useTiles();
   const { density } = useSettings();
+  const queryClient = useQueryClient();
   const query = useEmailsQuery(account.accountId, folder, search);
   const { error, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } =
     query;
@@ -1594,6 +1633,120 @@ function PaneBody({
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // ── Vim navigation ──────────────────────────────────────────────────────
+  // The pane owns a keyboard cursor (row index) and mode; the board lifts mode
+  // into the header indicator via onVimChange. Keys are handled on the scroll
+  // container — events bubble here from a focused row, so clicking a row then
+  // pressing j/k just works.
+  const [cursor, setCursor] = useState(0);
+  const [mode, setMode] = useState<"normal" | "insert">("normal");
+  const [active, setActive] = useState(false);
+  const lastG = useRef(0);
+
+  useEffect(() => {
+    onVimChange({ mode, active });
+  }, [mode, active, onVimChange]);
+
+  // Keep the cursor in range as the list grows/filters.
+  useEffect(() => {
+    if (emails && cursor > emails.length - 1) {
+      setCursor(Math.max(0, emails.length - 1));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [emails?.length]);
+
+  const markUnread = (id: string) => {
+    void markEmailsUnread(account.accountId, [id]);
+    queryClient.setQueryData<EmailsData>(
+      emailsQueryKey(account.accountId, folder, search),
+      (current) =>
+        current && {
+          ...current,
+          pages: current.pages.map((page) => ({
+            ...page,
+            emails: page.emails.map((e) =>
+              e.id === id ? { ...e, unread: true } : e,
+            ),
+          })),
+        },
+    );
+    queryClient.setQueryData<FullEmail>(["email", account.accountId, id], (e) =>
+      e ? { ...e, unread: true } : e,
+    );
+    queryClient.invalidateQueries({ queryKey: accountsQueryKey });
+  };
+
+  const onVimKeyDown = (event: React.KeyboardEvent) => {
+    if (!vimMode || !emails || emails.length === 0) return;
+    if (event.metaKey || event.ctrlKey || event.altKey) return;
+    const target = event.target as HTMLElement;
+    if (target.closest("input, textarea, [contenteditable='true']")) return;
+
+    const max = emails.length - 1;
+    const moveTo = (next: number) => {
+      const clamped = Math.max(0, Math.min(next, max));
+      setCursor(clamped);
+      requestAnimationFrame(() =>
+        scrollRef.current
+          ?.querySelector(`[data-vim-index="${clamped}"]`)
+          ?.scrollIntoView({ block: "nearest" }),
+      );
+    };
+    // Stop handled keys from reaching the global (compose/go-to) shortcuts.
+    const claim = () => {
+      event.preventDefault();
+      event.stopPropagation();
+    };
+
+    switch (event.key) {
+      case "j":
+        claim();
+        moveTo(cursor + 1);
+        break;
+      case "k":
+        claim();
+        moveTo(cursor - 1);
+        break;
+      case "G":
+        claim();
+        moveTo(max);
+        break;
+      case "g": {
+        claim();
+        const now = Date.now();
+        if (now - lastG.current < 600) {
+          moveTo(0);
+          lastG.current = 0;
+        } else {
+          lastG.current = now;
+        }
+        break;
+      }
+      case "o":
+      case "Enter":
+        claim();
+        openEmail(account.accountId, emails[cursor].id);
+        break;
+      case "u":
+        claim();
+        markUnread(emails[cursor].id);
+        break;
+      case "/":
+        claim();
+        openSearch(account.accountId);
+        break;
+      case "i":
+      case "a":
+        claim();
+        setMode("insert");
+        window.dispatchEvent(new CustomEvent("open-compose"));
+        break;
+      case "Escape":
+        setMode("normal");
+        break;
+    }
+  };
   useEffect(() => {
     const root = scrollRef.current;
     const sentinel = sentinelRef.current;
@@ -1611,7 +1764,13 @@ function PaneBody({
   return (
     <div
       ref={scrollRef}
-      className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto"
+      // Focusable so vim keys land here; events also bubble up from focused
+      // rows. Outline suppressed — the header indicator shows the active pane.
+      tabIndex={vimMode ? 0 : -1}
+      onKeyDown={onVimKeyDown}
+      onFocus={() => setActive(true)}
+      onBlur={() => setActive(false)}
+      className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto outline-none"
     >
       {folder === "labeled" ? (
         <LabeledView
@@ -1645,17 +1804,22 @@ function PaneBody({
         )
       ) : (
         <>
-          {emails.map((email) => (
-            <ThreadRow
-              key={email.id}
-              email={email}
-              density={density}
-              dotIndex={dotIndex}
-              accountId={account.accountId}
-              selected={getOpenEmail(account.accountId) === email.id}
-              onClick={() => openEmail(account.accountId, email.id)}
-              portalContainer={portalContainer}
-            />
+          {emails.map((email, index) => (
+            <div key={email.id} data-vim-index={index}>
+              <ThreadRow
+                email={email}
+                density={density}
+                dotIndex={dotIndex}
+                accountId={account.accountId}
+                selected={getOpenEmail(account.accountId) === email.id}
+                cursored={vimMode && active && index === cursor}
+                onClick={() => {
+                  setCursor(index);
+                  openEmail(account.accountId, email.id);
+                }}
+                portalContainer={portalContainer}
+              />
+            </div>
           ))}
           {hasNextPage ? (
             <div
