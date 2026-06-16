@@ -114,6 +114,7 @@ export function TileBoard({
   const renderPaneRef = useRef(renderPane);
   renderPaneRef.current = renderPane;
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-validate only when the pane id set (paneIdsKey) changes; storage/paneIds are read via refs.
   useEffect(() => {
     setTree((current) => {
       const base = hydratedRef.current ? current : storageRef.current.load();
@@ -122,7 +123,6 @@ export function TileBoard({
       storageRef.current.save(next);
       return next;
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paneIdsKey]);
 
   const mutate = useCallback(
@@ -196,12 +196,12 @@ export function TileBoard({
     [mutate],
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-subscribe to the reset event when it or the pane set (paneIdsKey) changes; paneIds is read fresh in the handler.
   useEffect(() => {
     if (!resetEvent) return;
     const onReset = () => mutate(() => defaultLayout(paneIds));
     window.addEventListener(resetEvent, onReset);
     return () => window.removeEventListener(resetEvent, onReset);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetEvent, mutate, paneIdsKey]);
 
   const ctx: BoardCtx = { beginHeaderDrag, renderPane, drag, resizeSplit };

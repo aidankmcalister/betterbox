@@ -12,11 +12,12 @@ export function SkeletonRows({
   density?: Density;
   count?: number;
 }) {
-  const height = density === "compact" ? "h-[34px]" : "h-[52px]";
+  const height = density === "compact" ? "h-[34px]" : "h-[60px]";
   return (
-    <div aria-label="Loading messages">
+    <div role="status" aria-label="Loading messages">
       {Array.from({ length: count }).map((_, i) => (
         <div
+          // biome-ignore lint/suspicious/noArrayIndexKey: fixed-count skeleton rows, never reordered.
           key={i}
           className={`flex items-center gap-2.5 border-b border-border px-3.5 ${height}`}
           style={{ opacity: 1 - i * 0.09 }}

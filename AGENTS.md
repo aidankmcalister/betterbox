@@ -32,7 +32,6 @@ decisions already made.
   never persisted — subjects, senders, snippets exist only in HTTP responses
   and React state. Adding any persistence of message data is a deliberate
   product decision the user must make, not a refactor.
-- **Rules: not yet built.**
 - **Commits: no attribution.** Never append "Generated with Claude Code" or
   `Co-Authored-By` trailers. Conventional-ish subjects, lowercase, body
   bullets. Commit only when asked.

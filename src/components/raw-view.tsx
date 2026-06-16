@@ -64,6 +64,7 @@ export function RawView({ mime }: { mime: string }) {
         )}
       >
         {lines.map((line, i) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: verbatim source lines (may repeat); render order is fixed.
           <RawLine key={i} line={line} newline={i < lines.length - 1} />
         ))}
       </pre>

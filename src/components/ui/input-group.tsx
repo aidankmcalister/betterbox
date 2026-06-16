@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 function InputGroup({ className, ...props }: React.ComponentProps<"div">) {
   return (
+    // biome-ignore lint/a11y/useSemanticElements: stock shadcn input-group primitive.
     <div
       data-slot="input-group"
       role="group"
@@ -49,6 +50,8 @@ function InputGroupAddon({
   ...props
 }: React.ComponentProps<"div"> & VariantProps<typeof inputGroupAddonVariants>) {
   return (
+    // biome-ignore lint/a11y/useSemanticElements: stock shadcn input-group primitive.
+    // biome-ignore lint/a11y/useKeyWithClickEvents: stock shadcn input-group primitive; the click only forwards focus to the inner input.
     <div
       role="group"
       data-slot="input-group-addon"

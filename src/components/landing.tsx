@@ -182,10 +182,14 @@ function Waitlist({ big = false, source }: { big?: boolean; source: string }) {
 
   if (phase === "open") {
     return (
-      <div className="flex flex-col items-center gap-2">
+      <div className="flex w-full flex-col items-center gap-2">
         <form
           onSubmit={submit}
-          className={cn("flex justify-center gap-2", minH)}
+          className={cn(
+            "mx-auto flex w-full justify-center gap-2",
+            big ? "max-w-sm" : "max-w-xs",
+            minH,
+          )}
         >
           <input
             ref={inputRef}
@@ -194,15 +198,14 @@ function Waitlist({ big = false, source }: { big?: boolean; source: string }) {
             placeholder="you@yourdomain.dev"
             onChange={(e) => setEmail(e.target.value)}
             className={cn(
-              "rounded-lg border border-input bg-card px-3.5 text-sm text-foreground outline-none focus:border-ring",
+              "min-w-0 flex-1 rounded-lg border border-input bg-card px-3.5 text-sm text-foreground outline-none focus:border-ring",
               height,
-              big ? "w-72" : "w-60",
             )}
           />
           <Button
             type="submit"
             size={big ? "lg" : "default"}
-            className={cn(height, big && "px-6 text-base")}
+            className={cn("shrink-0", height, big && "px-6 text-base")}
           >
             {submitting ? "…" : "Notify me"}
           </Button>
@@ -392,7 +395,7 @@ function LandingDemo() {
   // Bumped after a read-state change so the demo accounts (and their unread
   // counts) are recomputed from the test store.
   const [readVersion, setReadVersion] = useState(0);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // biome-ignore lint/correctness/useExhaustiveDependencies: rebuild the demo accounts whenever readVersion is bumped (after a sandbox read-state change).
   const accounts = useMemo(() => makeDemoAccounts(), [readVersion]);
   const accountIds = useMemo(
     () => accounts.map((a) => a.accountId),
@@ -526,6 +529,7 @@ function LandingDemo() {
     // sized to 125% so it still fills the frame after scaling. The `transform`
     // also makes this the containing block for the `fixed` overlays (compose,
     // ⌘K palette), keeping them inside the demo instead of escaping to the page.
+    // biome-ignore lint/a11y/noStaticElementInteractions: hover only gates the demo's ⌘K shortcut; it's a non-essential enhancement with no keyboard equivalent needed.
     <div
       ref={boxRef}
       onMouseEnter={() => (activeRef.current = true)}
@@ -646,6 +650,7 @@ function Spec() {
       <div className="overflow-hidden rounded-2xl border border-border">
         <div className="-m-px grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {SPEC_CELLS.map((cell, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: SPEC_CELLS is a static const list, never reordered.
             <div key={i} className="border-t border-l border-border p-5">
               <div className="mb-2 flex h-5 items-center font-mono text-xs font-medium tracking-wide text-muted-foreground/60 uppercase">
                 {cell.label}
@@ -667,7 +672,7 @@ function Plans() {
       <div className="overflow-hidden rounded-2xl border border-border bg-card">
         <div className="-m-px grid grid-cols-1 md:grid-cols-2">
           {/* Free — self-host */}
-          <div className="flex flex-col items-center border-t border-l border-border px-8 py-10 text-center">
+          <div className="flex flex-col items-center justify-center border-t border-l border-border px-8 py-10 text-center">
             <span className="text-4xl font-semibold tracking-tight text-foreground">
               Free
             </span>
@@ -689,7 +694,7 @@ function Plans() {
           </div>
 
           {/* Hosted — $5/month, waitlisted while demand is gauged */}
-          <div className="flex flex-col items-center border-t border-l border-border px-8 py-10 text-center">
+          <div className="flex flex-col items-center justify-center border-t border-l border-border px-8 py-10 text-center">
             <span className="text-4xl font-semibold tracking-tight text-foreground">
               $5
             </span>
@@ -705,7 +710,7 @@ function Plans() {
               If you would pay for it, join the waitlist. I will reach out when
               it is ready.
             </p>
-            <div className="mt-6">
+            <div className="mt-6 w-full">
               <Waitlist big source="plan" />
             </div>
           </div>

@@ -172,7 +172,7 @@ export function useTagActions(accountId: string, email: FullEmail | undefined) {
       queryClient.setQueriesData<FullEmail>(
         { queryKey: ["email", accountId] },
         (e) =>
-          e && e.labelIds?.includes(label.id)
+          e?.labelIds?.includes(label.id)
             ? { ...e, labelIds: e.labelIds.filter((id) => id !== label.id) }
             : e,
       );
@@ -284,6 +284,7 @@ export function TagPicker({
     setEditing(null);
   };
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: bind the outside-click handler only while open; close/refs are stable across renders.
   useEffect(() => {
     if (!open) return;
     const onDown = (event: PointerEvent) => {
@@ -352,6 +353,7 @@ export function TagPicker({
                   </button>
                 </div>
                 <input
+                  // biome-ignore lint/a11y/noAutofocus: focus the rename field when the edit popover opens.
                   autoFocus
                   value={editName}
                   onChange={(event) => setEditName(event.target.value)}
@@ -369,6 +371,7 @@ export function TagPicker({
                     const active = tagColorIndex(editing, tagColors) === index;
                     return (
                       <button
+                        // biome-ignore lint/suspicious/noArrayIndexKey: TAG_COLORS is a fixed palette; the index is the stable color id.
                         key={index}
                         type="button"
                         aria-pressed={active}
@@ -440,6 +443,7 @@ export function TagPicker({
                 </div>
                 <div className="border-t p-1.5">
                   <input
+                    // biome-ignore lint/a11y/noAutofocus: focus the create-tag field when the picker opens.
                     autoFocus
                     value={newTag}
                     onChange={(event) => setNewTag(event.target.value)}

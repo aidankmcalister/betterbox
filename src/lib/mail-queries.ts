@@ -121,7 +121,7 @@ export const emailsQueryKey = (
   folder: Folder = "inbox",
   q?: string,
 ) =>
-  q && q.trim()
+  q?.trim()
     ? (["emails-search", accountId, folder, q.trim()] as const)
     : (["emails", accountId, folder] as const);
 
@@ -224,8 +224,9 @@ export function useFullEmailQuery(accountId: string, emailId: string | null) {
     queryKey: ["email", accountId, emailId],
     enabled: emailId !== null,
     queryFn: async (): Promise<FullEmail> => {
+      if (emailId === null) throw new Error("emailId is required");
       if (isTestAccount(accountId)) await sleep(READ_LATENCY_MS);
-      return fetchFullEmail(accountId, emailId!);
+      return fetchFullEmail(accountId, emailId);
     },
   });
 }
@@ -253,12 +254,13 @@ export function useThreadQuery(
     queryKey: ["thread", accountId, threadId],
     enabled: !!threadId,
     queryFn: async (): Promise<FullEmail[]> => {
+      if (!threadId) throw new Error("threadId is required");
       if (isTestAccount(accountId)) {
         await sleep(READ_LATENCY_MS);
-        return [makeTestFullEmail(accountId, threadId!)];
+        return [makeTestFullEmail(accountId, threadId)];
       }
       const data = await fetchJson<{ messages: FullEmail[] }>(
-        `/api/message?accountId=${accountId}&thread=${encodeURIComponent(threadId!)}`,
+        `/api/message?accountId=${accountId}&thread=${encodeURIComponent(threadId)}`,
       );
       return data.messages ?? [];
     },
@@ -274,12 +276,13 @@ export function useRawEmailQuery(
     queryKey: ["email-raw", accountId, emailId],
     enabled: enabled && emailId !== null,
     queryFn: async (): Promise<string> => {
+      if (emailId === null) throw new Error("emailId is required");
       if (isTestAccount(accountId)) {
         await sleep(READ_LATENCY_MS);
-        return makeTestRawEmail(accountId, emailId!);
+        return makeTestRawEmail(accountId, emailId);
       }
       const data = await fetchJson<{ raw: string }>(
-        `/api/message?accountId=${accountId}&id=${encodeURIComponent(emailId!)}&format=raw`,
+        `/api/message?accountId=${accountId}&id=${encodeURIComponent(emailId)}&format=raw`,
       );
       return data.raw;
     },
@@ -313,8 +316,8 @@ export function useLabelsQuery(accountId: string) {
   return useQuery(labelsQueryOptions(accountId));
 }
 
-/** Labels across several accounts, deduped by name (case-insensitive) — rules
- *  match on the label name, so one entry per distinct name is what we want. */
+/** Labels across several accounts, deduped by name (case-insensitive) — one
+ *  entry per distinct name. */
 export function useAccountsLabels(accountIds: string[]): Label[] {
   const results = useQueries({ queries: accountIds.map(labelsQueryOptions) });
   const seen = new Set<string>();

@@ -56,6 +56,7 @@ export function SenderAvatar({
     : [];
 
   const [index, setIndex] = useState(0);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset the favicon-source fallback index only when the resolved domain changes.
   useEffect(() => setIndex(0), [root]);
   const src = sources[index];
 

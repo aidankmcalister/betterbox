@@ -310,6 +310,7 @@ function AccountsPage({ accounts }: { accounts: Account[] }) {
                     <p className="text-xs text-muted-foreground">Primary</p>
                   )}
                 </div>
+                {/* biome-ignore lint/a11y/useSemanticElements: a visual swatch group; a <fieldset> would impose default form styling in the row. */}
                 <div
                   role="group"
                   aria-label={`Color for ${account.email}`}
@@ -498,6 +499,7 @@ function InterfacePreview() {
             {rows.map((unread, i) =>
               density === "compact" ? (
                 <div
+                  // biome-ignore lint/suspicious/noArrayIndexKey: static preview rows, never reordered.
                   key={i}
                   className="flex h-[22px] items-center gap-1.5 border-b border-border/60 px-2"
                 >
@@ -510,6 +512,7 @@ function InterfacePreview() {
                 </div>
               ) : (
                 <div
+                  // biome-ignore lint/suspicious/noArrayIndexKey: static preview rows, never reordered.
                   key={i}
                   className="flex gap-1.5 border-b border-border/60 px-2 py-1.5"
                 >
@@ -538,27 +541,29 @@ function AppearancePage() {
   return (
     <Page title="Appearance" description="Choose how BetterBox looks">
       <InterfacePreview />
-      <div className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
-        <Field label="Theme">
-          <ThemeSegmented />
-        </Field>
-        <Field label="Accent">
-          <AccentDots />
-        </Field>
-        <Field label="Density">
-          <DensitySegmented />
-        </Field>
-        <Field label="Clock">
-          <ClockSegmented />
-        </Field>
-        <Field label="Sender avatars">
-          <AvatarsSwitch />
-        </Field>
-      </div>
-      <div>
-        <BlockLabel>Sidebar</BlockLabel>
+      <PageSection title="Theme">
+        <div className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
+          <Field label="Theme">
+            <ThemeSegmented />
+          </Field>
+          <Field label="Accent">
+            <AccentDots />
+          </Field>
+        </div>
+      </PageSection>
+      <PageSection title="Display">
+        <div className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
+          <Field label="Density">
+            <DensitySegmented />
+          </Field>
+          <Field label="Clock">
+            <ClockSegmented />
+          </Field>
+        </div>
+      </PageSection>
+      <PageSection title="Sidebar">
         <SidebarChips />
-      </div>
+      </PageSection>
     </Page>
   );
 }
@@ -570,10 +575,6 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
       <div className="shrink-0">{children}</div>
     </div>
   );
-}
-
-function BlockLabel({ children }: { children: ReactNode }) {
-  return <span className="mb-2 block text-[13px] font-medium">{children}</span>;
 }
 
 function ThemeSegmented() {
@@ -632,6 +633,7 @@ function AvatarsSwitch() {
 function AccentDots() {
   const { accent } = useSettings();
   return (
+    // biome-ignore lint/a11y/useSemanticElements: a visual accent-swatch group; a <fieldset> would impose default form styling.
     <div role="group" aria-label="Accent color" className="flex gap-1.5">
       {(Object.keys(ACCENTS) as AccentId[]).map((id) => (
         <Hint key={id} label={ACCENTS[id].label}>
@@ -710,7 +712,7 @@ function InboxPage() {
   return (
     <Page
       title="Inbox"
-      description="Row content, layout, reading, and composing"
+      description="Row content, reading, composing, and layout"
     >
       <PageSection title="Rows">
         <SettingRow label="Show snippets">
@@ -729,9 +731,15 @@ function InboxPage() {
             onChange={(snippetFont) => updateSettings({ snippetFont })}
           />
         </SettingRow>
+        <SettingRow
+          label="Sender avatars"
+          description="Show each sender's avatar in the message list"
+        >
+          <AvatarsSwitch />
+        </SettingRow>
       </PageSection>
 
-      <PageSection title="Layout">
+      <PageSection title="Reading">
         <SettingRow
           label="Reading pane"
           description="One shared reader, or a separate reader docked per account"
@@ -745,16 +753,6 @@ function InboxPage() {
             onChange={(readerMode) => updateSettings({ readerMode })}
           />
         </SettingRow>
-        <SettingRow
-          label="Custom tiles"
-          description="Arrange the inbox tiles by dragging pane headers"
-          soon
-        >
-          <SoonControl label="Custom (tiles)" />
-        </SettingRow>
-      </PageSection>
-
-      <PageSection title="Reading">
         <SettingRow
           label="Mark as read"
           description="When an opened message loses its unread state"
@@ -785,6 +783,16 @@ function InboxPage() {
             value={settings.composerMode}
             onChange={(composerMode) => updateSettings({ composerMode })}
           />
+        </SettingRow>
+      </PageSection>
+
+      <PageSection title="Layout">
+        <SettingRow
+          label="Custom tiles"
+          description="Arrange the inbox tiles by dragging pane headers"
+          soon
+        >
+          <SoonControl label="Custom (tiles)" />
         </SettingRow>
       </PageSection>
     </Page>
@@ -1008,6 +1016,7 @@ function SegmentedButtons<T extends string>({
   mono?: boolean;
 }) {
   return (
+    // biome-ignore lint/a11y/useSemanticElements: a segmented button group; a <fieldset> would impose default form styling.
     <div role="group" className="flex gap-1">
       {options.map((option) => (
         <Hint key={option.value} label={option.disabled ? "Soon" : ""}>

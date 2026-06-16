@@ -91,9 +91,13 @@ export const Route = createFileRoute("/api/emails")({
         if (!accessToken) return json({ error: "No Google access token" }, 403);
 
         try {
-          const count = body.all
-            ? await markAccountRead(accessToken)
-            : (await markEmailsRead(accessToken, ids), ids.length);
+          let count: number;
+          if (body.all) {
+            count = await markAccountRead(accessToken);
+          } else {
+            await markEmailsRead(accessToken, ids);
+            count = ids.length;
+          }
           return json({ ok: true, count });
         } catch (error) {
           return jsonError("POST /api/emails", error);

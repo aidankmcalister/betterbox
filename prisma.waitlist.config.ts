@@ -1,4 +1,3 @@
-import "dotenv/config";
 import { defineConfig, env } from "prisma/config";
 
 // Separate config for the waitlist DB (WAITLIST_DATABASE_URL). Use with the CLI

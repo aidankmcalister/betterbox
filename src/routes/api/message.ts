@@ -54,10 +54,12 @@ export const Route = createFileRoute("/api/message")({
               },
             });
           }
+          // Past the thread/attachment branches, a message id is required.
+          if (!id) return json({ error: "id is required" }, 400);
           if (url.searchParams.get("format") === "raw") {
-            return json({ raw: await getRawEmail(accessToken, id!) });
+            return json({ raw: await getRawEmail(accessToken, id) });
           }
-          return json({ email: await getFullEmail(accessToken, id!) });
+          return json({ email: await getFullEmail(accessToken, id) });
         } catch (error) {
           return jsonError("GET /api/message", error);
         }

@@ -94,6 +94,7 @@ export function ViewCard({
                   : `Add ${account.email} to view`
               }
             >
+              {/* biome-ignore lint/a11y/useSemanticElements: a custom-styled toggle using the button + role=checkbox ARIA pattern; a native checkbox can't carry the account-color swatch. */}
               <button
                 type="button"
                 role="checkbox"

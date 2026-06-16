@@ -105,7 +105,9 @@ export function updateSettings(patch: Partial<Settings>) {
   } catch {
     // storage unavailable — settings just won't persist
   }
-  listeners.forEach((listener) => listener());
+  listeners.forEach((listener) => {
+    listener();
+  });
 }
 
 export function setAccountColor(accountId: string, colorIndex: number) {
@@ -166,7 +168,9 @@ export function useApplyAccent() {
   useEffect(() => {
     const style = document.documentElement.style;
     if (accent === "orange") {
-      ACCENT_VARS.forEach((name) => style.removeProperty(name));
+      ACCENT_VARS.forEach((name) => {
+        style.removeProperty(name);
+      });
       return;
     }
     const { base, hover, focus } = ACCENTS[accent];

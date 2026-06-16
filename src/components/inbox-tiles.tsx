@@ -251,6 +251,7 @@ export function InboxTiles({
   const composeIds = compose?.open ? [COMPOSE_PANE_ID] : [];
   const paneIds = [...ids, ...readerIds, ...composeIds];
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: keyed on idsKey (the serialized id list); ids/reading/onCloseReader are intentionally read fresh without re-running.
   useEffect(() => {
     if (split) {
       setOpenEmails((current) => {
@@ -263,7 +264,6 @@ export function InboxTiles({
     } else if (reading && !ids.includes(reading.accountId)) {
       onCloseReader();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idsKey, split]);
 
   const [paneSearch, setPaneSearch] = useState<Record<string, string>>({});
@@ -289,6 +289,7 @@ export function InboxTiles({
     [],
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-subscribe only when the visible id list (idsKey) changes; ids is read fresh inside the handler.
   useEffect(() => {
     const onSearch = (event: Event) => {
       const { accountId, query } = (event as CustomEvent<SearchInboxDetail>)
@@ -304,7 +305,6 @@ export function InboxTiles({
     };
     window.addEventListener(SEARCH_INBOX_EVENT, onSearch);
     return () => window.removeEventListener(SEARCH_INBOX_EVENT, onSearch);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idsKey]);
 
   const ctx: TilesCtx = {
@@ -661,26 +661,29 @@ function ReaderPane({
       return next;
     });
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-sync the local star state only when the open message changes.
   useEffect(
     () => setStarred(email?.starred ?? false),
     [email?.id, email?.starred],
   );
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset the reply box whenever the open message changes (email.id is the trigger).
   useEffect(() => {
     setReplyOpen(false);
     setReplyBody("");
     setReplySent(false);
   }, [email?.id]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: recompute the expanded set when the thread/message changes; emailId is read fresh.
   useEffect(() => {
     if (messages.length === 0) return;
     const ids = new Set<string>();
     if (emailId) ids.add(emailId);
     ids.add(messages[messages.length - 1].id);
     setExpandedIds(ids);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [email?.threadId, thread]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the mark-read timer should only re-arm on the listed inputs; queryClient/folder are stable refs.
   useEffect(() => {
-    if (!email || !email.unread) return;
+    if (!email?.unread) return;
     const delay = MARK_READ_MS[markRead];
     if (delay === null) return;
     const id = email.id;
@@ -705,7 +708,6 @@ function ReaderPane({
       queryClient.invalidateQueries({ queryKey: accountsQueryKey });
     }, delay);
     return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [email?.id, email?.unread, markRead, accountId]);
 
   const startReply = () => {
@@ -855,6 +857,7 @@ function ReaderPane({
     }
   };
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: rebind the reader key/event handlers only on the listed inputs; startReply/startForward close over current values.
   useEffect(() => {
     const typing = (target: EventTarget | null) =>
       target instanceof HTMLElement &&
@@ -913,7 +916,6 @@ function ReaderPane({
       window.removeEventListener("start-reply", onStartReply);
       window.removeEventListener("start-forward", onStartForward);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onClose, email, sender, replyOpen, emailId, accountId]);
 
   return (
@@ -1383,9 +1385,11 @@ function ThreadMessage({
               .split("\n")
               .map((line, i) =>
                 line.trim() === "" ? (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: plain-text body split into static, non-reorderable lines.
                   <div key={i} className="h-3" />
                 ) : (
                   <p
+                    // biome-ignore lint/suspicious/noArrayIndexKey: plain-text body split into static, non-reorderable lines.
                     key={i}
                     className="m-0 text-sm leading-[1.65] text-pretty text-foreground/85"
                   >
@@ -1501,6 +1505,7 @@ function PaneHeader({
           <SearchIcon className="size-3.5 shrink-0 text-muted-foreground/70" />
           <input
             ref={searchInputRef}
+            // biome-ignore lint/a11y/noAutofocus: focus the in-pane search field the moment it opens (it replaces the header on demand).
             autoFocus
             value={search}
             onChange={(event) => onSearchChange(event.target.value)}
@@ -1697,6 +1702,7 @@ function PaneBody({
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-arm the infinite-scroll observer when paging state or the loaded count changes; refs are stable.
   useEffect(() => {
     const root = scrollRef.current;
     const sentinel = sentinelRef.current;

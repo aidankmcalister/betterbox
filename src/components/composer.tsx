@@ -524,6 +524,7 @@ function RecipientField({
         const valid = EMAIL_RE.test(chip);
         return (
           <span
+            // biome-ignore lint/suspicious/noArrayIndexKey: recipients can repeat, so the index disambiguates duplicate addresses.
             key={`${chip}-${i}`}
             className={cn(
               "inline-flex max-w-full items-center gap-1 rounded-[7px] border bg-card py-0.5 pr-1 pl-2",
@@ -551,6 +552,7 @@ function RecipientField({
       })}
       <input
         ref={inputRef}
+        // biome-ignore lint/a11y/noAutofocus: focus the To field when the composer opens so you can type a recipient immediately.
         autoFocus
         type="text"
         value={draft}
@@ -686,7 +688,7 @@ function PreviewBody({ html, minHeight }: { html: string; minHeight: number }) {
     <div
       className="tiptap prose-email max-w-none px-3.5 py-3 text-[13px] leading-[1.6] text-foreground"
       style={{ minHeight }}
-      // Sanitized just above.
+      // biome-ignore lint/security/noDangerouslySetInnerHtml: `clean` is DOMPurify-sanitized one line above; this renders the composer's own preview.
       dangerouslySetInnerHTML={{ __html: clean }}
     />
   );

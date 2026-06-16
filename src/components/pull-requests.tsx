@@ -419,6 +419,7 @@ export function PullRequestsPage({
   const [filter, setFilter] = useState<FilterId>("open");
   const isMobile = useIsMobile();
   const query = usePullRequestsQuery(signedIn && !demo);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: recompute the "now" baseline for relative times only when fresh PR data lands.
   const now = useMemo(() => Date.now(), [query.dataUpdatedAt]);
   const demoPrs = useMemo(() => (demo ? makeDemoPullRequests() : []), [demo]);
 
@@ -568,6 +569,7 @@ function LoadingState() {
       <div className="grid flex-none grid-cols-2 border-b border-border sm:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
           <div
+            // biome-ignore lint/suspicious/noArrayIndexKey: fixed-length skeleton placeholders, never reordered.
             key={i}
             className="border-l border-border px-3 py-3 nth-[n+3]:border-t nth-[odd]:border-l-0 sm:px-5 sm:first:border-l-0 sm:nth-[n+3]:border-t-0 sm:nth-[odd]:border-l"
           >
@@ -579,6 +581,7 @@ function LoadingState() {
       <div className="flex-1 space-y-px p-px">
         {Array.from({ length: 8 }).map((_, i) => (
           <div
+            // biome-ignore lint/suspicious/noArrayIndexKey: fixed-length skeleton placeholders, never reordered.
             key={i}
             className="flex h-[34px] items-center gap-2.5 px-3 sm:px-5"
           >

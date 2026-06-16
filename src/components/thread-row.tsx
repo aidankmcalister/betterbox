@@ -182,7 +182,7 @@ export function ThreadRow({
             snippetFont === "mono" && "font-mono text-[11px]",
           )}
         >
-          {"  —  " + email.snippet}
+          {`  —  ${email.snippet}`}
         </span>
       )}
     </span>
@@ -240,7 +240,7 @@ export function ThreadRow({
           <button
             type="button"
             onClick={onClick}
-            className={cn(rowClass, "flex gap-2.5 px-3.5")}
+            className={cn(rowClass, "flex gap-2.5 px-3.5 py-2")}
           >
             {inboxAvatars ? (
               <span className="flex items-center gap-2 pt-[3px]">

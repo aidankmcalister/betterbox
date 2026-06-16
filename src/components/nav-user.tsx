@@ -79,7 +79,8 @@ export function NavUser({
     demoUser ??
     (demoMode
       ? { name: "Demo User", email: "personal@example.com", image: null }
-      : session!.user);
+      : // biome-ignore lint/style/noNonNullAssertion: the early return above guarantees a session here when no demoUser is supplied.
+        session!.user);
   const initials = (user.name ?? user.email ?? "?").slice(0, 2).toUpperCase();
 
   const profile = (
@@ -151,6 +152,7 @@ export function NavUser({
               <DropdownMenuLabel className="font-mono text-[9.5px] tracking-[0.5px] text-muted-foreground/70 uppercase">
                 Theme
               </DropdownMenuLabel>
+              {/* biome-ignore lint/a11y/useSemanticElements: a visual theme toggle group; a <fieldset> would impose default form styling inside the menu. */}
               <div role="group" aria-label="Theme" className="flex gap-1 px-1 pb-1">
                 {THEMES.map((option) => (
                   <Hint key={option.value} label={option.label}>
@@ -178,6 +180,7 @@ export function NavUser({
             <DropdownMenuGroup>
               <DropdownMenuItem
                 render={
+                  // biome-ignore lint/a11y/useAnchorContent: content (icon + "GitHub") is composed in by DropdownMenuItem via the render prop.
                   <a
                     href={GITHUB_URL}
                     target="_blank"

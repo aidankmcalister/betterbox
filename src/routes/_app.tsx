@@ -149,6 +149,7 @@ function AppShell() {
 
   const onDevPage = DEV_PATHS.has(location.pathname);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: folderSearch is derived from folder; depend on folder so the link rebuilds when the folder changes.
   const openEmail = useCallback(
     (accountId: string, emailId: string) =>
       navigate({
@@ -156,12 +157,10 @@ function AppShell() {
         params: { id: emailId },
         search: { account: accountId, ...folderSearch },
       }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [navigate, folder],
   );
   const closeReader = useCallback(
     () => navigate({ to: FOLDER_PATH[folder] }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [navigate, folder],
   );
   const openFolder = useCallback(
