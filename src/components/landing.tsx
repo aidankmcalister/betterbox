@@ -210,18 +210,28 @@ function Waitlist({ big = false, source }: { big?: boolean; source: string }) {
             type="email"
             value={email}
             placeholder="you@yourdomain.dev"
+            disabled={submitting}
             onChange={(e) => setEmail(e.target.value)}
             className={cn(
-              "min-w-0 flex-1 rounded-lg border border-input bg-card px-3.5 text-sm text-foreground outline-none focus:border-ring",
+              "min-w-0 flex-1 rounded-lg border border-input bg-card px-3.5 text-sm text-foreground outline-none focus:border-ring disabled:opacity-60",
               height,
             )}
           />
           <Button
             type="submit"
             size={big ? "lg" : "default"}
-            className={cn("shrink-0", height, big && "px-6 text-base")}
+            disabled={submitting}
+            aria-busy={submitting}
+            className={cn("relative shrink-0", height, big && "px-6 text-base")}
           >
-            {submitting ? "…" : "Notify me"}
+            {/* Keep the label in the DOM (invisible) so the button width
+                doesn't jump when it swaps to the spinner. */}
+            <span className={cn(submitting && "invisible")}>Notify me</span>
+            {submitting && (
+              <span className="absolute inset-0 flex items-center justify-center">
+                <span className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              </span>
+            )}
           </Button>
         </form>
         {error && (
