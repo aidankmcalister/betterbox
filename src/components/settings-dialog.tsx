@@ -7,15 +7,18 @@ import {
   Clapperboard,
   Command,
   Inbox,
+  Lock,
   MailIcon,
   Palette,
   PlusIcon,
   ShieldCheck,
   SquareTerminal,
   CircleUserRound,
+  Unplug,
   Wrench,
   XIcon,
 } from "lucide-react";
+import { toast } from "sonner";
 import type { ComponentType, ReactNode } from "react";
 
 import {
@@ -25,6 +28,7 @@ import {
   useSession,
 } from "@/lib/auth-client";
 import type { Account } from "@/lib/account";
+import { accountsQueryKey } from "@/lib/mail-queries";
 import {
   ACCENTS,
   setAccountColor,
@@ -45,6 +49,7 @@ import {
   DialogClose,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -281,6 +286,81 @@ function GithubIntegration() {
   );
 }
 
+/** Disconnect a linked (non-primary) Google account from BetterBox. Unlinks it
+ *  in Better Auth so its inbox/labels/sending stop showing up; nothing in Gmail
+ *  changes and it can be re-added later. Behind a confirm dialog. */
+function DisconnectAccountButton({ account }: { account: Account }) {
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const label = account.email || account.accountId;
+
+  const disconnect = useMutation({
+    mutationFn: () =>
+      authClient.unlinkAccount({
+        providerId: "google",
+        accountId: account.accountId,
+      }),
+    onSuccess: (res) => {
+      if (res?.error) {
+        toast.error("Couldn’t disconnect account", {
+          description: res.error.message,
+        });
+        return;
+      }
+      queryClient.invalidateQueries({ queryKey: accountsQueryKey });
+      queryClient.invalidateQueries({ queryKey: ["linked-accounts"] });
+      toast.success(`Disconnected ${label}`);
+      setOpen(false);
+    },
+    onError: (error) => {
+      toast.error("Couldn’t disconnect account", {
+        description: error instanceof Error ? error.message : String(error),
+      });
+    },
+  });
+
+  return (
+    <>
+      <Hint label="Disconnect account">
+        <button
+          type="button"
+          aria-label={`Disconnect ${label}`}
+          onClick={() => setOpen(true)}
+          className="inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground opacity-70 transition-opacity hover:bg-muted hover:text-destructive hover:opacity-100"
+        >
+          <Unplug className="size-4" />
+        </button>
+      </Hint>
+      <Dialog open={open} onOpenChange={(o) => !o && setOpen(false)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Disconnect this account?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Disconnect{" "}
+            <span className="font-mono text-foreground">{label}</span> from
+            BetterBox. Its inbox, labels, and sending stop showing up here.
+            Nothing in Gmail changes, and you can reconnect it anytime.
+          </p>
+          <DialogFooter>
+            <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              disabled={disconnect.isPending}
+              onClick={() => disconnect.mutate()}
+              className="bg-label-red text-white hover:bg-label-red/90"
+            >
+              {disconnect.isPending ? "Disconnecting…" : "Disconnect"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 function AccountsPage({ accounts }: { accounts: Account[] }) {
   const { data: session } = useSession();
   const { accountColors } = useSettings();
@@ -310,29 +390,44 @@ function AccountsPage({ accounts }: { accounts: Account[] }) {
                     <p className="text-xs text-muted-foreground">Primary</p>
                   )}
                 </div>
-                {/* biome-ignore lint/a11y/useSemanticElements: a visual swatch group; a <fieldset> would impose default form styling in the row. */}
-                <div
-                  role="group"
-                  aria-label={`Color for ${account.email}`}
-                  className="flex shrink-0 gap-1.5"
-                >
-                  {ACCOUNT_COLORS.map((color, colorIndex) => (
-                    <Hint key={color.label} label={color.label}>
-                      <button
-                        type="button"
-                        aria-pressed={activeIndex === colorIndex}
-                        onClick={() =>
-                          setAccountColor(account.accountId, colorIndex)
-                        }
-                        className={cn(
-                          "size-4.5 rounded-full transition-shadow",
-                          activeIndex === colorIndex &&
-                            "ring-2 ring-foreground ring-offset-2 ring-offset-background",
-                        )}
-                        style={{ background: color.value }}
-                      />
-                    </Hint>
-                  ))}
+                <div className="flex shrink-0 items-center gap-3">
+                  {/* biome-ignore lint/a11y/useSemanticElements: a visual swatch group; a <fieldset> would impose default form styling in the row. */}
+                  <div
+                    role="group"
+                    aria-label={`Color for ${account.email}`}
+                    className="flex gap-1.5"
+                  >
+                    {ACCOUNT_COLORS.map((color, colorIndex) => (
+                      <Hint key={color.label} label={color.label}>
+                        <button
+                          type="button"
+                          aria-pressed={activeIndex === colorIndex}
+                          onClick={() =>
+                            setAccountColor(account.accountId, colorIndex)
+                          }
+                          className={cn(
+                            "size-4.5 rounded-full transition-shadow",
+                            activeIndex === colorIndex &&
+                              "ring-2 ring-foreground ring-offset-2 ring-offset-background",
+                          )}
+                          style={{ background: color.value }}
+                        />
+                      </Hint>
+                    ))}
+                  </div>
+                  {/* The primary account is the signed-in identity — disconnecting
+                      it would drop your login, so it shows a lock in the
+                      disconnect slot instead, which also keeps rows aligned. */}
+                  {primaryEmail &&
+                    (account.email === primaryEmail ? (
+                      <Hint label="Primary account — can’t be disconnected">
+                        <span className="inline-flex size-7 shrink-0 items-center justify-center text-muted-foreground opacity-70">
+                          <Lock className="size-4" />
+                        </span>
+                      </Hint>
+                    ) : (
+                      <DisconnectAccountButton account={account} />
+                    ))}
                 </div>
               </div>
             );
