@@ -4,11 +4,15 @@
  * set from the client — this script is the out-of-band grant.
  *
  * Run with: bun --env-file=.env scripts/set-owner.ts <email>
- * Defaults to aidankmcalister@gmail.com when no email is given.
  */
 import prisma from "../src/lib/prisma.server";
 
-const email = process.argv[2] ?? "aidankmcalister@gmail.com";
+const email = process.argv[2];
+
+if (!email) {
+  console.error("Usage: bun --env-file=.env scripts/set-owner.ts <email>");
+  process.exit(1);
+}
 
 async function main() {
   const user = await prisma.user.update({
