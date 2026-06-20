@@ -32,41 +32,11 @@ cd betterbox
 bun install
 ```
 
-Create a `.env`:
-
-```dotenv
-# ── Required ──────────────────────────────────────────────
-DATABASE_URL=postgresql://...
-BETTER_AUTH_URL=http://localhost:3000
-BETTER_AUTH_SECRET=...          # also encrypts OAuth tokens at rest
-
-# ── Google / Gmail (required) ─────────────────────────────
-GOOGLE_CLIENT_ID=...
-GOOGLE_CLIENT_SECRET=...
-
-# ── Access control ────────────────────────────────────────
-# Comma-separated emails allowed to sign in.
-# Leave empty to allow anyone (not recommended for hosted).
-ALLOWED_EMAILS=you@example.com
-
-# ── Self-host mode ────────────────────────────────────────
-# Set to "true" on self-hosted instances.
-# Skips the landing page and waitlist. Goes straight to the app.
-# Leave unset on the official hosted deployment (betterbox.dev).
-IS_SELF_HOSTED=true
-
-# ── GitHub integration (optional) ─────────────────────────
-# Enables the Pull requests page.
-# See: Setup > GitHub integration below.
-# GITHUB_CLIENT_ID=...
-# GITHUB_CLIENT_SECRET=...
-
-# ── Linear integration (optional, coming soon) ────────────
-# Enables the Issues page.
-# See: Setup > Linear integration below.
-# LINEAR_CLIENT_ID=...
-# LINEAR_CLIENT_SECRET=...
+```bash
+cp .env.example .env
 ```
+
+Fill in the required values. See the comments in the file for what each variable does.
 
 In the Google Cloud console: enable the Gmail API, add the `gmail.modify` scope, and set the redirect URI to `http://localhost:3000/api/auth/callback/google`.
 
