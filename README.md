@@ -66,24 +66,7 @@ IS_SELF_HOSTED=true
 # See: Setup > Linear integration below.
 # LINEAR_CLIENT_ID=...
 # LINEAR_CLIENT_SECRET=...
-
-# ── Waitlist database (hosted only) ───────────────────────
-# Separate database for hosted-plan waitlist signups.
-# Self-hosters: ignore this — the waitlist is disabled when
-# IS_SELF_HOSTED=true.
-# WAITLIST_DATABASE_URL=postgresql://...
-
-# ── Stripe (hosted only, not yet implemented) ─────────────
-# Will be required for hosted billing when launched.
-# Self-hosters: ignore these entirely.
-# STRIPE_SECRET_KEY=
-# STRIPE_WEBHOOK_SECRET=
-# STRIPE_PRICE_ID=
 ```
-
-> `WAITLIST_DATABASE_URL` is only required on the official hosted
-> deployment (betterbox.dev). Self-hosters can ignore it — the waitlist
-> is disabled when `IS_SELF_HOSTED=true`.
 
 In the Google Cloud console: enable the Gmail API, add the `gmail.modify` scope, and set the redirect URI to `http://localhost:3000/api/auth/callback/google`.
 
