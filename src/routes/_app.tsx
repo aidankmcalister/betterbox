@@ -102,6 +102,16 @@ function AppShell() {
   const { data: accounts } = useAccountsQuery(!!session);
   const [testAccounts, setTestAccounts] = useState<Account[]>([]);
 
+  // Belt-and-suspenders for a fresh sign-in: the Google OAuth callback lands
+  // here once a session exists. Invalidate ["accounts"] so the freshly linked
+  // primary inbox is always refetched, even if anything cached an empty list.
+  const signedInUserId = session?.user?.id;
+  useEffect(() => {
+    if (signedInUserId) {
+      queryClient.invalidateQueries({ queryKey: accountsQueryKey });
+    }
+  }, [signedInUserId, queryClient]);
+
   const addTestAccount = useCallback(() => {
     setTestAccounts((current) => [
       ...current,
