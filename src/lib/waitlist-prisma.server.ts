@@ -1,20 +1,18 @@
 import { PrismaClient } from "../generated/waitlist/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 
-// Dedicated client for the waitlist database, separate from the app's main
-// prisma.server client. Public, no-auth writes (the /api/waitlist endpoint)
-// land here, isolated from the app's data.
-const rawUrl = process.env.WAITLIST_DATABASE_URL;
-const waitlistUrl = (rawUrl ?? "").trim();
-if (!waitlistUrl) {
-  throw new Error("WAITLIST_DATABASE_URL is required");
+// Dedicated client for the hosted-plan waitlist database, separate from the
+// app's main prisma.server client. Hosted-only: self-hosted instances disable
+// the /api/waitlist endpoint and never set WAITLIST_DATABASE_URL. The client is
+// created lazily so importing this module stays side-effect-free — an eager
+// client would throw on every instance, self-host included.
+let client: PrismaClient | undefined;
+
+export function getWaitlistPrisma(): PrismaClient {
+  if (!client) {
+    const url = (process.env.WAITLIST_DATABASE_URL ?? "").trim();
+    if (!url) throw new Error("WAITLIST_DATABASE_URL is required");
+    client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
+  }
+  return client;
 }
-
-const adapter = new PrismaPg({
-  connectionString: waitlistUrl,
-});
-
-const waitlistPrisma = new PrismaClient({ adapter });
-
-export { waitlistPrisma };
-export default waitlistPrisma;
