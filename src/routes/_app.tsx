@@ -1,5 +1,6 @@
 import {
   createFileRoute,
+  Navigate,
   Outlet,
   redirect,
   useLocation,
@@ -40,9 +41,12 @@ import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/sonner";
 
 export const Route = createFileRoute("/_app")({
-  // Resolve the session on the server so the first paint already knows whether
-  // to show the app or the landing — no authenticated-content flash.
-  beforeLoad: async () => {
+  // Resolve the session in a loader (cached, staleTime: Infinity) rather than
+  // beforeLoad: beforeLoad re-runs on every navigation, so it added a remote-DB
+  // session round-trip to each email open / folder switch (2-5s blank). The
+  // loader resolves once for the first paint and the auth guard; the client
+  // useSession() provides live updates after that.
+  loader: async () => {
     const session = await fetchSession();
     // Self-hosted instances have no marketing layer: an unauthenticated
     // visitor goes straight to sign-in instead of the landing page.
@@ -51,6 +55,7 @@ export const Route = createFileRoute("/_app")({
     }
     return { session };
   },
+  staleTime: Infinity,
   component: AppShell,
 });
 
@@ -89,9 +94,9 @@ function AppShell() {
   useApplyAccent();
   const isMobile = useIsMobile();
   const { devTools, demoMode, composerMode } = useSettings();
-  // The server already resolved the session (beforeLoad); use it until the
+  // The server already resolved the session (loader); use it until the
   // client query settles so the auth branch is correct on the very first paint.
-  const { session: serverSession } = Route.useRouteContext();
+  const { session: serverSession } = Route.useLoaderData();
   const { data: clientSession, isPending } = useSession();
   const session = isPending ? serverSession : clientSession;
   const queryClient = useQueryClient();
@@ -317,6 +322,10 @@ function AppShell() {
   const booting = isPending || allAccounts === null;
 
   if (!session) {
+    // The loader's auth guard is cached (staleTime), so a client-side sign-out
+    // won't re-trigger it. On self-host there's no landing page — send the
+    // signed-out user to sign-in; hosted falls back to the marketing landing.
+    if (IS_SELF_HOSTED) return <Navigate to="/sign-in" />;
     return <LandingPage />;
   }
 
