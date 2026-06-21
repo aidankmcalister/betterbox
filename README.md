@@ -14,7 +14,7 @@ A new interface for the Gmail accounts you already have. Built on the Gmail API,
 
 ---
 
-https://github.com/user-attachments/assets/25ccf3b2-7f29-44f9-814a-54f0ac2ed3f7
+[![BetterBox: two Gmail inboxes side by side in one tab](public/betterbox-demo.gif)](https://betterbox.dev)
 
 > [!WARNING]
 > **Mega-alpha.** Moving fast, expect rough edges. Self-host works today; hosted is [waitlisted](https://betterbox.dev).
