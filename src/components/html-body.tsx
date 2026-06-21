@@ -157,8 +157,9 @@ export function HtmlBody({
     style.textContent =
       // Auto-height + no horizontal scroll (so our ResizeObserver sizing works).
       "html,body{height:auto!important;min-height:0!important;margin:0!important;padding:0!important;overflow-x:hidden!important}" +
-      // System font base so web-font-reliant emails degrade cleanly (no serif).
-      'body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}' +
+      // System font base so web-font-reliant emails degrade cleanly (no serif),
+      // antialiased so unstyled body text renders crisp like a native client.
+      'body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}' +
       // Reset for table-based email layouts (most HTML email is built on tables).
       "table{border-collapse:collapse}" +
       "img,video,table{max-width:100%!important}" +
