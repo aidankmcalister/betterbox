@@ -412,6 +412,7 @@ export async function sendNewEmail(options: {
   inReplyTo?: string;
   references?: string;
   threadId?: string;
+  attachments?: { filename: string; mimeType: string; contentBase64: string }[];
 }) {
   if (isTestAccount(options.accountId)) return;
   await fetchJson("/api/send", {

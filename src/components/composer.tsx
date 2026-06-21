@@ -120,6 +120,9 @@ export function Composer({
   const [error, setError] = useState<string | null>(null);
   // Preview renders the body as the recipient sees it (rich text → HTML).
   const [preview, setPreview] = useState(false);
+  // Files staged for this message, read to base64 in the browser.
+  const [files, setFiles] = useState<StagedFile[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // From: an explicit pick (fromId) wins; otherwise the configured default
   // send-from account, then the primary inbox, then the first sendable one.
@@ -164,6 +167,7 @@ export function Composer({
     setError(null);
     setSending(false);
     setPreview(false);
+    setFiles([]);
     onOpenChange(false);
   };
 
@@ -196,6 +200,28 @@ export function Composer({
     reset();
   };
 
+  const onPickFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const picked = Array.from(e.target.files ?? []);
+    e.target.value = ""; // let the same file be picked again later
+    if (picked.length === 0) return;
+    try {
+      const staged = await Promise.all(picked.map(readFileAsBase64));
+      setFiles((prev) => {
+        const next = [...prev, ...staged];
+        // ~25 MB decoded ≈ 34 MB of base64 — Gmail's send ceiling.
+        if (next.reduce((s, f) => s + f.base64.length, 0) > 34_000_000) {
+          toast.error("Attachments too large", { description: "25 MB max." });
+          return prev;
+        }
+        return next;
+      });
+    } catch {
+      toast.error("Couldn’t read that file");
+    }
+  };
+  const removeFile = (id: string) =>
+    setFiles((prev) => prev.filter((f) => f.id !== id));
+
   const send = async () => {
     if (!canSend || !from) return;
     setSending(true);
@@ -212,6 +238,11 @@ export function Composer({
         inReplyTo: reply?.inReplyTo,
         references: reply?.references,
         threadId: reply?.threadId,
+        attachments: files.map((f) => ({
+          filename: f.name,
+          mimeType: f.type,
+          contentBase64: f.base64,
+        })),
       });
       // A sent draft leaves the Drafts folder.
       if (draft) {
@@ -407,6 +438,37 @@ export function Composer({
         )}
       </div>
 
+      {files.length > 0 && (
+        <div className="flex flex-wrap gap-2 border-t px-3.5 py-2.5">
+          {files.map((f) => (
+            <span
+              key={f.id}
+              className="inline-flex items-center gap-2 rounded-lg border bg-secondary px-2.5 py-1.5 text-[12px]"
+            >
+              <PaperclipIcon className="size-3.5 flex-none text-muted-foreground" />
+              <span className="max-w-[180px] truncate font-medium text-foreground">
+                {f.name}
+              </span>
+              <button
+                type="button"
+                onClick={() => removeFile(f.id)}
+                aria-label={`Remove ${f.name}`}
+                className="flex-none text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <XIcon className="size-3.5" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        onChange={onPickFiles}
+        className="hidden"
+      />
+
       <footer className="flex items-center gap-2 border-t px-3.5 pt-[11px] pb-[max(11px,env(safe-area-inset-bottom))] sm:pb-[11px]">
         <Button size="sm" disabled={!canSend} onClick={() => void send()}>
           <SendIcon data-icon="inline-start" />
@@ -436,9 +498,8 @@ export function Composer({
           />
           <FooterIcon
             icon={PaperclipIcon}
-            title="Attachments (soon)"
-            disabled
-            className="hidden sm:inline-flex"
+            title="Attach files"
+            onClick={() => fileInputRef.current?.click()}
           />
           <FooterIcon
             icon={Trash2Icon}
@@ -449,6 +510,33 @@ export function Composer({
       </footer>
     </section>
   );
+}
+
+type StagedFile = {
+  id: string;
+  name: string;
+  type: string;
+  size: number;
+  base64: string;
+};
+
+/** Read a picked file to a base64 string (no data: prefix) for the send payload. */
+function readFileAsBase64(file: File): Promise<StagedFile> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error ?? new Error("read failed"));
+    reader.onload = () => {
+      const result = String(reader.result);
+      resolve({
+        id: crypto.randomUUID(),
+        name: file.name,
+        type: file.type || "application/octet-stream",
+        size: file.size,
+        base64: result.slice(result.indexOf(",") + 1),
+      });
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
 /** Escape a plain-text draft and preserve its line breaks so it seeds the rich

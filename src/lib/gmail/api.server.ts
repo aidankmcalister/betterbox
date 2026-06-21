@@ -475,6 +475,7 @@ export async function sendEmail(
     inReplyTo?: string;
     references?: string;
     threadId?: string;
+    attachments?: { filename: string; mimeType: string; contentBase64: string }[];
   },
 ): Promise<void> {
   const from = await getEmailAddress(accessToken);
@@ -507,34 +508,69 @@ export async function sendEmail(
       .toString("base64")
       .replace(/(.{76})/g, "$1\r\n");
 
-  let mime: string;
+  // The message body, as a single MIME part: text/plain alone, or a
+  // multipart/alternative (plain + html). `bodyType` is its Content-Type header
+  // value; `bodyRest` is everything after that header.
+  let bodyType: string;
+  let bodyRest: string[];
   if (options.html?.trim()) {
     const text = options.body.trim() ? options.body : stripHtml(options.html);
-    const boundary = `bb_${randomUUID()}`;
-    mime = [
-      ...headerLines,
-      `Content-Type: multipart/alternative; boundary="${boundary}"`,
+    const altBoundary = `bbalt_${randomUUID()}`;
+    bodyType = `multipart/alternative; boundary="${altBoundary}"`;
+    bodyRest = [
       "",
-      `--${boundary}`,
+      `--${altBoundary}`,
       'Content-Type: text/plain; charset="UTF-8"',
       "Content-Transfer-Encoding: base64",
       "",
       b64(text),
-      `--${boundary}`,
+      `--${altBoundary}`,
       'Content-Type: text/html; charset="UTF-8"',
       "Content-Transfer-Encoding: base64",
       "",
       b64(options.html),
-      `--${boundary}--`,
-    ].join("\r\n");
+      `--${altBoundary}--`,
+    ];
   } else {
-    mime = [
+    bodyType = 'text/plain; charset="UTF-8"';
+    bodyRest = ["Content-Transfer-Encoding: base64", "", b64(options.body)];
+  }
+
+  const attachments = options.attachments ?? [];
+  let mime: string;
+  if (attachments.length === 0) {
+    mime = [...headerLines, `Content-Type: ${bodyType}`, ...bodyRest].join(
+      "\r\n",
+    );
+  } else {
+    // Wrap the body part and the attachments in a multipart/mixed envelope.
+    const mixed = `bbmix_${randomUUID()}`;
+    const lines = [
       ...headerLines,
-      'Content-Type: text/plain; charset="UTF-8"',
-      "Content-Transfer-Encoding: base64",
+      `Content-Type: multipart/mixed; boundary="${mixed}"`,
       "",
-      b64(options.body),
-    ].join("\r\n");
+      `--${mixed}`,
+      `Content-Type: ${bodyType}`,
+      ...bodyRest,
+    ];
+    for (const att of attachments) {
+      // Strip CR/LF/quotes from the filename so it can't break out of the
+      // header; keep only valid base64 chars, then wrap at 76 columns.
+      const name = att.filename.replace(/[\r\n"]+/g, "_");
+      const data = att.contentBase64
+        .replace(/[^A-Za-z0-9+/=]/g, "")
+        .replace(/(.{76})/g, "$1\r\n");
+      lines.push(
+        `--${mixed}`,
+        `Content-Type: ${headerSafe(att.mimeType || "application/octet-stream")}; name="${name}"`,
+        "Content-Transfer-Encoding: base64",
+        `Content-Disposition: attachment; filename="${name}"`,
+        "",
+        data,
+      );
+    }
+    lines.push(`--${mixed}--`);
+    mime = lines.join("\r\n");
   }
 
   const payload: { raw: string; threadId?: string } = {

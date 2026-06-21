@@ -23,9 +23,24 @@ export const Route = createFileRoute("/api/send")({
           inReplyTo?: string;
           references?: string;
           threadId?: string;
+          attachments?: {
+            filename: string;
+            mimeType: string;
+            contentBase64: string;
+          }[];
         } | null;
         if (!body?.accountId || !body.to?.trim()) {
           return json({ error: "accountId and to are required" }, 400);
+        }
+
+        // Cap total attachment size (~25 MB decoded ≈ 34 MB of base64), at or
+        // below Gmail's send limit, so a huge payload can't be forced through.
+        const attachmentBytes = (body.attachments ?? []).reduce(
+          (sum, a) => sum + (a.contentBase64?.length ?? 0),
+          0,
+        );
+        if (attachmentBytes > 34_000_000) {
+          return json({ error: "Attachments too large (25 MB max)" }, 413);
         }
 
         const accessToken = await getGoogleToken(
@@ -45,6 +60,7 @@ export const Route = createFileRoute("/api/send")({
             inReplyTo: body.inReplyTo,
             references: body.references,
             threadId: body.threadId,
+            attachments: body.attachments,
           });
           return json({ ok: true });
         } catch (error) {
