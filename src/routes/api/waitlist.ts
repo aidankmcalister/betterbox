@@ -1,4 +1,4 @@
-import prisma from "@/lib/prisma.server";
+import { getWaitlistPrisma } from "@/lib/waitlist-prisma.server";
 import { json, jsonError } from "@/lib/json-response";
 import { IS_SELF_HOSTED } from "@/lib/env";
 import { createFileRoute } from "@tanstack/react-router";
@@ -28,12 +28,13 @@ export const Route = createFileRoute("/api/waitlist")({
         }
 
         try {
-          const existing = await prisma.waitlistEntry.findUnique({
+          const waitlistPrisma = getWaitlistPrisma();
+          const existing = await waitlistPrisma.waitlistEntry.findUnique({
             where: { email },
           });
           if (existing) return json({ status: "already_registered" });
 
-          await prisma.waitlistEntry.create({
+          await waitlistPrisma.waitlistEntry.create({
             data: { email, source: body?.source ?? null },
           });
           return json({ status: "ok" });
