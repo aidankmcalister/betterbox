@@ -18,7 +18,7 @@ export const Route = createFileRoute("/privacy")({
 
 /** Last updated — bump this whenever the policy text changes. */
 const LAST_UPDATED = "June 16, 2026";
-const CONTACT_EMAIL = "help@betterbox.dev";
+const CONTACT_EMAIL = "aidankmcalister@gmail.com";
 
 function Privacy() {
   return (
