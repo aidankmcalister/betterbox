@@ -157,6 +157,9 @@ export function HtmlBody({
     style.textContent =
       // Auto-height + no horizontal scroll (so our ResizeObserver sizing works).
       "html,body{height:auto!important;min-height:0!important;margin:0!important;padding:0!important;overflow-x:hidden!important}" +
+      // Breathing room so body text isn't flush to the card edge. Sits inside
+      // the email's own background, so it reads right on white and dark emails.
+      "body{padding:16px 20px!important}" +
       // System font base so web-font-reliant emails degrade cleanly (no serif),
       // antialiased so unstyled body text renders crisp like a native client.
       'body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}' +

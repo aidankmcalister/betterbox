@@ -312,7 +312,7 @@ function Kpi({
   label: string;
   value: number;
   accent?: boolean;
-  sub: string;
+  sub?: string;
 }) {
   return (
     <div className="border-l border-border px-3 pt-[9px] pb-2.5 nth-[n+3]:border-t nth-[odd]:border-l-0 sm:px-5 sm:first:border-l-0 sm:nth-[n+3]:border-t-0 sm:nth-[odd]:border-l">
@@ -326,9 +326,11 @@ function Kpi({
         >
           {value}
         </span>
-        <span className="font-mono text-[11px] text-muted-foreground/60">
-          {sub}
-        </span>
+        {sub && (
+          <span className="font-mono text-[11px] text-muted-foreground/60">
+            {sub}
+          </span>
+        )}
       </div>
     </div>
   );
@@ -493,14 +495,9 @@ export function PullRequestsPage({
       {/* KPI strip */}
       <div className="grid flex-none grid-cols-2 border-b border-border sm:grid-cols-4">
         <Kpi label="Open" value={nOpen} sub="incl. drafts" />
-        <Kpi
-          label="Awaiting your review"
-          value={nReview}
-          accent
-          sub="for you"
-        />
-        <Kpi label="Changes requested" value={nChanges} sub="needs work" />
-        <Kpi label="Merged" value={nMerged} sub="shipped" />
+        <Kpi label="Awaiting your review" value={nReview} accent />
+        <Kpi label="Changes requested" value={nChanges} />
+        <Kpi label="Merged" value={nMerged} />
       </div>
 
       {/* filter bar */}
