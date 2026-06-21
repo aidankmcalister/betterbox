@@ -12,8 +12,6 @@ A new interface for the Gmail accounts you already have. Built on the Gmail API,
 
 <p>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="License: MIT" /></a>
-  <a href="https://github.com/aidankmcalister/betterbox/stargazers"><img src="https://img.shields.io/github/stars/aidankmcalister/betterbox" alt="GitHub stars" /></a>
-  <a href="https://github.com/aidankmcalister/betterbox/pulse"><img src="https://img.shields.io/github/commit-activity/m/aidankmcalister/betterbox" alt="Commit activity" /></a>
   <a href="https://github.com/aidankmcalister/betterbox/pulls"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen" alt="PRs welcome" /></a>
 </p>
 
@@ -22,7 +20,7 @@ A new interface for the Gmail accounts you already have. Built on the Gmail API,
 ---
 
 > [!WARNING]
-> **Mega-alpha.** BetterBox is under active development and moves fast. Expect rough edges, breaking changes, and the occasional `Soon` badge on features that aren't wired up yet. Self-host works today, straight from source. The hosted version is behind a [waitlist](https://betterbox.dev) while I gauge demand.
+> **Mega-alpha.** BetterBox is under active development and moves fast. Expect rough edges, breaking changes, and the occasional `Soon` badge on features that aren't wired up yet. Self-host works today, straight from source. The hosted version is currently behind a [waitlist](https://betterbox.dev).
 
 ## What it is
 
@@ -98,7 +96,7 @@ bun run dev        # http://localhost:3000
 
 Open [http://localhost:3000](http://localhost:3000) and sign in with Google. That account is yours.
 
-### 6. Restrict sign-ups (optional)
+### Restrict sign-ups (optional)
 
 Anyone can create an account by default. To limit it, set a comma-separated allowlist:
 
@@ -169,16 +167,6 @@ Hosted ($5/mo) is the same code, run and updated by me, for people who would rat
 ## Contributing
 
 Issues and pull requests are welcome. See [CONTRIBUTING](.github/CONTRIBUTING.md). In short: `bun install`, `bun run dev`, then run `bun run typecheck` and `bun run format` before pushing.
-
-## Contributors
-
-<a href="https://github.com/aidankmcalister/betterbox/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=aidankmcalister/betterbox" alt="Contributors" />
-</a>
-
-## Acknowledgements
-
-BetterBox stands on a lot of open source. Thanks to [TanStack Start](https://tanstack.com/start), [Better Auth](https://better-auth.com), [Prisma](https://prisma.io), [shadcn/ui](https://ui.shadcn.com), [Base UI](https://base-ui.com), [Tailwind CSS](https://tailwindcss.com), and [Bun](https://bun.sh).
 
 ## License
 
