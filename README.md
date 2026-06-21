@@ -14,7 +14,7 @@ A new interface for the Gmail accounts you already have. Built on the Gmail API,
 
 ---
 
-[![BetterBox: two Gmail inboxes side by side in one tab](public/betterbox-demo.gif)](https://betterbox.dev)
+https://github.com/user-attachments/assets/25ccf3b2-7f29-44f9-814a-54f0ac2ed3f7
 
 > [!WARNING]
 > **Mega-alpha.** Moving fast, expect rough edges. Self-host works today; hosted is [waitlisted](https://betterbox.dev).
@@ -23,7 +23,7 @@ Your mail stays in Gmail. BetterBox does not move, migrate, or store it. It puts
 
 ## Setup
 
-You'll need [Bun](https://bun.sh), PostgreSQL, and a Google Cloud OAuth app.
+You'll need [Bun](https://bun.sh), a PostgreSQL database, and a Google Cloud OAuth app.
 
 ```bash
 git clone https://github.com/aidankmcalister/betterbox.git
@@ -32,20 +32,22 @@ bun install
 cp .env.example .env
 ```
 
-Fill in `.env` (the comments explain each value), then:
+Set the core values in `.env`: `DATABASE_URL`, `BETTER_AUTH_URL` (`http://localhost:3000` locally), and `BETTER_AUTH_SECRET` (generate with `npx auth@latest secret`; it also encrypts OAuth tokens at rest).
+
+**Google (required).** In the [Cloud Console](https://console.cloud.google.com), enable the Gmail API and, on the OAuth consent screen, add the `gmail.modify` scope (keep the app in Testing to skip Google's ~$750/yr assessment). Create an OAuth client with redirect URI `http://localhost:3000/api/auth/callback/google`, then set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
+
+Create the schema and start it:
 
 ```bash
-bun run db:push   # create the schema
-bun run dev       # http://localhost:3000
+bun run db:push
+bun run dev        # http://localhost:3000
 ```
 
-Sign in with Google. `ALLOWED_EMAILS` is a comma-separated allowlist (empty allows anyone). For owner tools (seeded demo accounts): `bun run set-owner you@example.com`.
+Sign in with Google. `ALLOWED_EMAILS` is a comma-separated allowlist for new accounts (empty allows anyone). For owner tools (seeded demo accounts): `bun run set-owner you@example.com`.
 
-**Google (required).** In the [Cloud Console](https://console.cloud.google.com), enable the Gmail API, add the `gmail.modify` scope, and create an OAuth client with redirect URI `http://localhost:3000/api/auth/callback/google`. Keep the app in Testing to skip Google's ~$750/yr assessment.
+**GitHub (optional).** Enables the Pull requests page. Create an OAuth app in [Developer Settings](https://github.com/settings/developers) with callback `http://localhost:3000/api/auth/callback/github`, set `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET`, then connect it from Settings. It requests `read:user` and `repo` (`repo` so it can read your private PRs).
 
-**GitHub (optional).** Powers the Pull requests page. Create an OAuth app in [Developer Settings](https://github.com/settings/developers) with callback `http://localhost:3000/api/auth/callback/github`, add the keys to `.env`, then connect it from Settings. Scopes: `read:user`, `repo` (or `public_repo` for public only).
-
-**Linear (soon).** The Issues page is on the way.
+**Linear (coming soon).** The Issues page isn't built yet. When it ships it'll work like GitHub: set `LINEAR_CLIENT_ID` and `LINEAR_CLIENT_SECRET`, then connect it from Settings.
 
 ## Features
 
