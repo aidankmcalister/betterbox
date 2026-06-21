@@ -156,18 +156,30 @@ function htmlToText(html: string): string {
 }
 
 function testAccountDrafts(accountId: string): ThreadRowEmail[] {
-  const seed = Number(accountId.replace(TEST_ACCOUNT_PREFIX, "")) || 1;
   return [...testDrafts.values()]
     .filter((draft) => draft.accountId === accountId)
     .map((draft) => ({
       id: draft.id,
-      from: `You <test${seed}@example.dev>`,
+      from: `You <${testAccountEmail(accountId)}>`,
       subject: draft.subject || "(no subject)",
       snippet: htmlToText(draft.html),
       date: draft.date,
       unread: false,
       labelIds: [],
     }));
+}
+
+/** Friendly per-account address shown in the demo and in the reader's To/From,
+ *  so a recording never surfaces a `test-N@example.dev` artifact. Falls back to
+ *  a generic alias for any account beyond the seeded demo pair. */
+const DEMO_EMAIL_BY_INDEX: Record<number, string> = {
+  1: "personal@example.com",
+  2: "work@example.com",
+};
+
+function testAccountEmail(accountId: string): string {
+  const index = Number(accountId.replace(TEST_ACCOUNT_PREFIX, "")) || 1;
+  return DEMO_EMAIL_BY_INDEX[index] ?? `you+${index}@example.com`;
 }
 
 export function makeTestAccount(index: number) {
@@ -187,8 +199,8 @@ export function testInboxUnread(accountId: string): number {
 // Demo mode replaces real Gmail accounts with these so nothing private appears on screen while recording.
 export function makeDemoAccounts() {
   return [
-    { ...makeTestAccount(1), email: "personal@example.com" },
-    { ...makeTestAccount(2), email: "work@example.com" },
+    { ...makeTestAccount(1), email: testAccountEmail("test-1") },
+    { ...makeTestAccount(2), email: testAccountEmail("test-2") },
   ];
 }
 
@@ -196,10 +208,9 @@ export function makeTestFullEmail(accountId: string, emailId: string) {
   // A composer-authored draft resolves from the store, not the seeded set.
   const stored = getTestDraft(emailId);
   if (stored) {
-    const seed = Number(accountId.replace(TEST_ACCOUNT_PREFIX, "")) || 1;
     return {
       id: emailId,
-      from: `You <test${seed}@example.dev>`,
+      from: `You <${testAccountEmail(accountId)}>`,
       to: stored.to,
       subject: stored.subject || "(no subject)",
       date: stored.date,
@@ -219,14 +230,15 @@ export function makeTestFullEmail(accountId: string, emailId: string) {
   const row = makeTestEmails(accountId, folder).find(
     (email) => email.id === emailId,
   );
-  const index = Number(accountId.replace(TEST_ACCOUNT_PREFIX, "")) || 1;
-  // Drafts open in the composer — give them just their own text (no reader
-  // boilerplate) and an empty recipient to fill in.
+  // Drafts open in the composer — give them just their own text and an empty
+  // recipient to fill in. Everything else renders the message's own body (the
+  // 4th demo-mail field), falling back to the snippet when one isn't written.
   const isDraft = folder === "drafts";
+  const body = testMailEntry(accountId, emailId)?.[3] ?? row?.snippet ?? "";
   return {
     id: emailId,
     from: row?.from ?? "Test <test@example.dev>",
-    to: isDraft ? "" : `test${index}@example.dev`,
+    to: isDraft ? "" : testAccountEmail(accountId),
     subject: row?.subject ?? "(no subject)",
     date: row?.date ?? "",
     messageId: `<${emailId}@example.dev>`,
@@ -236,9 +248,7 @@ export function makeTestFullEmail(accountId: string, emailId: string) {
     snippet: row?.snippet,
     unread: row?.unread ?? false,
     labelIds: getTestEmailLabelIds(accountId, emailId),
-    body: isDraft
-      ? (row?.snippet ?? "")
-      : `${row?.snippet ?? ""}\n\nThis is a generated message on a dev test account — there is no real mail behind it. Use it to exercise the reader pane: drag its header to dock it elsewhere, resize the seams, and toggle technical metadata in Settings → Developer.`,
+    body: isDraft ? (row?.snippet ?? "") : body,
     bodyHtml: undefined,
   };
 }
@@ -259,7 +269,12 @@ export function makeTestRawEmail(accountId: string, emailId: string): string {
   ].join("\n");
 }
 
-type Mail = readonly [name: string, subject: string, snippet: string];
+type Mail = readonly [
+  name: string,
+  subject: string,
+  snippet: string,
+  body?: string,
+];
 
 const FOLDER_MAIL: Record<
   Folder,
@@ -295,6 +310,21 @@ function folderFromId(accountId: string, emailId: string): Folder {
   return toFolder(rest.split("-")[0]);
 }
 
+/** Recover the source demo-mail tuple for a seeded message id, mirroring the
+ *  index math in makeTestEmails, so the reader can render the same row's body.
+ *  Returns undefined for composer-authored drafts (no seeded tuple). */
+function testMailEntry(accountId: string, emailId: string): Mail | undefined {
+  const folder = folderFromId(accountId, emailId);
+  const rest = emailId.startsWith(`${accountId}-`)
+    ? emailId.slice(accountId.length + 1)
+    : emailId;
+  const i = Number(rest.split("-")[1]);
+  if (!Number.isInteger(i)) return undefined;
+  const seed = Number(accountId.replace(TEST_ACCOUNT_PREFIX, "")) || 1;
+  const { mail } = FOLDER_MAIL[folder];
+  return mail[(seed * 5 + i) % mail.length];
+}
+
 export function makeTestEmails(
   accountId: string,
   folder: Folder = "inbox",
@@ -314,7 +344,7 @@ export function makeTestEmails(
     minutesAgo += 28 + ((seed * 17 + i * 13) % 53);
     const [name, subject, snippet] = mail[(seed * 5 + i) % mail.length];
     const from = self
-      ? `You <test${seed}@example.dev>`
+      ? `You <${testAccountEmail(accountId)}>`
       : `${name} <noreply@${name.toLowerCase().replace(/[^a-z0-9]/g, "")}.com>`;
     const id = `${accountId}-${folder}-${i}`;
     const seedUnread = allRead ? false : (seed * 3 + i) % 4 === 0;

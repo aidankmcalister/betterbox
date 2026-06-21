@@ -3,33 +3,63 @@
     [
       "GitHub",
       "[acme/web] PR #214 merged",
-      "fix: debounce token refresh on 401"
+      "fix: debounce token refresh on 401",
+      "aidan merged pull request #214 into main.\n\nfix: debounce token refresh on 401\n\nThe refresh now waits 300ms and coalesces concurrent 401s into a single retry, so a burst of expired-token requests no longer fans out into a dozen refreshes. 3 files changed, +48 -12.\n\nView the pull request on GitHub."
     ],
-    ["Vercel", "Deployment ready", "acme-web deployed to production in 34s"],
+    [
+      "Vercel",
+      "Deployment ready",
+      "acme-web deployed to production in 34s",
+      "Your deployment is live.\n\nProject: acme-web\nEnvironment: Production\nDuration: 34s\nCommit: fix: debounce token refresh on 401\n\nVisit your deployment at acme-web.vercel.app."
+    ],
     [
       "Stripe",
       "Your invoice is available",
-      "Invoice #A1B2-0042 for $20.00 is ready"
+      "Invoice #A1B2-0042 for $20.00 is ready",
+      "Invoice #A1B2-0042\n\nAmount due: $20.00\nDue: July 1, 2026\n\nThis covers your monthly plan for June. No action is needed, the card on file will be charged automatically. Your receipt will follow once the payment clears."
     ],
     [
       "Dependabot",
       "Bump vite from 6.0.1 to 6.0.4",
-      "CI passed on all 9 checks"
+      "CI passed on all 9 checks",
+      "Dependabot opened a pull request to bump vite from 6.0.1 to 6.0.4.\n\nThis is a patch release with bug fixes only. All 9 status checks passed, including the build and the full test suite.\n\nMerge it when you're ready, or let auto-merge handle it."
     ],
-    ["npm", "acme-ui@2.4.1 published", "Published to the npm registry"],
+    [
+      "npm",
+      "acme-ui@2.4.1 published",
+      "Published to the npm registry",
+      "acme-ui@2.4.1 is now published to the npm registry.\n\nPublished by: aidan\nTarball size: 142 kB\n\nInstall it with npm i acme-ui@2.4.1. If you didn't publish this, rotate your access token right away."
+    ],
     [
       "Linear",
       "3 issues assigned to you",
-      "ACM-114, ACM-118, ACM-121 moved to In Progress"
+      "ACM-114, ACM-118, ACM-121 moved to In Progress",
+      "Three issues were assigned to you and moved to In Progress:\n\nACM-114  Token refresh retries on 401\nACM-118  Reader pane drag target is too small\nACM-121  Pane resize stutters on Safari\n\nOpen Linear to see estimates and due dates."
     ],
-    ["Discord", "2 new mentions in #dev", "@dev: can we bump the rate limit?"],
+    [
+      "Discord",
+      "2 new mentions in #dev",
+      "@dev: can we bump the rate limit?",
+      "You have 2 unread mentions in #dev.\n\njordan: can we bump the rate limit on the staging proxy? we're hitting 429s during the load test\nsam: +1, same on my end\n\nJump back into Discord to reply."
+    ],
     [
       "Google Cloud",
       "Quota warning",
-      "storage.googleapis.com at 78% of daily quota"
+      "storage.googleapis.com at 78% of daily quota",
+      "One of your quotas is approaching its daily limit.\n\nService: storage.googleapis.com\nUsage: 78% of the daily quota\nProject: acme-prod\n\nNothing is failing yet. If usage keeps climbing you can request a higher quota from the console."
     ],
-    ["AWS", "Your bill is available", "Estimated charges for June: $4.87"],
-    ["Figma", "Comments on Design System", "2 new comments on Component Spec"]
+    [
+      "AWS",
+      "Your bill is available",
+      "Estimated charges for June: $4.87",
+      "Your estimated charges for the current billing period are available.\n\nBilling period: June 2026\nEstimated total: $4.87\n\nTop services: S3, CloudFront, and Lambda. This is an estimate and may change before the period closes."
+    ],
+    [
+      "Figma",
+      "Comments on Design System",
+      "2 new comments on Component Spec",
+      "You have 2 new comments in Design System.\n\nmaya: should the resize handle use the accent color or stay neutral?\nmaya: also the empty state could use a little more padding\n\nOpen the file in Figma to reply."
+    ]
   ],
   "archived": [
     ["Notion", "Your weekly digest", "12 pages updated across 3 teamspaces"],
