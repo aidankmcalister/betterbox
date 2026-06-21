@@ -39,10 +39,28 @@ export const Route = createFileRoute("/api/message")({
           if (thread) {
             return json({ messages: await getThread(accessToken, thread) });
           }
-          // Inline (cid:) attachment bytes for the reader's image rendering.
+          // Attachment bytes: inline (cid:) images for the reader, or a named
+          // attachment download (&download=1).
           if (attachment && id) {
             const bytes = await getAttachment(accessToken, id, attachment);
             const mime = url.searchParams.get("mime") ?? "";
+            if (url.searchParams.get("download") === "1") {
+              // Force a download so nothing renders inline same-origin (e.g. an
+              // HTML attachment can't execute as a page). Sanitize the filename.
+              const filename = (url.searchParams.get("filename") || "attachment")
+                .replace(/[^\w.\- ]+/g, "_")
+                .slice(0, 200);
+              const type = /^[\w.+-]+\/[\w.+-]+$/.test(mime)
+                ? mime
+                : "application/octet-stream";
+              return new Response(bytes, {
+                headers: {
+                  "content-type": type,
+                  "content-disposition": `attachment; filename="${filename}"`,
+                  "cache-control": "private, max-age=86400",
+                },
+              });
+            }
             // Only honor an image type (these render in <img>); else generic.
             const type = /^image\/[\w.+-]+$/i.test(mime)
               ? mime

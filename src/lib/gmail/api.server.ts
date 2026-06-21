@@ -256,6 +256,8 @@ export type FullEmail = Email & {
   /** cid (Content-ID, sans angle brackets) → attachment, for rendering inline
    *  images referenced as <img src="cid:…">. */
   inlineAttachments: Record<string, InlineAttachment>;
+  /** Named, downloadable attachments (excludes inline cid: images). */
+  attachments: AttachmentMeta[];
   body: string;
   bodyHtml?: string;
 };
@@ -264,12 +266,20 @@ type MessagePart = {
   mimeType?: string;
   filename?: string;
   headers?: { name: string; value: string }[];
-  body?: { data?: string; attachmentId?: string };
+  body?: { data?: string; attachmentId?: string; size?: number };
   parts?: MessagePart[];
 };
 
 /** An inline (Content-ID) attachment — fetched on demand to render cid: images. */
 export type InlineAttachment = { attachmentId: string; mimeType: string };
+
+/** A named, downloadable attachment (the paperclip kind, not inline images). */
+export type AttachmentMeta = {
+  attachmentId: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+};
 
 type RawMessage = {
   id?: string;
@@ -299,6 +309,7 @@ function parseMessage(message: RawMessage): FullEmail {
     labelIds: message.labelIds ?? [],
     hasAttachment: message.payload ? hasAttachmentPart(message.payload) : false,
     inlineAttachments: message.payload ? collectInline(message.payload) : {},
+    attachments: message.payload ? collectAttachments(message.payload) : [],
     snippet: message.snippet,
     unread: message.labelIds?.includes("UNREAD") ?? false,
     ...extractBody(message.payload),
@@ -328,6 +339,28 @@ function collectInline(
     };
   }
   for (const child of part.parts ?? []) collectInline(child, out);
+  return out;
+}
+
+/** Walk the MIME tree collecting named, downloadable attachments — parts with a
+ *  filename and a fetchable attachmentId. Skips inline images (those carry a
+ *  Content-ID and are rendered in the body, not listed as attachments). */
+function collectAttachments(
+  part: MessagePart,
+  out: AttachmentMeta[] = [],
+): AttachmentMeta[] {
+  const hasCid = part.headers?.some(
+    (h) => h.name.toLowerCase() === "content-id",
+  );
+  if (part.filename && part.body?.attachmentId && !hasCid) {
+    out.push({
+      attachmentId: part.body.attachmentId,
+      filename: part.filename,
+      mimeType: part.mimeType ?? "application/octet-stream",
+      size: part.body.size ?? 0,
+    });
+  }
+  for (const child of part.parts ?? []) collectAttachments(child, out);
   return out;
 }
 

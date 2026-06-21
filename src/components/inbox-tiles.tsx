@@ -138,6 +138,14 @@ function htmlToPlainText(html: string): string {
     .trim();
 }
 
+/** Human-readable attachment size. */
+function formatBytes(n: number): string {
+  if (!n) return "";
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`;
+  return `${(n / 1024 / 1024).toFixed(1)} MB`;
+}
+
 const STORAGE_KEY = "bm.tiles-layout";
 const FULL_EMAIL_MIN_WIDTH = 330;
 
@@ -1437,6 +1445,31 @@ function ThreadMessage({
           </div>
         )}
       </div>
+
+      {message.attachments && message.attachments.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {message.attachments.map((att) => (
+            <a
+              key={att.attachmentId}
+              href={`/api/message?accountId=${encodeURIComponent(accountId)}&id=${encodeURIComponent(message.id)}&attachment=${encodeURIComponent(att.attachmentId)}&mime=${encodeURIComponent(att.mimeType)}&download=1&filename=${encodeURIComponent(att.filename)}`}
+              download={att.filename}
+              className="inline-flex max-w-full items-center gap-2 rounded-lg border bg-card px-3 py-2 transition-colors hover:bg-popover"
+            >
+              <FileTextIcon className="size-4 flex-none text-muted-foreground" />
+              <span className="min-w-0">
+                <span className="block truncate text-[13px] font-medium text-foreground">
+                  {att.filename}
+                </span>
+                {att.size > 0 && (
+                  <span className="block text-[11px] text-muted-foreground">
+                    {formatBytes(att.size)}
+                  </span>
+                )}
+              </span>
+            </a>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
