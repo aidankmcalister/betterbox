@@ -73,6 +73,14 @@ async function safeTarget(raw: string): Promise<URL | null> {
   } catch {
     return null;
   }
+  // Upgrade http to https instead of rejecting. Marketing emails (e.g. SendGrid's
+  // image CDN) still ship http <img> srcs, and those hosts serve the same asset
+  // over https. We always fetch over https; the private-IP guard below — not the
+  // scheme — is what prevents SSRF.
+  if (url.protocol === "http:") {
+    url.protocol = "https:";
+    if (url.port === "80") url.port = "";
+  }
   if (url.protocol !== "https:") return null;
   if (await resolvesToPrivate(url.hostname)) return null;
   return url;
