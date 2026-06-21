@@ -8,6 +8,18 @@ datasource db {
   provider = "postgresql"
 }
 
+// Hosted-plan waitlist signups (the /api/waitlist endpoint). Lives in the main
+// database — no separate DB or generated client. The endpoint is disabled on
+// self-hosted instances, so the table just goes unused there.
+model WaitlistEntry {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+  source    String? // "hero" | "plan" | "final-cta" etc
+
+  @@map("waitlist_entry")
+}
+
 enum Role {
   USER
   OWNER

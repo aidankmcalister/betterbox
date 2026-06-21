@@ -16,14 +16,12 @@
     "lint:fix": "biome lint --write .",
     "test": "bun test",
     "db:generate": "bun --env-file=.env ./node_modules/.bin/prisma generate",
-    "db:generate:waitlist": "bun --env-file=.env ./node_modules/.bin/prisma generate --config prisma.waitlist.config.ts",
     "db:push": "bun --env-file=.env ./node_modules/.bin/prisma db push",
-    "db:push:waitlist": "bun --env-file=.env ./node_modules/.bin/prisma db push --config prisma.waitlist.config.ts",
     "db:migrate": "bun --env-file=.env ./node_modules/.bin/prisma migrate dev",
     "db:studio": "bun --env-file=.env ./node_modules/.bin/prisma studio",
     "encrypt-tokens": "bun --env-file=.env scripts/encrypt-oauth-tokens.ts",
     "set-owner": "bun --env-file=.env scripts/set-owner.ts",
-    "postinstall": "prisma generate && prisma generate --config prisma.waitlist.config.ts"
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
