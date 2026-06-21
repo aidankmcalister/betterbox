@@ -97,7 +97,7 @@ function reviewLook(pr: PullRequest): {
       hint: "Reviewers commented without an approval or change request",
     };
   return {
-    label: "Needs review",
+    label: "Review",
     cls: "border-muted-foreground/30 text-muted-foreground/80",
     hint: "Open and waiting on a review",
   };
@@ -164,7 +164,6 @@ function Row({
   now: number;
   demo: boolean;
 }) {
-  const { Icon, cls } = STATE_ICON[pr.state];
   const dim = pr.state === "merged" || pr.state === "closed";
   // Demo rows carry a placeholder url; clicking toasts the intent rather than
   // opening GitHub. Real rows link out normally.
@@ -188,20 +187,22 @@ function Row({
         navigable || demo ? "cursor-pointer" : "cursor-default",
       )}
     >
-      <Icon className={cn("size-4 flex-none", cls)} />
-
-      {/* repo · #num — fixed sender-style column */}
-      <span className="flex w-[152px] flex-none items-baseline gap-1.5 overflow-hidden">
-        <span className="truncate font-mono text-[11.5px] text-muted-foreground">
-          {pr.repo}
-        </span>
-        <span className="flex-none font-mono text-[11.5px] text-muted-foreground/60">
-          #{pr.num}
-        </span>
+      {/* status — header reads "Needs", so this reads "Needs Changes" / "Needs Review" */}
+      <span className="flex w-[116px] flex-none justify-start">
+        <ReviewPill pr={pr} />
       </span>
 
-      {/* title + faint branch — container is gray so a truncating ellipsis
-          matches the branch it's cutting; the title sets its own color. */}
+      {/* repo */}
+      <span className="w-[140px] flex-none truncate font-mono text-[11.5px] text-muted-foreground">
+        {pr.repo}
+      </span>
+
+      {/* PR number */}
+      <span className="w-[52px] flex-none font-mono text-[11.5px] text-muted-foreground/60">
+        #{pr.num}
+      </span>
+
+      {/* title + faint branch — single line, no wrap */}
       <span className="min-w-0 flex-1 truncate text-muted-foreground/60">
         <span
           className={cn(
@@ -217,25 +218,7 @@ function Row({
         </span>
       </span>
 
-      {/* metric cluster — fixed widths, right-aligned */}
-      <span className="flex w-3 flex-none justify-center">
-        {pr.awaitsYou && (
-          <Hint label="Your review is requested">
-            <span className="flex">
-              <EyeIcon className="size-3 text-primary" />
-            </span>
-          </Hint>
-        )}
-      </span>
-      <span className="flex w-[116px] flex-none justify-start">
-        <ReviewPill pr={pr} />
-      </span>
-      <Hint label={`${pr.comments} comment${pr.comments === 1 ? "" : "s"}`}>
-        <span className="flex w-[44px] flex-none items-center justify-end gap-1 font-mono text-[11px] text-muted-foreground/60">
-          <MessageSquareIcon className="size-3" />
-          {pr.comments}
-        </span>
-      </Hint>
+      {/* changes */}
       <Hint
         label={`+${pr.additions.toLocaleString()} added · −${pr.deletions.toLocaleString()} removed`}
       >
@@ -243,6 +226,16 @@ function Row({
           <DiffStat pr={pr} />
         </span>
       </Hint>
+
+      {/* comments */}
+      <Hint label={`${pr.comments} comment${pr.comments === 1 ? "" : "s"}`}>
+        <span className="flex w-[44px] flex-none items-center justify-end gap-1 font-mono text-[11px] text-muted-foreground/60">
+          <MessageSquareIcon className="size-3" />
+          {pr.comments}
+        </span>
+      </Hint>
+
+      {/* CI */}
       <span className="flex w-[22px] flex-none justify-center">
         <Hint label={`CI ${pr.ci === "none" ? "not run" : pr.ci}`}>
           <span className="flex">
@@ -250,6 +243,8 @@ function Row({
           </span>
         </Hint>
       </span>
+
+      {/* age */}
       <span className="w-[56px] flex-none text-right font-mono text-[11px] text-muted-foreground/60">
         {relTime(pr.updated, now)}
       </span>
@@ -539,15 +534,14 @@ export function PullRequestsPage({
       <div className="flex-1 overflow-y-auto">
         {/* Column header — desktop table only; mobile uses stacked cards. */}
         <div className="sticky top-0 z-1 hidden h-[30px] items-center gap-4 border-b border-l-2 border-border border-l-transparent bg-background px-5 text-[10.5px] tracking-[0.4px] text-muted-foreground/60 uppercase md:flex">
-          <span className="w-4 flex-none" />
-          <span className="w-[152px] flex-none">Repository</span>
-          <span className="min-w-0 flex-1 truncate">Pull request</span>
-          <span className="w-3 flex-none" />
-          <span className="w-[116px] flex-none">Review</span>
-          <span className="flex w-[44px] flex-none justify-end">Comments</span>
+          <span className="w-[116px] flex-none">Needs</span>
+          <span className="w-[140px] flex-none">Repo</span>
+          <span className="w-[52px] flex-none">PR</span>
+          <span className="min-w-0 flex-1 truncate">Title</span>
           <span className="w-[124px] flex-none text-right">Changes</span>
+          <span className="flex w-[44px] flex-none justify-end">Comments</span>
           <span className="w-[22px] flex-none text-center">CI</span>
-          <span className="w-[56px] flex-none text-right">Updated</span>
+          <span className="w-[56px] flex-none text-right">Age</span>
         </div>
 
         {rows.length === 0 ? (
