@@ -204,8 +204,16 @@ export function Composer({
     const picked = Array.from(e.target.files ?? []);
     e.target.value = ""; // let the same file be picked again later
     if (picked.length === 0) return;
+    const blocked = picked.filter((f) => BLOCKED_EXT.test(f.name));
+    const allowed = picked.filter((f) => !BLOCKED_EXT.test(f.name));
+    if (blocked.length > 0) {
+      toast.error("Some files can’t be sent", {
+        description: `Gmail blocks ${blocked.map((f) => f.name).join(", ")}.`,
+      });
+    }
+    if (allowed.length === 0) return;
     try {
-      const staged = await Promise.all(picked.map(readFileAsBase64));
+      const staged = await Promise.all(allowed.map(readFileAsBase64));
       setFiles((prev) => {
         const next = [...prev, ...staged];
         // ~25 MB decoded ≈ 34 MB of base64 — Gmail's send ceiling.
@@ -465,6 +473,7 @@ export function Composer({
         ref={fileInputRef}
         type="file"
         multiple
+        accept={ACCEPT_FILES}
         onChange={onPickFiles}
         className="hidden"
       />
@@ -538,6 +547,16 @@ function readFileAsBase64(file: File): Promise<StagedFile> {
     reader.readAsDataURL(file);
   });
 }
+
+// Common, sendable attachment types — narrows the file picker so you can't pick
+// something Gmail will reject. (Gmail refuses executables outright.)
+const ACCEPT_FILES =
+  "image/*,video/*,audio/*,.pdf,.txt,.csv,.md,.rtf,.json,.xml,.log,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.pages,.numbers,.key,.zip";
+
+// Extensions Gmail won't send — re-checked after selection (the accept filter is
+// only a hint) so a blocked file fails clearly instead of as an opaque send error.
+const BLOCKED_EXT =
+  /\.(ade|adp|apk|appx|bat|cab|chm|cmd|com|cpl|dll|dmg|exe|hta|ins|isp|iso|jar|jse?|lib|lnk|mde|msc|msix?|msp|mst|nsh|pif|ps1|scr|sct|shb|sys|vbe?|vxd|wsc|wsf|wsh)$/i;
 
 /** Escape a plain-text draft and preserve its line breaks so it seeds the rich
  *  editor (which treats its content as HTML) without dropping `<addr>` or runs. */

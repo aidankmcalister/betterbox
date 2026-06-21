@@ -39,39 +39,67 @@ const STATE_ICON = {
 } as const;
 
 function ReviewPill({ pr }: { pr: PullRequest }) {
-  const { label, cls } = reviewLook(pr);
+  const { label, cls, hint } = reviewLook(pr);
   return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-px text-[11px] whitespace-nowrap",
-        cls,
-      )}
-    >
-      <span className="size-[5px] flex-none rounded-full bg-current" />
-      {label}
-    </span>
+    <Hint label={hint}>
+      <span
+        className={cn(
+          "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-px text-[11px] whitespace-nowrap",
+          cls,
+        )}
+      >
+        <span className="size-[5px] flex-none rounded-full bg-current" />
+        {label}
+      </span>
+    </Hint>
   );
 }
 
-function reviewLook(pr: PullRequest): { label: string; cls: string } {
+function reviewLook(pr: PullRequest): {
+  label: string;
+  cls: string;
+  hint: string;
+} {
   if (pr.state === "merged")
-    return { label: "Merged", cls: "border-label-purple/40 text-label-purple" };
+    return {
+      label: "Merged",
+      cls: "border-label-purple/40 text-label-purple",
+      hint: "Merged",
+    };
   if (pr.state === "closed")
-    return { label: "Closed", cls: "border-label-red/40 text-label-red" };
+    return {
+      label: "Closed",
+      cls: "border-label-red/40 text-label-red",
+      hint: "Closed without merging",
+    };
   if (pr.state === "draft")
     return {
       label: "Draft",
       cls: "border-muted-foreground/30 text-muted-foreground/70",
+      hint: "Still a draft, not open for review yet",
     };
   if (pr.review === "approved")
-    return { label: "Approved", cls: "border-success/40 text-success" };
+    return {
+      label: "Approved",
+      cls: "border-success/40 text-success",
+      hint: "Approved by a reviewer",
+    };
   if (pr.review === "changes")
-    return { label: "Changes", cls: "border-label-red/40 text-label-red" };
+    return {
+      label: "Changes",
+      cls: "border-label-red/40 text-label-red",
+      hint: "A reviewer requested changes",
+    };
   if (pr.review === "commented")
-    return { label: "Commented", cls: "border-label-blue/40 text-label-blue" };
+    return {
+      label: "Commented",
+      cls: "border-label-blue/40 text-label-blue",
+      hint: "Reviewers commented without an approval or change request",
+    };
   return {
-    label: "Review",
+    label: "Needs review",
     cls: "border-muted-foreground/30 text-muted-foreground/80",
+    hint: "Open and waiting on a review",
   };
 }
 
@@ -199,7 +227,7 @@ function Row({
           </Hint>
         )}
       </span>
-      <span className="flex w-[104px] flex-none justify-start">
+      <span className="flex w-[116px] flex-none justify-start">
         <ReviewPill pr={pr} />
       </span>
       <Hint label={`${pr.comments} comment${pr.comments === 1 ? "" : "s"}`}>
@@ -222,7 +250,7 @@ function Row({
           </span>
         </Hint>
       </span>
-      <span className="w-[34px] flex-none text-right font-mono text-[11px] text-muted-foreground/60">
+      <span className="w-[56px] flex-none text-right font-mono text-[11px] text-muted-foreground/60">
         {relTime(pr.updated, now)}
       </span>
     </a>
@@ -515,11 +543,11 @@ export function PullRequestsPage({
           <span className="w-[152px] flex-none">Repository</span>
           <span className="min-w-0 flex-1 truncate">Pull request</span>
           <span className="w-3 flex-none" />
-          <span className="w-[104px] flex-none">Review</span>
+          <span className="w-[116px] flex-none">Review</span>
           <span className="flex w-[44px] flex-none justify-end">Comments</span>
           <span className="w-[124px] flex-none text-right">Changes</span>
           <span className="w-[22px] flex-none text-center">CI</span>
-          <span className="w-[34px] flex-none text-right">Upd.</span>
+          <span className="w-[56px] flex-none text-right">Updated</span>
         </div>
 
         {rows.length === 0 ? (
