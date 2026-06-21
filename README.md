@@ -43,7 +43,9 @@ Nothing migrates. BetterBox reads and sends through the Gmail API, so your mail 
 
 ## Self-host
 
-You'll need [Bun](https://bun.sh), a PostgreSQL database, and a Google Cloud OAuth app.
+Run your own instance in a few steps. You'll need [Bun](https://bun.sh), a PostgreSQL database, and a Google Cloud OAuth app.
+
+### 1. Clone and install
 
 ```bash
 git clone https://github.com/aidankmcalister/betterbox.git
@@ -52,45 +54,91 @@ bun install
 cp .env.example .env
 ```
 
-Set the core values in `.env`:
+### 2. Set the core variables
 
-- `DATABASE_URL`: your PostgreSQL connection string.
-- `BETTER_AUTH_URL`: `http://localhost:3000` for local dev.
-- `BETTER_AUTH_SECRET`: generate with `npx auth@latest secret`. It also encrypts OAuth tokens at rest.
+Point `.env` at your database and add an auth secret. Generate the secret with `npx auth@latest secret`; it also encrypts OAuth tokens at rest.
 
-### Google (required)
+```bash
+# ── Required ──────────────────────────────────────────────
+DATABASE_URL=postgresql://user:pass@localhost:5432/betterbox
+BETTER_AUTH_URL=http://localhost:3000
+BETTER_AUTH_SECRET=your-generated-secret
+```
+
+The example already sets `IS_SELF_HOSTED=true`, so `/` goes straight to sign-in (no landing page or waitlist). Leave it as-is.
+
+### 3. Set up Google (required)
 
 In the [Google Cloud Console](https://console.cloud.google.com):
 
 1. Enable the **Gmail API**.
 2. On the **OAuth consent screen**, add the `gmail.modify` scope and add yourself as a test user. Keep the app in **Testing** to skip Google's ~$750/yr security assessment.
 3. Create an **OAuth client** (web application) with redirect URI `http://localhost:3000/api/auth/callback/google`.
-4. Put the client ID and secret in `.env` as `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
+4. Copy the client ID and secret into `.env`:
 
-Create the schema and start the app:
+```bash
+# ── Google / Gmail (required) ─────────────────────────────
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+```
+
+### 4. Create the database
+
+Push the Prisma schema to your `DATABASE_URL`:
 
 ```bash
 bun run db:push
+```
+
+### 5. Start it
+
+```bash
 bun run dev        # http://localhost:3000
 ```
 
-Sign in with Google. To restrict who can create an account, set `ALLOWED_EMAILS` to a comma-separated list (leave it empty to allow anyone). For the owner-only tools (seeded demo accounts and demo mode), run `bun run set-owner you@example.com`.
+Open [http://localhost:3000](http://localhost:3000) and sign in with Google. That account is yours.
+
+### 6. Restrict sign-ups (optional)
+
+Anyone can create an account by default. To limit it, set a comma-separated allowlist:
+
+```bash
+# ── Access control ────────────────────────────────────────
+ALLOWED_EMAILS=you@example.com,teammate@example.com
+```
+
+For the owner-only tools (seeded demo accounts and demo mode), grant yourself the owner role:
+
+```bash
+bun run set-owner you@example.com
+```
 
 ### GitHub (optional)
 
-Powers the Pull requests page.
+Enables the Pull requests page.
 
 1. Create an OAuth app in [GitHub Developer Settings](https://github.com/settings/developers) with callback `http://localhost:3000/api/auth/callback/github`.
-2. Set `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` in `.env`.
-3. Restart, then connect GitHub from Settings. It requests `read:user` and `repo` so it can read your private PRs.
+2. Add the keys to `.env`, restart, then connect GitHub from Settings. It requests `read:user` and `repo` so it can read your private PRs.
+
+```bash
+# ── GitHub integration (optional) ─────────────────────────
+GITHUB_CLIENT_ID=...
+GITHUB_CLIENT_SECRET=...
+```
 
 ### Linear (coming soon)
 
-The Issues page isn't built yet. When it ships it will work like GitHub: set `LINEAR_CLIENT_ID` and `LINEAR_CLIENT_SECRET`, then connect Linear from Settings.
+The Issues page isn't built yet. When it ships it will work like GitHub: add the keys and connect Linear from Settings.
+
+```bash
+# ── Linear integration (optional, coming soon) ────────────
+LINEAR_CLIENT_ID=...
+LINEAR_CLIENT_SECRET=...
+```
 
 ## Self-host or hosted
 
-Self-host is free and open source: your own OAuth app, your own database, your own infrastructure. Nothing is gated and no data leaves your machine. The example `.env` ships with `IS_SELF_HOSTED=true`, which drops the marketing layer (landing page, waitlist, hosted pricing) and sends `/` straight to sign-in. Unset it to run the hosted layout locally.
+Self-host is free and open source: your own OAuth app, your own database, your own infrastructure. Nothing is gated and no data leaves your machine. To run the hosted layout (landing page and waitlist) locally instead, unset `IS_SELF_HOSTED` in `.env`.
 
 Hosted ($5/mo) is the same code, run and updated by me, for people who would rather not manage it. It is waitlisted for now: Google charges about $750/yr for the security assessment that third-party Gmail apps need, and I want enough interest to justify it first.
 
