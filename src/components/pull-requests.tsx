@@ -310,24 +310,17 @@ function MobileCard({
 function Kpi({
   label,
   value,
-  accent,
   sub,
 }: {
   label: string;
   value: number;
-  accent?: boolean;
   sub?: string;
 }) {
   return (
     <div className="border-l border-border px-3 pt-[9px] pb-2.5 nth-[n+3]:border-t nth-[odd]:border-l-0 sm:px-5 sm:first:border-l-0 sm:nth-[n+3]:border-t-0 sm:nth-[odd]:border-l">
       <div className="mb-1 text-[11px] text-muted-foreground/80">{label}</div>
       <div className="flex items-baseline gap-2">
-        <span
-          className={cn(
-            "text-[22px] font-semibold tracking-[-0.8px]",
-            accent ? "text-primary" : "text-foreground",
-          )}
-        >
+        <span className="text-[22px] font-semibold tracking-[-0.8px] text-foreground">
           {value}
         </span>
         {sub && (
@@ -499,7 +492,7 @@ export function PullRequestsPage({
       {/* KPI strip */}
       <div className="grid flex-none grid-cols-2 border-b border-border sm:grid-cols-4">
         <Kpi label="Open" value={nOpen} sub="incl. drafts" />
-        <Kpi label="Awaiting your review" value={nReview} accent />
+        <Kpi label="Awaiting your review" value={nReview} />
         <Kpi label="Changes requested" value={nChanges} />
         <Kpi label="Merged" value={nMerged} />
       </div>
