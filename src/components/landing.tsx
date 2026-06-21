@@ -33,7 +33,7 @@ import { cn } from "@/lib/utils";
 /** Demo walkthrough video for mobile/tablet, where the live multi-pane demo
  *  isn't meaningful. Empty → show the "coming soon" placeholder. The README
  *  video slot references this same constant by name so the two stay in sync. */
-const DEMO_VIDEO_URL: string = "/betterbox-demo.mp4"; // drop the video URL here when ready
+const DEMO_VIDEO_URL: string = "/betterbox-demo.mp4";
 
 const isYouTube = (url: string) =>
   url.includes("youtube.com") || url.includes("youtu.be");
