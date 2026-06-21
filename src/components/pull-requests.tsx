@@ -232,7 +232,7 @@ function Row({
 
       {/* comments */}
       <Hint label={`${pr.comments} comment${pr.comments === 1 ? "" : "s"}`}>
-        <span className="flex w-[64px] flex-none items-center gap-1 font-mono text-[11px] text-muted-foreground/60">
+        <span className="flex w-[48px] flex-none items-center gap-1 font-mono text-[11px] text-muted-foreground/60">
           <MessageSquareIcon className="size-3" />
           {pr.comments}
         </span>
@@ -248,7 +248,7 @@ function Row({
       </span>
 
       {/* age */}
-      <span className="w-[56px] flex-none font-mono text-[11px] text-muted-foreground/60">
+      <span className="w-[44px] flex-none font-mono text-[11px] text-muted-foreground/60">
         {relTime(pr.updated, now)}
       </span>
     </a>
@@ -543,9 +543,9 @@ export function PullRequestsPage({
           <span className="min-w-0 flex-1 truncate">Title</span>
           <span className="w-[124px] flex-none">Status</span>
           <span className="w-[96px] flex-none">Changes</span>
-          <span className="w-[64px] flex-none">Comments</span>
+          <span className="w-[48px] flex-none">Cmts</span>
           <span className="w-[22px] flex-none">CI</span>
-          <span className="w-[56px] flex-none">Age</span>
+          <span className="w-[44px] flex-none">Age</span>
         </div>
 
         {rows.length === 0 ? (
