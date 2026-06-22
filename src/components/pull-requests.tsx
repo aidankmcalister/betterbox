@@ -127,9 +127,24 @@ function CiDot({ ci }: { ci: PullRequest["ci"] }) {
   );
 }
 
-function DiffStat({ pr }: { pr: PullRequest }) {
+function DiffStat({ pr, inline = false }: { pr: PullRequest; inline?: boolean }) {
   const total = pr.additions + pr.deletions || 1;
   const addPct = Math.round((pr.additions / total) * 100);
+  if (inline) {
+    // Mobile: numbers and bar sit on one centered line so the diff shares a
+    // baseline with the pill, comments and CI in the card's metrics row
+    // (the stacked layout below floats the numbers above the row's centerline).
+    return (
+      <span className="inline-flex items-center gap-2 font-mono text-[11px] leading-none">
+        <span className="text-label-green">+{pr.additions.toLocaleString()}</span>
+        <span className="flex h-[3px] w-10 overflow-hidden rounded-full bg-muted">
+          <span className="bg-label-green" style={{ width: `${addPct}%` }} />
+          <span className="bg-label-red" style={{ width: `${100 - addPct}%` }} />
+        </span>
+        <span className="text-label-red">−{pr.deletions.toLocaleString()}</span>
+      </span>
+    );
+  }
   return (
     // +adds / −dels on their own side, with a split bar underneath whose green
     // (left) and red (right) line up with the number above each.
@@ -322,7 +337,7 @@ function MobileCard({
       {/* metrics row */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 pt-0.5">
         <ReviewPill pr={pr} />
-        <DiffStat pr={pr} />
+        <DiffStat pr={pr} inline />
         <span className="inline-flex items-center gap-1 font-mono text-[11px] text-muted-foreground/60">
           <MessageSquareIcon className="size-3" />
           {pr.comments}
