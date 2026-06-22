@@ -1,5 +1,8 @@
 node_modules
 
+# macOS
+.DS_Store
+
 src/generated
 
 # build output

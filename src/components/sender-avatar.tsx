@@ -34,7 +34,14 @@ function rootDomain(domain: string): string {
     : parts.slice(-2).join(".");
 }
 
-// DuckDuckGo first — returns the real favicon more often; Google falls back to a generic globe.
+// Only show a favicon when it's a real, sharp brand mark — otherwise colored
+// initials. Google's service hands back a tiny (~16px) generic globe when a
+// domain has no favicon, even at sz=128, and it returns 200 (not an error) so
+// onError can't catch it. We preload and measure the natural width instead:
+// anything below this is either the generic globe or too low-res to look good,
+// so it falls back to initials.
+const MIN_FAVICON_PX = 32;
+
 export function SenderAvatar({
   name,
   address,
@@ -48,30 +55,39 @@ export function SenderAvatar({
 }) {
   const domain = address.trim().toLowerCase().split("@")[1];
   const root = domain ? rootDomain(domain) : null;
-  const sources = root
-    ? [
-        `https://icons.duckduckgo.com/ip3/${root}.ico`,
-        `https://www.google.com/s2/favicons?domain=${root}&sz=128`,
-      ]
-    : [];
+  const src = root
+    ? `https://www.google.com/s2/favicons?domain=${root}&sz=128`
+    : null;
 
-  const [index, setIndex] = useState(0);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: reset the favicon-source fallback index only when the resolved domain changes.
-  useEffect(() => setIndex(0), [root]);
-  const src = sources[index];
+  // Resolve to a usable favicon only after it loads big enough; until then
+  // (and forever, for generic/missing favicons) we render the initials, so the
+  // globe never flashes. The image is cached by this preload, so swapping it in
+  // is instant.
+  const [favicon, setFavicon] = useState<string | null>(null);
+  useEffect(() => {
+    setFavicon(null);
+    if (!src) return;
+    let cancelled = false;
+    const img = new Image();
+    img.referrerPolicy = "no-referrer";
+    img.onload = () => {
+      if (!cancelled && img.naturalWidth >= MIN_FAVICON_PX) setFavicon(src);
+    };
+    img.src = src;
+    return () => {
+      cancelled = true;
+    };
+  }, [src]);
 
-  if (src) {
+  if (favicon) {
     return (
       <img
-        key={src}
-        src={src}
+        src={favicon}
         alt=""
-        loading="lazy"
-        referrerPolicy="no-referrer"
-        onError={() => setIndex((current) => current + 1)}
-        // White plate so transparent-background favicons (e.g. black logos) stay visible in dark mode.
+        // White plate keeps transparent dark logos visible in dark mode; the
+        // mark fills the circle so there's no stray plate showing as a ring.
         className={cn(
-          "size-9 shrink-0 rounded-full border border-input bg-white object-contain",
+          "size-9 shrink-0 rounded-full bg-white object-cover",
           className,
         )}
       />
