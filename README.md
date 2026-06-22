@@ -152,17 +152,17 @@ Hosted ($5/mo) is the same code, run and updated by me, for people who would rat
 
 ## Scripts
 
-| Command | What it does |
-| ------- | ------------ |
-| `bun run dev` | Dev server on port 3000 |
-| `bun run build` | Production build |
-| `bun run typecheck` | TypeScript checks |
-| `bun run format` | Format with Prettier |
-| `bun run lint` | Lint with Biome |
-| `bun test` | Run the test suite |
-| `bun run db:push` | Push the Prisma schema to the database |
-| `bun run db:studio` | Open Prisma Studio |
-| `bun run set-owner` | Grant the owner role to an email |
+| Command             | What it does                           |
+| ------------------- | -------------------------------------- |
+| `bun run dev`       | Dev server on port 3000                |
+| `bun run build`     | Production build                       |
+| `bun run typecheck` | TypeScript checks                      |
+| `bun run format`    | Format with Prettier                   |
+| `bun run lint`      | Lint with Biome                        |
+| `bun test`          | Run the test suite                     |
+| `bun run db:push`   | Push the Prisma schema to the database |
+| `bun run db:studio` | Open Prisma Studio                     |
+| `bun run set-owner` | Grant the owner role to an email       |
 
 ## Contributing
 

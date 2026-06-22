@@ -46,7 +46,7 @@ export function CopyButton({
         copied
           ? "border-success/40 text-success"
           : "border-input text-muted-foreground hover:bg-muted hover:text-foreground",
-        iconOnly && "px-0 w-[26px] justify-center",
+        iconOnly && "w-[26px] justify-center px-0",
         className,
       )}
     >

@@ -29,6 +29,6 @@ export const fetchGoogleConfigured = createServerFn({ method: "GET" }).handler(
   () =>
     Boolean(
       process.env.GOOGLE_CLIENT_ID?.trim() &&
-        process.env.GOOGLE_CLIENT_SECRET?.trim(),
+      process.env.GOOGLE_CLIENT_SECRET?.trim(),
     ),
 );

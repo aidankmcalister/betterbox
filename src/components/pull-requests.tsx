@@ -127,7 +127,13 @@ function CiDot({ ci }: { ci: PullRequest["ci"] }) {
   );
 }
 
-function DiffStat({ pr, inline = false }: { pr: PullRequest; inline?: boolean }) {
+function DiffStat({
+  pr,
+  inline = false,
+}: {
+  pr: PullRequest;
+  inline?: boolean;
+}) {
   const total = pr.additions + pr.deletions || 1;
   const addPct = Math.round((pr.additions / total) * 100);
   if (inline) {
@@ -136,10 +142,15 @@ function DiffStat({ pr, inline = false }: { pr: PullRequest; inline?: boolean })
     // (the stacked layout below floats the numbers above the row's centerline).
     return (
       <span className="inline-flex items-center gap-2 font-mono text-[11px] leading-none">
-        <span className="text-label-green">+{pr.additions.toLocaleString()}</span>
+        <span className="text-label-green">
+          +{pr.additions.toLocaleString()}
+        </span>
         <span className="flex h-[3px] w-10 overflow-hidden rounded-full bg-muted">
           <span className="bg-label-green" style={{ width: `${addPct}%` }} />
-          <span className="bg-label-red" style={{ width: `${100 - addPct}%` }} />
+          <span
+            className="bg-label-red"
+            style={{ width: `${100 - addPct}%` }}
+          />
         </span>
         <span className="text-label-red">−{pr.deletions.toLocaleString()}</span>
       </span>
@@ -150,7 +161,9 @@ function DiffStat({ pr, inline = false }: { pr: PullRequest; inline?: boolean })
     // (left) and red (right) line up with the number above each.
     <span className="flex w-[96px] flex-none flex-col gap-[3px] font-mono text-[11px] leading-none">
       <span className="flex items-baseline justify-between">
-        <span className="text-label-green">+{pr.additions.toLocaleString()}</span>
+        <span className="text-label-green">
+          +{pr.additions.toLocaleString()}
+        </span>
         <span className="text-label-red">−{pr.deletions.toLocaleString()}</span>
       </span>
       <span className="flex h-[3px] w-full overflow-hidden rounded-full bg-muted">

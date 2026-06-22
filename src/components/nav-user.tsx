@@ -153,7 +153,11 @@ export function NavUser({
                 Theme
               </DropdownMenuLabel>
               {/* biome-ignore lint/a11y/useSemanticElements: a visual theme toggle group; a <fieldset> would impose default form styling inside the menu. */}
-              <div role="group" aria-label="Theme" className="flex gap-1 px-1 pb-1">
+              <div
+                role="group"
+                aria-label="Theme"
+                className="flex gap-1 px-1 pb-1"
+              >
                 {THEMES.map((option) => (
                   <Hint key={option.value} label={option.label}>
                     <Button

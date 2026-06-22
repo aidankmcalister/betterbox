@@ -487,12 +487,11 @@ export function Composer({
           <Kbd>⌘</Kbd>
           <Kbd>↵</Kbd>
         </KbdGroup>
-        {!error &&
-          ((to.trim().length > 0 && !recipientsValid) || !ccValid) && (
-            <span className="min-w-0 truncate font-mono text-[11px] text-muted-foreground/70">
-              Enter a valid email address
-            </span>
-          )}
+        {!error && ((to.trim().length > 0 && !recipientsValid) || !ccValid) && (
+          <span className="min-w-0 truncate font-mono text-[11px] text-muted-foreground/70">
+            Enter a valid email address
+          </span>
+        )}
         {error && (
           <span className="min-w-0 truncate font-mono text-[11px] text-label-red">
             {error}

@@ -1485,7 +1485,7 @@ function ThreadMessage({
                     <FileTextIcon className="size-5 text-muted-foreground" />
                   </span>
                 )}
-                <div className="min-w-0 max-w-[150px]">
+                <div className="max-w-[150px] min-w-0">
                   <div className="truncate text-[13px] font-medium text-foreground">
                     {att.filename}
                   </div>

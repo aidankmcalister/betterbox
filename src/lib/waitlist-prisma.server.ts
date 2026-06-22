@@ -12,7 +12,9 @@ export function getWaitlistPrisma(): PrismaClient {
   if (!client) {
     const url = (process.env.WAITLIST_DATABASE_URL ?? "").trim();
     if (!url) throw new Error("WAITLIST_DATABASE_URL is required");
-    client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
+    client = new PrismaClient({
+      adapter: new PrismaPg({ connectionString: url }),
+    });
   }
   return client;
 }

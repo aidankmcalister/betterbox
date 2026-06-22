@@ -4,8 +4,8 @@ import { DeveloperPage } from "@/components/developer-page";
 export const Route = createFileRoute("/_app/issues")({
   component: () => (
     <DeveloperPage title="Issues">
-      <div className="space-y-6 max-w-lg">
-        <p className="text-muted-foreground text-sm leading-relaxed">
+      <div className="max-w-lg space-y-6">
+        <p className="text-sm leading-relaxed text-muted-foreground">
           Connect Linear and your assigned issues show up here alongside your
           inbox. Comments, status changes, and what needs your attention,
           without leaving mail.

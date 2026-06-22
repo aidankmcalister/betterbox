@@ -47,7 +47,9 @@ export const Route = createFileRoute("/api/message")({
             if (url.searchParams.get("download") === "1") {
               // Force a download so nothing renders inline same-origin (e.g. an
               // HTML attachment can't execute as a page). Sanitize the filename.
-              const filename = (url.searchParams.get("filename") || "attachment")
+              const filename = (
+                url.searchParams.get("filename") || "attachment"
+              )
                 .replace(/[^\w.\- ]+/g, "_")
                 .slice(0, 200);
               const type = /^[\w.+-]+\/[\w.+-]+$/.test(mime)

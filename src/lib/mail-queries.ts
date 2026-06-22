@@ -26,7 +26,10 @@ export type FullEmail = ThreadRowEmail & {
   /** Original Cc recipients (carried over by reply-all). Absent on demo mail. */
   cc?: string;
   /** cid → inline attachment, for rendering <img src="cid:…">. Absent on demo mail. */
-  inlineAttachments?: Record<string, { attachmentId: string; mimeType: string }>;
+  inlineAttachments?: Record<
+    string,
+    { attachmentId: string; mimeType: string }
+  >;
   /** Named, downloadable attachments (the paperclip kind). */
   attachments?: {
     attachmentId: string;

@@ -155,7 +155,8 @@ function SignIn() {
               Google sign-in isn't configured
             </p>
             <p className="text-[12px] leading-[1.6] text-ink-subtle">
-              This instance has no Google OAuth credentials yet. Add them to your{" "}
+              This instance has no Google OAuth credentials yet. Add them to
+              your{" "}
               <code className="rounded bg-surface-1 px-1 py-0.5 font-mono text-[11px]">
                 .env
               </code>{" "}

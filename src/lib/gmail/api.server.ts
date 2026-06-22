@@ -475,7 +475,11 @@ export async function sendEmail(
     inReplyTo?: string;
     references?: string;
     threadId?: string;
-    attachments?: { filename: string; mimeType: string; contentBase64: string }[];
+    attachments?: {
+      filename: string;
+      mimeType: string;
+      contentBase64: string;
+    }[];
   },
 ): Promise<void> {
   const from = await getEmailAddress(accessToken);

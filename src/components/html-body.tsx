@@ -114,7 +114,10 @@ export function HtmlBody({
    *  Gmail attachment endpoint. Omitted (e.g. demo mail) → cid: left as-is. */
   accountId?: string;
   messageId?: string;
-  inlineAttachments?: Record<string, { attachmentId: string; mimeType: string }>;
+  inlineAttachments?: Record<
+    string,
+    { attachmentId: string; mimeType: string }
+  >;
 }) {
   const ref = useRef<HTMLIFrameElement>(null);
   const observerRef = useRef<ResizeObserver | null>(null);
