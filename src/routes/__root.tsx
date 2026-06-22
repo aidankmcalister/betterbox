@@ -3,6 +3,8 @@ import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { SpeedInsights } from "@vercel/speed-insights/react";
+import { Analytics } from "@vercel/analytics/react";
 
 import { ThemeProvider } from "@/components/theme-provider";
 import appCss from "../styles.css?url";
@@ -110,6 +112,8 @@ function RootDocument({ children }: { children: ReactNode }) {
             </TooltipProvider>
           </ThemeProvider>
         </QueryClientProvider>
+        <SpeedInsights />
+        <Analytics />
         <Scripts />
       </body>
     </html>
