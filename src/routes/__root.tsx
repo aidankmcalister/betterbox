@@ -108,12 +108,12 @@ function RootDocument({ children }: { children: ReactNode }) {
                 style={{ "--sidebar-width": "18rem" } as CSSProperties}
               >
                 {children}
+                <SpeedInsights />
+                <Analytics />
               </SidebarProvider>
             </TooltipProvider>
           </ThemeProvider>
         </QueryClientProvider>
-        <SpeedInsights />
-        <Analytics />
         <Scripts />
       </body>
     </html>
