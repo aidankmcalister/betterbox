@@ -24,6 +24,7 @@ model User {
   updatedAt     DateTime  @updatedAt
   sessions      Session[]
   accounts      Account[]
+  snippets      Snippet[]
 
   @@unique([email])
   @@map("user")
@@ -75,4 +76,22 @@ model Verification {
 
   @@index([identifier])
   @@map("verification")
+}
+
+// Composer text snippets. User-scoped: a user has one shared set of snippets
+// across all their connected accounts. Typing a `trigger` (e.g. "/ty") in the
+// composer expands to `text`. @@unique([userId, trigger]) keeps triggers from
+// colliding within a user.
+model Snippet {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trigger   String
+  text      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, trigger])
+  @@index([userId])
+  @@map("snippet")
 }

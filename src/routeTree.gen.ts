@@ -14,6 +14,7 @@ import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as ApiWaitlistRouteImport } from './routes/api/waitlist'
+import { Route as ApiSnippetsRouteImport } from './routes/api/snippets'
 import { Route as ApiSendRouteImport } from './routes/api/send'
 import { Route as ApiPullRequestsRouteImport } from './routes/api/pull-requests'
 import { Route as ApiMessageRouteImport } from './routes/api/message'
@@ -57,6 +58,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
 const ApiWaitlistRoute = ApiWaitlistRouteImport.update({
   id: '/api/waitlist',
   path: '/api/waitlist',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSnippetsRoute = ApiSnippetsRouteImport.update({
+  id: '/api/snippets',
+  path: '/api/snippets',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiSendRoute = ApiSendRouteImport.update({
@@ -182,6 +188,7 @@ export interface FileRoutesByFullPath {
   '/api/message': typeof ApiMessageRoute
   '/api/pull-requests': typeof ApiPullRequestsRoute
   '/api/send': typeof ApiSendRoute
+  '/api/snippets': typeof ApiSnippetsRoute
   '/api/waitlist': typeof ApiWaitlistRoute
   '/email/$id': typeof AppEmailIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -207,6 +214,7 @@ export interface FileRoutesByTo {
   '/api/message': typeof ApiMessageRoute
   '/api/pull-requests': typeof ApiPullRequestsRoute
   '/api/send': typeof ApiSendRoute
+  '/api/snippets': typeof ApiSnippetsRoute
   '/api/waitlist': typeof ApiWaitlistRoute
   '/': typeof AppIndexRoute
   '/email/$id': typeof AppEmailIdRoute
@@ -235,6 +243,7 @@ export interface FileRoutesById {
   '/api/message': typeof ApiMessageRoute
   '/api/pull-requests': typeof ApiPullRequestsRoute
   '/api/send': typeof ApiSendRoute
+  '/api/snippets': typeof ApiSnippetsRoute
   '/api/waitlist': typeof ApiWaitlistRoute
   '/_app/': typeof AppIndexRoute
   '/_app/email/$id': typeof AppEmailIdRoute
@@ -264,6 +273,7 @@ export interface FileRouteTypes {
     | '/api/message'
     | '/api/pull-requests'
     | '/api/send'
+    | '/api/snippets'
     | '/api/waitlist'
     | '/email/$id'
     | '/api/auth/$'
@@ -289,6 +299,7 @@ export interface FileRouteTypes {
     | '/api/message'
     | '/api/pull-requests'
     | '/api/send'
+    | '/api/snippets'
     | '/api/waitlist'
     | '/'
     | '/email/$id'
@@ -316,6 +327,7 @@ export interface FileRouteTypes {
     | '/api/message'
     | '/api/pull-requests'
     | '/api/send'
+    | '/api/snippets'
     | '/api/waitlist'
     | '/_app/'
     | '/_app/email/$id'
@@ -334,6 +346,7 @@ export interface RootRouteChildren {
   ApiMessageRoute: typeof ApiMessageRoute
   ApiPullRequestsRoute: typeof ApiPullRequestsRoute
   ApiSendRoute: typeof ApiSendRoute
+  ApiSnippetsRoute: typeof ApiSnippetsRoute
   ApiWaitlistRoute: typeof ApiWaitlistRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
@@ -373,6 +386,13 @@ declare module '@tanstack/react-router' {
       path: '/api/waitlist'
       fullPath: '/api/waitlist'
       preLoaderRoute: typeof ApiWaitlistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/snippets': {
+      id: '/api/snippets'
+      path: '/api/snippets'
+      fullPath: '/api/snippets'
+      preLoaderRoute: typeof ApiSnippetsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/send': {
@@ -562,6 +582,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiMessageRoute: ApiMessageRoute,
   ApiPullRequestsRoute: ApiPullRequestsRoute,
   ApiSendRoute: ApiSendRoute,
+  ApiSnippetsRoute: ApiSnippetsRoute,
   ApiWaitlistRoute: ApiWaitlistRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }

@@ -31,6 +31,7 @@ import {
 import { isTestAccount } from "@/lib/test-account";
 import { AccountDot } from "@/components/account-dot";
 import { RichTextEditor } from "@/components/rich-text-editor";
+import { useSnippetMap } from "@/hooks/use-snippets";
 import { Button } from "@/components/ui/button";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { Hint } from "@/components/ui/tooltip";
@@ -135,6 +136,8 @@ export function Composer({
 
   // People you've emailed before — feeds the To autocomplete.
   const contacts = useContactsQuery(from?.accountId, open).data ?? [];
+  // Snippets expand inline in the editor (e.g. "/ty "). Fetched only while open.
+  const snippets = useSnippetMap(open);
 
   if (!open) return null;
 
@@ -432,6 +435,7 @@ export function Composer({
           <RichTextEditor
             value={body}
             onChange={(next) => onContentChange({ body: next })}
+            snippets={snippets}
             placeholder="Write your message…"
             minHeight={inPane ? 320 : 200}
             // The editor fills edge-to-edge in both modes — drop the rounded

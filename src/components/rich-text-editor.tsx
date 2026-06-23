@@ -1,8 +1,9 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { EditorContent, useEditor, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
+import { Extension, InputRule } from "@tiptap/core";
 import {
   BoldIcon,
   ItalicIcon,
@@ -21,6 +22,36 @@ import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { cn } from "@/lib/utils";
 
 /**
+ * Tiptap extension: expand a `/trigger` into saved snippet text inline. Fires
+ * when the user types a space after a known trigger (e.g. "/ty "). Reads the
+ * current trigger→text map via a getter so snippets can update without
+ * recreating the editor. Unknown triggers are left untouched.
+ */
+const SnippetExpand = Extension.create<{
+  getSnippets: () => Record<string, string>;
+}>({
+  name: "snippetExpand",
+  addOptions() {
+    return { getSnippets: () => ({}) };
+  },
+  addInputRules() {
+    const getSnippets = this.options.getSnippets;
+    return [
+      new InputRule({
+        find: /\/([A-Za-z0-9_-]+)\s$/,
+        handler: ({ range, match, commands }) => {
+          const text = getSnippets()[`/${match[1]}`];
+          if (!text) return null;
+          // Replace "/trigger " with the snippet body + a trailing space so the
+          // user keeps typing naturally.
+          commands.insertContentAt(range, `${text} `);
+        },
+      }),
+    ];
+  },
+});
+
+/**
  * Reusable rich-text editor for compose + reply. Tiptap (ProseMirror) under the
  * hood: markdown shortcuts (**bold**, *italic*, `code`, # heading, - list,
  * > quote, 1. list) plus a small toolbar. Emits HTML via onChange; an empty
@@ -34,6 +65,7 @@ export function RichTextEditor({
   autoFocus = false,
   minHeight = 120,
   className,
+  snippets,
 }: {
   value: string;
   onChange: (html: string) => void;
@@ -43,7 +75,12 @@ export function RichTextEditor({
   autoFocus?: boolean;
   minHeight?: number;
   className?: string;
+  /** trigger → text map; typing a trigger + space expands it inline. */
+  snippets?: Record<string, string>;
 }) {
+  const snippetsRef = useRef<Record<string, string>>(snippets ?? {});
+  snippetsRef.current = snippets ?? {};
+
   const editor = useEditor({
     // TanStack Start renders on the server; defer to the client to avoid
     // hydration mismatches.
@@ -60,6 +97,7 @@ export function RichTextEditor({
         HTMLAttributes: { rel: "noopener noreferrer", target: "_blank" },
       }),
       Placeholder.configure({ placeholder }),
+      SnippetExpand.configure({ getSnippets: () => snippetsRef.current }),
     ],
     content: value || "",
     autofocus: autoFocus ? "end" : false,

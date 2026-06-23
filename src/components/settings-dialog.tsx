@@ -10,7 +10,10 @@ import {
   Lock,
   MailIcon,
   Palette,
+  Pencil,
   PlusIcon,
+  Replace,
+  Trash2,
   ShieldCheck,
   SquareTerminal,
   CircleUserRound,
@@ -54,6 +57,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  snippetsQueryKey,
+  useSnippetsQuery,
+  type Snippet,
+} from "@/hooks/use-snippets";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -65,6 +75,7 @@ type PageId =
   | "accounts"
   | "appearance"
   | "inbox"
+  | "snippets"
   | "developer"
   | "keyboard"
   | "owner";
@@ -88,6 +99,7 @@ const NAV: NavGroup[] = [
     pages: [
       { id: "appearance", label: "Appearance", icon: Palette },
       { id: "inbox", label: "Inbox", icon: Inbox },
+      { id: "snippets", label: "Snippets", icon: Replace },
       { id: "developer", label: "Developer", icon: SquareTerminal },
       { id: "keyboard", label: "Keyboard", icon: Command },
     ],
@@ -234,6 +246,7 @@ export function SettingsDialog({
           {page === "accounts" && <AccountsPage accounts={accounts} />}
           {page === "appearance" && <AppearancePage />}
           {page === "inbox" && <InboxPage />}
+          {page === "snippets" && <SnippetsPage />}
           {page === "developer" && <DeveloperPage />}
           {page === "keyboard" && <KeyboardPage />}
           {page === "owner" && isOwner && <OwnerPage />}
@@ -1016,6 +1029,160 @@ function KeyboardPage() {
               </KbdGroup>
             </div>
           ))}
+        </div>
+      </PageSection>
+    </Page>
+  );
+}
+
+function SnippetsPage() {
+  const queryClient = useQueryClient();
+  const { data: snippets = [], isLoading } = useSnippetsQuery(true);
+  const [trigger, setTrigger] = useState("");
+  const [text, setText] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const reset = () => {
+    setEditingId(null);
+    setTrigger("");
+    setText("");
+    setError(null);
+  };
+
+  const save = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/snippets", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          op: editingId ? "update" : "create",
+          id: editingId ?? undefined,
+          trigger,
+          text,
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) throw new Error(data.error ?? "Could not save snippet");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: snippetsQueryKey });
+      reset();
+    },
+    onError: (e: Error) => setError(e.message),
+  });
+
+  const remove = useMutation({
+    mutationFn: async (id: string) => {
+      await fetch("/api/snippets", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ op: "delete", id }),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: snippetsQueryKey });
+      if (editingId) reset();
+    },
+  });
+
+  const startEdit = (s: Snippet) => {
+    setEditingId(s.id);
+    setTrigger(s.trigger);
+    setText(s.text);
+    setError(null);
+  };
+
+  const canSave = trigger.trim().length > 0 && text.trim().length > 0;
+
+  return (
+    <Page
+      title="Snippets"
+      description="Type a trigger in the composer (e.g. /ty) to expand it"
+    >
+      <PageSection title="Your snippets">
+        {isLoading ? (
+          <span className="font-mono text-xs text-muted-foreground/60">…</span>
+        ) : snippets.length === 0 ? (
+          <p className="text-[13px] text-muted-foreground">
+            No snippets yet. Add one below.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-1">
+            {snippets.map((s) => (
+              <div
+                key={s.id}
+                className="flex items-center gap-3 rounded-lg border px-3 py-2"
+              >
+                <code className="shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-[12px] text-primary">
+                  {s.trigger}
+                </code>
+                <span className="min-w-0 flex-1 truncate text-[13px] text-muted-foreground">
+                  {s.text}
+                </span>
+                <Hint label="Edit">
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={`Edit ${s.trigger}`}
+                    onClick={() => startEdit(s)}
+                  >
+                    <Pencil />
+                  </Button>
+                </Hint>
+                <Hint label="Delete">
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={`Delete ${s.trigger}`}
+                    disabled={remove.isPending}
+                    onClick={() => remove.mutate(s.id)}
+                  >
+                    <Trash2 />
+                  </Button>
+                </Hint>
+              </div>
+            ))}
+          </div>
+        )}
+      </PageSection>
+
+      <PageSection title={editingId ? "Edit snippet" : "Add snippet"}>
+        <div className="flex flex-col gap-3">
+          <Field label="Trigger">
+            <Input
+              value={trigger}
+              onChange={(e) => setTrigger(e.target.value)}
+              placeholder="/ty"
+              className="w-40 font-mono"
+              spellCheck={false}
+            />
+          </Field>
+          <Textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="Thanks so much — really appreciate it!"
+            rows={3}
+          />
+          {error && <p className="text-[12px] text-destructive">{error}</p>}
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              disabled={!canSave || save.isPending}
+              onClick={() => save.mutate()}
+            >
+              {save.isPending
+                ? "Saving…"
+                : editingId
+                  ? "Save changes"
+                  : "Add snippet"}
+            </Button>
+            {editingId && (
+              <Button variant="ghost" size="sm" onClick={reset}>
+                Cancel
+              </Button>
+            )}
+          </div>
         </div>
       </PageSection>
     </Page>
