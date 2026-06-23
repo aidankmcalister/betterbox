@@ -71,6 +71,7 @@ import {
 } from "@/lib/mail-queries";
 import { MARK_READ_MS, useSettings } from "@/hooks/use-settings";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useSnippetMap } from "@/hooks/use-snippets";
 import { Composer, type ComposerContent } from "@/components/composer";
 import { AppliedTags, TagPicker, useTagActions } from "@/components/tag-picker";
 import { LabeledView } from "@/components/labeled-view";
@@ -673,6 +674,8 @@ function ReaderPane({
   const [busy, setBusy] = useState(false);
   const [starred, setStarred] = useState(false);
   const [replyOpen, setReplyOpen] = useState(false);
+  // Snippets / slash commands in the reply editor (fetched only while replying).
+  const replySnippets = useSnippetMap(replyOpen);
   const [replyBody, setReplyBody] = useState("");
   const [replySending, setReplySending] = useState(false);
   const [replySent, setReplySent] = useState(false);
@@ -1109,6 +1112,7 @@ function ReaderPane({
                     value={replyBody}
                     onChange={setReplyBody}
                     onSubmit={() => void sendReply()}
+                    snippets={replySnippets}
                     placeholder="Write your reply…"
                     autoFocus
                     minHeight={120}
