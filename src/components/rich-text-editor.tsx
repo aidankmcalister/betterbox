@@ -3,7 +3,6 @@ import { EditorContent, useEditor, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
-import { Extension, InputRule } from "@tiptap/core";
 import {
   BoldIcon,
   ItalicIcon,
@@ -20,36 +19,7 @@ import {
 import { Hint } from "@/components/ui/tooltip";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { cn } from "@/lib/utils";
-
-/**
- * Tiptap extension: expand a `/trigger` into saved snippet text inline. Fires
- * when the user types a space after a known trigger (e.g. "/ty "). Reads the
- * current trigger→text map via a getter so snippets can update without
- * recreating the editor. Unknown triggers are left untouched.
- */
-const SnippetExpand = Extension.create<{
-  getSnippets: () => Record<string, string>;
-}>({
-  name: "snippetExpand",
-  addOptions() {
-    return { getSnippets: () => ({}) };
-  },
-  addInputRules() {
-    const getSnippets = this.options.getSnippets;
-    return [
-      new InputRule({
-        find: /\/([A-Za-z0-9_-]+)\s$/,
-        handler: ({ range, match, commands }) => {
-          const text = getSnippets()[`/${match[1]}`];
-          if (!text) return null;
-          // Replace "/trigger " with the snippet body + a trailing space so the
-          // user keeps typing naturally.
-          commands.insertContentAt(range, `${text} `);
-        },
-      }),
-    ];
-  },
-});
+import { SlashCommand } from "@/components/editor-slash-commands";
 
 /**
  * Reusable rich-text editor for compose + reply. Tiptap (ProseMirror) under the
@@ -97,7 +67,7 @@ export function RichTextEditor({
         HTMLAttributes: { rel: "noopener noreferrer", target: "_blank" },
       }),
       Placeholder.configure({ placeholder }),
-      SnippetExpand.configure({ getSnippets: () => snippetsRef.current }),
+      SlashCommand.configure({ getSnippets: () => snippetsRef.current }),
     ],
     content: value || "",
     autofocus: autoFocus ? "end" : false,
