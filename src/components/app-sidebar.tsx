@@ -1,5 +1,6 @@
 import {
   Archive,
+  ChevronRight,
   CircleDot,
   Eye,
   FileText,
@@ -37,15 +38,21 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
-  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 type NavChild = {
   id: string;
@@ -145,15 +152,11 @@ export const NAV_SECTIONS: {
   })),
 }));
 
-const groupLabel =
-  "flex items-center gap-1.5 px-1.5 pt-2 pb-[5px] font-mono text-[10.5px] font-medium tracking-[0.5px] uppercase text-muted-foreground/70 [&_svg]:size-3 [&_svg]:opacity-80";
 const navButton = "h-7 gap-[9px] px-2 text-[13px]";
-/* soon items: dimmed harder than the stock disabled 50% */
-const soonButton = `${navButton} disabled:opacity-35 aria-disabled:opacity-35`;
-/* rows are h-7 (not the stock h-8), so re-center the absolute badge: (28-20)/2 */
-const badgePos = "peer-data-[size=default]/menu-button:top-1";
-const countBadge = `${badgePos} min-w-[18px] rounded-full bg-accent px-1.5 text-center font-mono text-[10.5px] text-muted-foreground`;
-const soonBadge = `${badgePos} font-mono text-[10px] font-medium tracking-wide text-muted-foreground/70 uppercase`;
+const subBadge =
+  "ml-auto shrink-0 rounded-full bg-accent px-1.5 font-mono text-[10.5px] text-muted-foreground";
+const soonBadge =
+  "ml-auto shrink-0 font-mono text-[10px] font-medium tracking-wide text-muted-foreground/60 uppercase";
 
 export function AppSidebar({
   accounts,
@@ -259,96 +262,109 @@ export function AppSidebar({
         </button>
       </SidebarHeader>
 
-      <SidebarContent className="px-2.5">
-        {INTEGRATIONS.map((integration) => {
-          const children = integration.children.filter(childVisible);
-          if (children.length === 0) return null;
-          const isGmail = integration.id === "gmail";
-          return (
-            <SidebarGroup key={integration.id} className="p-0">
-              <SidebarGroupLabel className={groupLabel}>
-                <integration.icon />
-                {integration.label}
-              </SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu className="gap-px">
-                  {children.map((child) => {
-                    if (child.soon) {
-                      return (
-                        <SidebarMenuItem key={child.id}>
-                          <SidebarMenuButton disabled className={soonButton}>
-                            <child.icon />
-                            <span>{child.title}</span>
-                          </SidebarMenuButton>
-                          <SidebarMenuBadge className={soonBadge}>
-                            Soon
-                          </SidebarMenuBadge>
-                        </SidebarMenuItem>
-                      );
-                    }
-                    if (child.folder) {
-                      const childFolder = child.folder;
-                      return (
-                        <SidebarMenuItem key={child.id}>
+      <SidebarContent className="px-2.5 py-1.5">
+        <SidebarGroup className="p-0">
+          <SidebarGroupContent>
+            <SidebarMenu className="gap-0.5">
+              {INTEGRATIONS.map((integration) => {
+                const children = integration.children.filter(childVisible);
+                if (children.length === 0) return null;
+                const isGmail = integration.id === "gmail";
+                return (
+                  <SidebarMenuItem key={integration.id}>
+                    <Collapsible defaultOpen>
+                      <CollapsibleTrigger
+                        render={
                           <SidebarMenuButton
-                            isActive={!onLiveDev && folder === childFolder}
-                            onClick={after(() => onFolder(childFolder))}
-                            className={navButton}
-                          >
-                            <child.icon />
-                            <span>{child.title}</span>
-                          </SidebarMenuButton>
-                          {child.id === "inbox" && scopedUnread > 0 ? (
-                            <SidebarMenuBadge className={countBadge}>
-                              {formatCount(scopedUnread)}
-                            </SidebarMenuBadge>
-                          ) : null}
-                        </SidebarMenuItem>
-                      );
-                    }
-                    const to = child.to as string;
-                    return (
-                      <SidebarMenuItem key={child.id}>
-                        <SidebarMenuButton
-                          isActive={
-                            embedded ? activeDevId === child.id : pathname === to
-                          }
-                          onClick={after(() =>
-                            embedded && onOpenDevPage
-                              ? onOpenDevPage(child.id)
-                              : navigate({ to }),
-                          )}
-                          className={navButton}
-                        >
-                          <child.icon />
-                          <span>{child.title}</span>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    );
-                  })}
-                </SidebarMenu>
-              </SidebarGroupContent>
+                            className={cn(
+                              navButton,
+                              "group/collapsible font-medium",
+                            )}
+                          />
+                        }
+                      >
+                        <integration.icon />
+                        <span>{integration.label}</span>
+                        <ChevronRight className="ml-auto size-3.5 text-muted-foreground/60 transition-transform group-data-[panel-open]/collapsible:rotate-90" />
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <SidebarMenuSub className="gap-px">
+                          {children.map((child) => {
+                            if (child.soon) {
+                              return (
+                                <SidebarMenuSubItem key={child.id}>
+                                  <SidebarMenuSubButton
+                                    aria-disabled
+                                    className="pointer-events-none opacity-40"
+                                  >
+                                    <child.icon />
+                                    <span className="flex-1 truncate">
+                                      {child.title}
+                                    </span>
+                                    <span className={soonBadge}>Soon</span>
+                                  </SidebarMenuSubButton>
+                                </SidebarMenuSubItem>
+                              );
+                            }
+                            const isActive = child.folder
+                              ? !onLiveDev && folder === child.folder
+                              : embedded
+                                ? activeDevId === child.id
+                                : pathname === child.to;
+                            const handle = child.folder
+                              ? after(() => onFolder(child.folder as Folder))
+                              : after(() =>
+                                  embedded && onOpenDevPage
+                                    ? onOpenDevPage(child.id)
+                                    : navigate({ to: child.to as string }),
+                                );
+                            return (
+                              <SidebarMenuSubItem key={child.id}>
+                                <SidebarMenuSubButton
+                                  isActive={isActive}
+                                  onClick={handle}
+                                  render={<button type="button" />}
+                                >
+                                  <child.icon />
+                                  <span className="flex-1 truncate">
+                                    {child.title}
+                                  </span>
+                                  {child.id === "inbox" && scopedUnread > 0 ? (
+                                    <span className={subBadge}>
+                                      {formatCount(scopedUnread)}
+                                    </span>
+                                  ) : null}
+                                </SidebarMenuSubButton>
+                              </SidebarMenuSubItem>
+                            );
+                          })}
+                        </SidebarMenuSub>
 
-              {/* Multi-account scope lives under Gmail — it's a Gmail concept. */}
-              {isGmail && showAccountScope && (
-                <SidebarGroupContent className="px-0 pt-2">
-                  {loading ? (
-                    <ViewCardSkeleton />
-                  ) : accounts.length > 0 ? (
-                    <ViewCard
-                      accounts={accounts}
-                      scopeIds={scopeIds}
-                      allOn={allOn}
-                      onToggle={onToggleScope}
-                      onAddAccount={() => linkGoogle()}
-                      onAddTestAccount={onAddTestAccount}
-                    />
-                  ) : null}
-                </SidebarGroupContent>
-              )}
-            </SidebarGroup>
-          );
-        })}
+                        {/* Multi-account scope lives under Gmail. */}
+                        {isGmail && showAccountScope && (
+                          <div className="mt-1.5">
+                            {loading ? (
+                              <ViewCardSkeleton />
+                            ) : accounts.length > 0 ? (
+                              <ViewCard
+                                accounts={accounts}
+                                scopeIds={scopeIds}
+                                allOn={allOn}
+                                onToggle={onToggleScope}
+                                onAddAccount={() => linkGoogle()}
+                                onAddTestAccount={onAddTestAccount}
+                              />
+                            ) : null}
+                          </div>
+                        )}
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
 
       <SidebarFooter className="border-t pb-[max(0.5rem,env(safe-area-inset-bottom))]">
