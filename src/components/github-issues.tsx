@@ -80,7 +80,7 @@ function IssueRow({
           </span>
         </div>
       ) : (
-        <div className="px-3 py-2.5">
+        <div className="px-3 py-2">
           <div className="flex items-center gap-2 font-mono text-[11px]">
             <span className="min-w-0 truncate text-muted-foreground">
               {issue.repo}
@@ -89,25 +89,27 @@ function IssueRow({
               #{issue.num}
             </span>
             <span className="flex-1" />
+            <StatusDot color={status.color}>{status.label}</StatusDot>
+            <span className="shrink-0">
+              <Comments n={issue.comments} />
+            </span>
             <span className="shrink-0 text-muted-foreground/60">
               {relTime(issue.updated, now)}
             </span>
           </div>
           <p
             className={cn(
-              "my-[5px] line-clamp-2 text-[12.5px] leading-[1.35] text-foreground",
+              "mt-1 line-clamp-2 text-[12.5px] leading-[1.35] text-foreground",
               issue.assignedToYou && "font-semibold",
             )}
           >
             {issue.title}
           </p>
-          <div className="flex items-center gap-x-3">
-            <StatusDot color={status.color}>{status.label}</StatusDot>
-            <LabelPills labels={issue.labels} max={2} />
-            <span className="ml-auto shrink-0">
-              <Comments n={issue.comments} />
-            </span>
-          </div>
+          {issue.labels.length > 0 && (
+            <div className="mt-1.5 flex">
+              <LabelPills labels={issue.labels} max={4} />
+            </div>
+          )}
         </div>
       )}
     </SpineRow>

@@ -59,12 +59,12 @@ export function StatStrip({
   segs: { value: number; label: string; you?: boolean }[];
 }) {
   return (
-    <div className="flex flex-none flex-wrap items-center border-b border-border px-3 py-2 font-mono text-[11px] text-muted-foreground">
+    <div className="no-scrollbar flex flex-none items-center overflow-x-auto border-b border-border px-3 py-2 font-mono text-[11px] text-muted-foreground">
       {segs.map((s, i) => (
         <span
           key={s.label}
           className={cn(
-            "inline-flex items-baseline gap-[5px] border-r border-border px-[11px] last:border-r-0",
+            "inline-flex shrink-0 items-baseline gap-[5px] border-r border-border px-[11px] last:border-r-0",
             i === 0 && "pl-0",
             s.you && "text-primary",
           )}

@@ -44,6 +44,7 @@ type BoardCtx = {
   renderPane: (paneId: string) => ReactNode;
   drag: DragState | null;
   resizeSplit: (splitId: string, sizes: number[]) => void;
+  paneMinSize?: (paneId: string) => string | undefined;
 };
 const BoardContext = createContext<BoardCtx | null>(null);
 
@@ -95,6 +96,7 @@ export function TileBoard({
   renderPane,
   storage,
   renderDragLabel,
+  paneMinSize,
   resetEvent,
   emptyLabel = "Nothing to show.",
 }: {
@@ -102,6 +104,10 @@ export function TileBoard({
   renderPane: (paneId: string) => ReactNode;
   storage: TileStorage;
   renderDragLabel?: (paneId: string) => ReactNode;
+  /** Per-pane minimum size in the split direction (a CSS size like "340px"), so
+   *  a pane can't be resized small enough to break its content. Falls back to
+   *  MIN_PANE_FRACTION when it returns undefined. */
+  paneMinSize?: (paneId: string) => string | undefined;
   resetEvent?: string;
   emptyLabel?: string;
 }) {
@@ -204,7 +210,13 @@ export function TileBoard({
     return () => window.removeEventListener(resetEvent, onReset);
   }, [resetEvent, mutate, paneIdsKey]);
 
-  const ctx: BoardCtx = { beginHeaderDrag, renderPane, drag, resizeSplit };
+  const ctx: BoardCtx = {
+    beginHeaderDrag,
+    renderPane,
+    drag,
+    resizeSplit,
+    paneMinSize,
+  };
 
   return (
     <BoardContext.Provider value={ctx}>
@@ -234,7 +246,7 @@ const childKey = (child: LayoutNode) =>
   child.type === "pane" ? child.accountId : child.id;
 
 function TileTree({ node }: { node: LayoutNode }) {
-  const { resizeSplit } = useBoard();
+  const { resizeSplit, paneMinSize } = useBoard();
 
   if (node.type === "pane") return <BoardPane paneId={node.accountId} />;
 
@@ -261,7 +273,10 @@ function TileTree({ node }: { node: LayoutNode }) {
           <ResizablePanel
             id={childKey(child)}
             defaultSize={`${node.sizes[i] * 100}%`}
-            minSize={`${MIN_PANE_FRACTION * 100}%`}
+            minSize={
+              (child.type === "pane" && paneMinSize?.(child.accountId)) ||
+              `${MIN_PANE_FRACTION * 100}%`
+            }
             className="min-h-0 min-w-0"
           >
             <TileTree node={child} />
