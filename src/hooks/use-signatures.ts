@@ -34,13 +34,12 @@ export function signatureToHtml(text: string): string {
   return `<p></p><p>${lines}</p>`;
 }
 
-/** The editor HTML for the signature assigned to an account, or "" if none. */
-export function signatureHtmlForAccount(
+/** The Signature assigned to an account, or null if none. */
+export function resolveAccountSignature(
   data: SignaturesData | undefined,
   accountId: string | undefined,
-): string {
-  if (!data || !accountId) return "";
+): Signature | null {
+  if (!data || !accountId) return null;
   const sigId = data.assignments[accountId];
-  const sig = sigId ? data.signatures.find((s) => s.id === sigId) : undefined;
-  return sig ? signatureToHtml(sig.body) : "";
+  return (sigId && data.signatures.find((s) => s.id === sigId)) || null;
 }

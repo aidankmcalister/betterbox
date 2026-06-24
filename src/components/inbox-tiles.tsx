@@ -73,7 +73,8 @@ import { MARK_READ_MS, useSettings } from "@/hooks/use-settings";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useSnippetMap } from "@/hooks/use-snippets";
 import {
-  signatureHtmlForAccount,
+  resolveAccountSignature,
+  signatureToHtml,
   useSignaturesQuery,
 } from "@/hooks/use-signatures";
 import { Composer, type ComposerContent } from "@/components/composer";
@@ -683,23 +684,19 @@ function ReaderPane({
   const [replyBody, setReplyBody] = useState("");
   const [replySending, setReplySending] = useState(false);
 
-  // Signature: seed the account's assigned signature into the reply once, when
-  // it opens (Gmail-style). Waits for the query to load, and skips if you've
-  // already typed something.
-  const replySig = useSignaturesQuery(replyOpen).data;
-  const replySigSeededRef = useRef(false);
+  // Signature: shown as a read-only block below the reply editor and appended to
+  // the outgoing HTML on send — unless removed for this reply.
+  const sigData = useSignaturesQuery(replyOpen).data;
+  const accountSig = resolveAccountSignature(sigData, accountId);
+  const [signatureSkipped, setSignatureSkipped] = useState(false);
   useEffect(() => {
-    if (!replyOpen) {
-      replySigSeededRef.current = false;
-      return;
-    }
-    if (replySigSeededRef.current || !replySig) return;
-    if (replyBody === "") {
-      const sig = signatureHtmlForAccount(replySig, accountId);
-      if (sig) setReplyBody(sig);
-    }
-    replySigSeededRef.current = true;
-  }, [replyOpen, replySig, accountId, replyBody]);
+    if (replyOpen) setSignatureSkipped(false);
+  }, [replyOpen]);
+  const showSignature = accountSig !== null && !signatureSkipped;
+  const replyOutgoingHtml =
+    accountSig && !signatureSkipped
+      ? `${replyBody}${signatureToHtml(accountSig.body)}`
+      : replyBody;
   const [replySent, setReplySent] = useState(false);
   const replyRef = useRef<HTMLDivElement>(null);
 
@@ -861,7 +858,7 @@ function ReaderPane({
           ? target.subject
           : `Re: ${target.subject}`,
         body: "",
-        html: replyBody,
+        html: replyOutgoingHtml,
         inReplyTo: target.messageId || undefined,
         references:
           [target.references, target.messageId].filter(Boolean).join(" ") ||
@@ -1139,6 +1136,26 @@ function ReaderPane({
                     autoFocus
                     minHeight={120}
                   />
+                  {showSignature && accountSig && (
+                    <div className="mt-2 border-t pt-2">
+                      <div className="mb-1 flex items-center justify-between">
+                        <span className="font-mono text-[10px] tracking-[0.5px] text-muted-foreground/60 uppercase">
+                          Signature
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setSignatureSkipped(true)}
+                          className="inline-flex items-center gap-1 rounded text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+                        >
+                          <XIcon className="size-3" />
+                          Remove
+                        </button>
+                      </div>
+                      <div className="whitespace-pre-line text-[13px] leading-[1.6] text-muted-foreground">
+                        {accountSig.body}
+                      </div>
+                    </div>
+                  )}
                   <div className="mt-2 flex items-center gap-2">
                     <Button
                       size="sm"

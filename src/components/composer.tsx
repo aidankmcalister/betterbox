@@ -33,7 +33,8 @@ import { AccountDot } from "@/components/account-dot";
 import { RichTextEditor } from "@/components/rich-text-editor";
 import { useSnippetMap } from "@/hooks/use-snippets";
 import {
-  signatureHtmlForAccount,
+  resolveAccountSignature,
+  signatureToHtml,
   useSignaturesQuery,
 } from "@/hooks/use-signatures";
 import { Button } from "@/components/ui/button";
@@ -143,24 +144,21 @@ export function Composer({
   // Snippets expand inline in the editor (e.g. "/ty "). Fetched only while open.
   const snippets = useSnippetMap(open);
 
-  // Signature: auto-insert the From account's assigned signature, Gmail-style.
-  // Seeds on a fresh compose and swaps when you change the From account, but
-  // only while the editor is untouched — once you type, the body is yours.
+  // Signature: shown as a read-only block below the editor (not inside it, so it
+  // can't be edited) and appended to the outgoing HTML at send/draft — unless the
+  // user removes it for this message. The skip resets when the From account
+  // changes, since that changes the signature.
   const sigData = useSignaturesQuery(open).data;
-  const desiredSig = open
-    ? signatureHtmlForAccount(sigData, from?.accountId)
-    : "";
-  const appliedSigRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!open) {
-      appliedSigRef.current = null;
-      return;
-    }
-    const untouched = body === "" || body === appliedSigRef.current;
-    if (!untouched) return;
-    if (body !== desiredSig) onContentChange({ body: desiredSig });
-    appliedSigRef.current = desiredSig;
-  }, [open, desiredSig, body, onContentChange]);
+  const accountSig = open
+    ? resolveAccountSignature(sigData, from?.accountId)
+    : null;
+  const [signatureSkipped, setSignatureSkipped] = useState(false);
+  useEffect(() => setSignatureSkipped(false), [from?.accountId]);
+  const showSignature = accountSig !== null && !signatureSkipped;
+  const outgoingHtml =
+    accountSig && !signatureSkipped
+      ? `${body}${signatureToHtml(accountSig.body)}`
+      : body;
 
   if (!open) return null;
 
@@ -194,6 +192,7 @@ export function Composer({
     setSending(false);
     setPreview(false);
     setFiles([]);
+    setSignatureSkipped(false);
     onOpenChange(false);
   };
 
@@ -207,7 +206,7 @@ export function Composer({
         id: draft?.emailId,
         to: to.trim(),
         subject,
-        html: body,
+        html: outgoingHtml,
       }).then(() => refreshDrafts(from.accountId));
       if (isTestAccount(from.accountId)) toast("Saved to drafts");
     }
@@ -268,7 +267,7 @@ export function Composer({
         cc: cc.trim() || undefined,
         subject,
         body: "",
-        html: body,
+        html: outgoingHtml,
         inReplyTo: reply?.inReplyTo,
         references: reply?.references,
         threadId: reply?.threadId,
@@ -453,7 +452,7 @@ export function Composer({
         )}
       >
         {preview ? (
-          <PreviewBody html={body} minHeight={inPane ? 320 : 200} />
+          <PreviewBody html={outgoingHtml} minHeight={inPane ? 320 : 200} />
         ) : (
           <RichTextEditor
             value={body}
@@ -472,6 +471,27 @@ export function Composer({
           />
         )}
       </div>
+
+      {!preview && showSignature && accountSig && (
+        <div className="border-t px-3.5 py-2">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-mono text-[10px] tracking-[0.5px] text-muted-foreground/60 uppercase">
+              Signature
+            </span>
+            <button
+              type="button"
+              onClick={() => setSignatureSkipped(true)}
+              className="inline-flex items-center gap-1 rounded text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <XIcon className="size-3" />
+              Remove
+            </button>
+          </div>
+          <div className="whitespace-pre-line text-[13px] leading-[1.6] text-muted-foreground">
+            {accountSig.body}
+          </div>
+        </div>
+      )}
 
       {files.length > 0 && (
         <div className="flex flex-wrap gap-2 border-t px-3.5 py-2.5">
