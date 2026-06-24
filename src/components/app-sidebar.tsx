@@ -271,22 +271,32 @@ export function AppSidebar({
                 const children = integration.children.filter(childVisible);
                 if (children.length === 0) return null;
                 const isGmail = integration.id === "gmail";
+                // Whole integration is upcoming when every child is — flag it on
+                // the header so the group reads as "Soon" before you expand it.
+                const allSoon = children.every((child) => child.soon);
                 return (
                   <SidebarMenuItem key={integration.id}>
-                    <Collapsible defaultOpen>
+                    <Collapsible defaultOpen={!allSoon}>
                       <CollapsibleTrigger
                         render={
                           <SidebarMenuButton
                             className={cn(
                               navButton,
                               "group/collapsible font-medium",
+                              allSoon && "opacity-50",
                             )}
                           />
                         }
                       >
                         <integration.icon />
                         <span>{integration.label}</span>
-                        <ChevronRight className="ml-auto size-3.5 text-muted-foreground/60 transition-transform group-data-[panel-open]/collapsible:rotate-90" />
+                        {allSoon && <span className={soonBadge}>Soon</span>}
+                        <ChevronRight
+                          className={cn(
+                            "size-3.5 text-muted-foreground/60 transition-transform group-data-[panel-open]/collapsible:rotate-90",
+                            allSoon ? "ml-1" : "ml-auto",
+                          )}
+                        />
                       </CollapsibleTrigger>
                       <CollapsibleContent>
                         <SidebarMenuSub className="gap-px">
