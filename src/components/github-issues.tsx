@@ -8,7 +8,7 @@ import {
   ConnectState,
   EmptyState,
   ErrorState,
-  FilterTabs,
+  FilterSelect,
   GithubFooter,
   LabelPills,
   PanelSkeleton,
@@ -101,10 +101,12 @@ function IssueRow({
           >
             {issue.title}
           </p>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          <div className="flex items-center gap-x-3">
             <StatusDot color={status.color}>{status.label}</StatusDot>
-            <LabelPills labels={issue.labels} max={3} />
-            <Comments n={issue.comments} />
+            <LabelPills labels={issue.labels} max={2} />
+            <span className="ml-auto shrink-0">
+              <Comments n={issue.comments} />
+            </span>
           </div>
         </div>
       )}
@@ -160,7 +162,7 @@ export function GithubIssuesPage({ signedIn = false }: { signedIn?: boolean }) {
           { value: nOpened, label: "opened by you" },
         ]}
       />
-      <FilterTabs
+      <FilterSelect
         value={filter}
         onChange={setFilter}
         shown={rows.length}

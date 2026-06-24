@@ -17,7 +17,7 @@ import {
   ConnectState,
   EmptyState,
   ErrorState,
-  FilterTabs,
+  FilterSelect,
   GithubFooter,
   PanelSkeleton,
   Sparkbar,
@@ -175,11 +175,13 @@ function PRRow({
           >
             {pr.title}
           </p>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          <div className="flex items-center gap-x-3">
             <StatusDot color={status.color}>{status.label}</StatusDot>
             <Diff pr={pr} />
-            <Ci ci={pr.ci} />
-            <Comments n={pr.comments} />
+            <span className="ml-auto flex shrink-0 items-center gap-3">
+              <Ci ci={pr.ci} />
+              <Comments n={pr.comments} />
+            </span>
           </div>
         </div>
       )}
@@ -276,7 +278,7 @@ export function PullRequestsPage({
           { value: nMerged, label: "merged" },
         ]}
       />
-      <FilterTabs
+      <FilterSelect
         value={filter}
         onChange={setFilter}
         shown={rows.length}

@@ -2,6 +2,13 @@ import { useCallback, useRef, useState, type ReactNode } from "react";
 import { RefreshCwIcon } from "lucide-react";
 import { GithubMark } from "@/components/github-mark";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { formatCount } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -77,8 +84,9 @@ export function StatStrip({
   );
 }
 
-/** Mono filter tabs; the active one is bracketed — `[open]` — in the accent. */
-export function FilterTabs<T extends string>({
+/** Filter as a compact shadcn Select (each id equals its label, so the trigger
+ *  shows it directly), with the result count on the right. */
+export function FilterSelect<T extends string>({
   items,
   value,
   onChange,
@@ -90,36 +98,27 @@ export function FilterTabs<T extends string>({
   shown: number;
 }) {
   return (
-    <div className="flex flex-none items-center border-b border-border px-3 py-[6px] font-mono text-[11px]">
-      <div className="no-scrollbar flex min-w-0 items-center gap-[2px] overflow-x-auto">
-        {items.map((it) => {
-          const on = it.id === value;
-          return (
-            <button
+    <div className="flex flex-none items-center gap-2 border-b border-border px-3 py-2">
+      <Select value={value} onValueChange={(v) => onChange(v as T)}>
+        <SelectTrigger
+          size="sm"
+          className="h-7 w-auto gap-1.5 font-mono text-[11px] capitalize"
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {items.map((it) => (
+            <SelectItem
               key={it.id}
-              type="button"
-              onClick={() => onChange(it.id)}
-              className={cn(
-                "shrink-0 rounded-[4px] px-2 py-[2px] whitespace-nowrap",
-                on
-                  ? "text-foreground"
-                  : "text-muted-foreground/60 hover:text-muted-foreground",
-              )}
+              value={it.id}
+              className="font-mono text-[12px] capitalize"
             >
-              {on ? (
-                <>
-                  <span className="text-primary">[</span>
-                  {it.label}
-                  <span className="text-primary">]</span>
-                </>
-              ) : (
-                it.label
-              )}
-            </button>
-          );
-        })}
-      </div>
-      <span className="ml-auto shrink-0 pl-2 text-muted-foreground/60 whitespace-nowrap">
+              {it.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <span className="ml-auto font-mono text-[10.5px] whitespace-nowrap text-muted-foreground/60">
         {shown} shown
       </span>
     </div>
