@@ -1401,27 +1401,57 @@ function SignaturesPage({ accounts }: { accounts: Account[] }) {
           </p>
         ) : (
           <div className="flex flex-col gap-2">
-            {accounts.map((account) => (
-              <Field key={account.accountId} label={account.email}>
-                <select
-                  value={assignments[account.accountId] ?? ""}
-                  onChange={(e) =>
-                    assign.mutate({
-                      accountId: account.accountId,
-                      signatureId: e.target.value || null,
-                    })
-                  }
-                  className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-[13px] outline-none focus-visible:border-ring"
-                >
-                  <option value="">None</option>
-                  {signatures.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-            ))}
+            {accounts.map((account) => {
+              const currentId = assignments[account.accountId] ?? null;
+              const current = signatures.find((s) => s.id === currentId);
+              return (
+                <Field key={account.accountId} label={account.email}>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      render={
+                        <Button variant="outline" size="sm" className="w-40" />
+                      }
+                    >
+                      <span className="flex-1 truncate text-left">
+                        {current ? current.name : "None"}
+                      </span>
+                      <ChevronDownIcon />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-44">
+                      <DropdownMenuItem
+                        onClick={() =>
+                          assign.mutate({
+                            accountId: account.accountId,
+                            signatureId: null,
+                          })
+                        }
+                      >
+                        <span className="text-[13px]">None</span>
+                        {!currentId && (
+                          <CheckIcon className="ml-auto size-3.5 shrink-0 text-primary" />
+                        )}
+                      </DropdownMenuItem>
+                      {signatures.map((s) => (
+                        <DropdownMenuItem
+                          key={s.id}
+                          onClick={() =>
+                            assign.mutate({
+                              accountId: account.accountId,
+                              signatureId: s.id,
+                            })
+                          }
+                        >
+                          <span className="truncate text-[13px]">{s.name}</span>
+                          {currentId === s.id && (
+                            <CheckIcon className="ml-auto size-3.5 shrink-0 text-primary" />
+                          )}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </Field>
+              );
+            })}
           </div>
         )}
       </PageSection>
