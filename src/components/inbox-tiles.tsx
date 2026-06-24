@@ -11,6 +11,7 @@ import {
   BadgeCheckIcon,
   BracesIcon,
   CheckIcon,
+  CircleDotIcon,
   ClipboardIcon,
   CodeXmlIcon,
   DownloadIcon,
@@ -80,7 +81,11 @@ import {
 } from "@/hooks/use-signatures";
 import { Composer, type ComposerContent } from "@/components/composer";
 import { PullRequestsPage } from "@/components/pull-requests";
-import { usePullRequestsQuery } from "@/lib/github-queries";
+import { GithubIssuesPage } from "@/components/github-issues";
+import {
+  usePullRequestsQuery,
+  useGithubIssuesQuery,
+} from "@/lib/github-queries";
 import { AppliedTags, TagPicker, useTagActions } from "@/components/tag-picker";
 import { LabeledView } from "@/components/labeled-view";
 import type { Folder } from "@/lib/folders";
@@ -197,6 +202,16 @@ const PANEL_REGISTRY: Record<string, PanelEntry> = {
     icon: GitPullRequestIcon,
     render: (paneId, ctx) => (
       <PullRequestsPane
+        paneId={paneId}
+        onClose={() => ctx.onClosePanel(paneId)}
+      />
+    ),
+  },
+  "github-issues": {
+    title: "Issues",
+    icon: CircleDotIcon,
+    render: (paneId, ctx) => (
+      <GithubIssuesPane
         paneId={paneId}
         onClose={() => ctx.onClosePanel(paneId)}
       />
@@ -697,6 +712,64 @@ function PullRequestsPane({
       </div>
       <div className="min-h-0 flex-1 overflow-hidden">
         <PullRequestsPage signedIn={!!session} demo={demoMode} />
+      </div>
+    </div>
+  );
+}
+
+/** GitHub issues as an on-demand board panel — assigned to or opened by you. */
+function GithubIssuesPane({
+  paneId,
+  onClose,
+}: {
+  paneId: string;
+  onClose: () => void;
+}) {
+  const beginHeaderDrag = useTileDrag();
+  const { data: session } = useSession();
+  const query = useGithubIssuesQuery(!!session);
+  const live = query.data?.linked;
+
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      <div
+        onPointerDown={(event) => beginHeaderDrag(event, paneId)}
+        className="flex h-9 shrink-0 items-center gap-2 border-b px-2.5 select-none md:cursor-grab md:touch-none md:active:cursor-grabbing"
+      >
+        <GripVerticalIcon className="hidden size-3.5 shrink-0 text-muted-foreground/70 md:block" />
+        <CircleDotIcon className="size-3.5 shrink-0 text-muted-foreground" />
+        <span className="min-w-0 flex-1 truncate font-mono text-xs font-medium">
+          Issues
+        </span>
+        {live && (
+          <span className="inline-flex shrink-0 items-center gap-1 font-mono text-[10.5px] text-success">
+            <span className="size-1.5 rounded-full bg-success" />
+            live
+          </span>
+        )}
+        <Hint label="Refresh">
+          <button
+            type="button"
+            onClick={() => query.refetch()}
+            className="inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground/70 hover:bg-muted hover:text-foreground"
+          >
+            <RefreshCwIcon
+              className={cn("size-3.5", query.isFetching && "animate-spin")}
+            />
+          </button>
+        </Hint>
+        <Hint label="Close panel">
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground/70 hover:bg-muted hover:text-foreground"
+          >
+            <XIcon className="size-3.5" />
+          </button>
+        </Hint>
+      </div>
+      <div className="min-h-0 flex-1 overflow-hidden">
+        <GithubIssuesPage signedIn={!!session} />
       </div>
     </div>
   );

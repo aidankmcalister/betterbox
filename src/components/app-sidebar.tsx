@@ -2,7 +2,6 @@ import {
   Archive,
   ChevronRight,
   CircleDot,
-  Eye,
   FileText,
   GitPullRequest,
   Inbox,
@@ -108,8 +107,12 @@ const INTEGRATIONS: Integration[] = [
         icon: GitPullRequest,
         panel: "pull-requests",
       },
-      { id: "github_issues", title: "Issues", icon: CircleDot, soon: true },
-      { id: "github_reviews", title: "Reviews", icon: Eye, soon: true },
+      {
+        id: "github_issues",
+        title: "Issues",
+        icon: CircleDot,
+        panel: "github-issues",
+      },
     ],
   },
   {
