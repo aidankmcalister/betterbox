@@ -173,6 +173,99 @@ export type ComposePane = {
 
 const splitReaderId = (accountId: string) => `${READER_PANE_ID}:${accountId}`;
 
+// ── Pane-type registry ──────────────────────────────────────────────────────
+// The layout tree stores an opaque pane id; a pane's *type* is derived from the
+// id's shape (getPaneType). Each type maps to how it renders + its drag label.
+// A new pane type (e.g. GitHub PRs) adds a getPaneType branch and a registry
+// entry — the board's dispatch (renderPane/renderDragLabel) never changes.
+export type PaneType = "email" | "reader" | "composer";
+
+function getPaneType(paneId: string): PaneType {
+  if (paneId === COMPOSE_PANE_ID) return "composer";
+  if (paneId === READER_PANE_ID || paneId.startsWith(`${READER_PANE_ID}:`)) {
+    return "reader";
+  }
+  return "email";
+}
+
+/** Everything a pane renderer/drag-label needs from the board's live state. */
+type PaneRenderCtx = {
+  accounts: Account[];
+  reading: Reading | null;
+  openEmails: Record<string, string>;
+  compose: ComposePane | null;
+  closeReaderFor: (accountId: string) => void;
+};
+
+type PaneTypeEntry = {
+  render: (paneId: string, ctx: PaneRenderCtx) => React.ReactNode;
+  dragLabel: (paneId: string, ctx: PaneRenderCtx) => React.ReactNode;
+};
+
+const PANE_TYPES: Record<PaneType, PaneTypeEntry> = {
+  email: {
+    render: (paneId) => <AccountPane accountId={paneId} />,
+    dragLabel: (paneId, ctx) => {
+      const account = ctx.accounts.find((a) => a.accountId === paneId);
+      if (!account) return null;
+      return (
+        <>
+          <AccountDot
+            colorIndex={ctx.accounts.indexOf(account)}
+            accountId={account.accountId}
+          />
+          <span className="font-mono text-xs">{account.email}</span>
+        </>
+      );
+    },
+  },
+  reader: {
+    render: (paneId, ctx) => {
+      // Shared reader (one at a time) only survives while a message is open.
+      if (paneId === READER_PANE_ID) {
+        if (!ctx.reading) return null;
+        const acc = ctx.reading.accountId;
+        return (
+          <ReaderPane
+            paneId={paneId}
+            accountId={acc}
+            emailId={ctx.reading.emailId}
+            onClose={() => ctx.closeReaderFor(acc)}
+          />
+        );
+      }
+      // Per-account split reader: id is `${READER_PANE_ID}:${accountId}`.
+      const acc = paneId.slice(READER_PANE_ID.length + 1);
+      return (
+        <ReaderPane
+          paneId={paneId}
+          accountId={acc}
+          emailId={ctx.openEmails[acc] ?? null}
+          onClose={() => ctx.closeReaderFor(acc)}
+        />
+      );
+    },
+    dragLabel: () => (
+      <>
+        <MailOpenIcon className="size-3.5 text-muted-foreground" />
+        <span className="text-xs">Reading pane</span>
+      </>
+    ),
+  },
+  composer: {
+    render: (_paneId, ctx) =>
+      ctx.compose ? (
+        <ComposePane compose={ctx.compose} accounts={ctx.accounts} />
+      ) : null,
+    dragLabel: () => (
+      <>
+        <PencilIcon className="size-3.5 text-muted-foreground" />
+        <span className="text-xs">New message</span>
+      </>
+    ),
+  },
+};
+
 type TilesCtx = {
   accounts: Account[];
   removable: boolean;
@@ -371,63 +464,19 @@ export function InboxTiles({
 
   const storage: TileStorage = { load: loadStoredTree, save: persistTree };
 
-  const renderPane = (paneId: string) => {
-    if (paneId === COMPOSE_PANE_ID && compose) {
-      return <ComposePane compose={compose} accounts={accounts} />;
-    }
-    if (paneId === READER_PANE_ID && reading) {
-      return (
-        <ReaderPane
-          paneId={paneId}
-          accountId={reading.accountId}
-          emailId={reading.emailId}
-          onClose={() => closeReaderFor(reading.accountId)}
-        />
-      );
-    }
-    if (paneId.startsWith(`${READER_PANE_ID}:`)) {
-      const acc = paneId.slice(READER_PANE_ID.length + 1);
-      return (
-        <ReaderPane
-          paneId={paneId}
-          accountId={acc}
-          emailId={openEmails[acc] ?? null}
-          onClose={() => closeReaderFor(acc)}
-        />
-      );
-    }
-    return <AccountPane accountId={paneId} />;
+  // Single dispatch: classify the pane id, then look up its renderer/label in
+  // the registry. No per-type branching lives here anymore.
+  const paneCtx: PaneRenderCtx = {
+    accounts,
+    reading,
+    openEmails,
+    compose: compose ?? null,
+    closeReaderFor,
   };
-
-  const renderDragLabel = (paneId: string) => {
-    if (paneId === COMPOSE_PANE_ID) {
-      return (
-        <>
-          <PencilIcon className="size-3.5 text-muted-foreground" />
-          <span className="text-xs">New message</span>
-        </>
-      );
-    }
-    if (paneId === READER_PANE_ID || paneId.startsWith(`${READER_PANE_ID}:`)) {
-      return (
-        <>
-          <MailOpenIcon className="size-3.5 text-muted-foreground" />
-          <span className="text-xs">Reading pane</span>
-        </>
-      );
-    }
-    const account = accounts.find((a) => a.accountId === paneId);
-    if (!account) return null;
-    return (
-      <>
-        <AccountDot
-          colorIndex={accounts.indexOf(account)}
-          accountId={account.accountId}
-        />
-        <span className="font-mono text-xs">{account.email}</span>
-      </>
-    );
-  };
+  const renderPane = (paneId: string) =>
+    PANE_TYPES[getPaneType(paneId)].render(paneId, paneCtx);
+  const renderDragLabel = (paneId: string) =>
+    PANE_TYPES[getPaneType(paneId)].dragLabel(paneId, paneCtx);
 
   return (
     <TilesContext.Provider value={ctx}>
