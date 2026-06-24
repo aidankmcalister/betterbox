@@ -237,7 +237,7 @@ async function fetchEmail(accessToken: string, id: string): Promise<Email> {
     from: header("From"),
     subject: header("Subject"),
     date: header("Date"),
-    snippet: message.snippet,
+    snippet: message.snippet ? decodeEntities(message.snippet) : message.snippet,
     unread: message.labelIds?.includes("UNREAD") ?? false,
     labelIds: message.labelIds ?? [],
   };
@@ -310,7 +310,7 @@ function parseMessage(message: RawMessage): FullEmail {
     hasAttachment: message.payload ? hasAttachmentPart(message.payload) : false,
     inlineAttachments: message.payload ? collectInline(message.payload) : {},
     attachments: message.payload ? collectAttachments(message.payload) : [],
-    snippet: message.snippet,
+    snippet: message.snippet ? decodeEntities(message.snippet) : message.snippet,
     unread: message.labelIds?.includes("UNREAD") ?? false,
     ...extractBody(message.payload),
   };
@@ -449,6 +449,27 @@ function stripHtml(html: string): string {
       .replace(/\n{3,}/g, "\n\n")
       .trim()
   );
+}
+
+/** Decode the HTML entities Gmail leaves in `snippet` (e.g. `&amp;`, `&#39;`,
+ *  `&quot;`). Regex-based so it works on server + client: numeric refs first,
+ *  then named, with `&amp;` last to avoid double-decoding. */
+function decodeEntities(text: string): string {
+  return text
+    .replace(/&#x([0-9a-fA-F]+);/g, (m, h) => {
+      const cp = parseInt(h, 16);
+      return cp > 0 && cp <= 0x10ffff ? String.fromCodePoint(cp) : m;
+    })
+    .replace(/&#(\d+);/g, (m, d) => {
+      const cp = parseInt(d, 10);
+      return cp > 0 && cp <= 0x10ffff ? String.fromCodePoint(cp) : m;
+    })
+    .replace(/&nbsp;/g, " ")
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&");
 }
 
 export async function getRawEmail(
