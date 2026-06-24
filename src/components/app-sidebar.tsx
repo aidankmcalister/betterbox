@@ -1,5 +1,7 @@
 import {
   Archive,
+  CircleDot,
+  Eye,
   FileText,
   GitPullRequest,
   Inbox,
@@ -10,9 +12,11 @@ import {
   Send,
   ShieldAlert,
   SquareCheck,
+  SquareKanban,
   Trash2,
   Webhook,
 } from "lucide-react";
+import type { ComponentType } from "react";
 
 import { useLocation, useNavigate } from "@tanstack/react-router";
 
@@ -21,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { useSettings } from "@/hooks/use-settings";
 import { formatCount } from "@/lib/format";
 import { NavUser } from "@/components/nav-user";
+import { GithubMark } from "@/components/github-mark";
 import { ViewCard, ViewCardSkeleton } from "@/components/view-card";
 import type { Account } from "@/lib/account";
 import type { Folder } from "@/lib/folders";
@@ -42,57 +47,106 @@ import {
 } from "@/components/ui/sidebar";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 
-const mailbox: { id: Folder; title: string; icon: typeof Inbox }[] = [
-  { id: "inbox", title: "Inbox", icon: Inbox },
-  { id: "labeled", title: "Labeled", icon: Tag },
-  { id: "sent", title: "Sent", icon: Send },
-  { id: "drafts", title: "Drafts", icon: FileText },
-  { id: "archived", title: "Archived", icon: Archive },
-  { id: "spam", title: "Spam", icon: ShieldAlert },
-  { id: "trash", title: "Trash", icon: Trash2 },
-];
-
-const developer: {
+type NavChild = {
   id: string;
   title: string;
-  icon: typeof Inbox;
+  icon: ComponentType<{ className?: string }>;
+  /** Gmail mailboxes navigate by folder; other integrations route by path. */
+  folder?: Folder;
   to?: string;
-  /** Render as a dimmed "Soon" item (non-navigable). */
-  disabled?: boolean;
-}[] = [
+  /** Dimmed, non-navigable placeholder. */
+  soon?: boolean;
+  /** Can't be hidden via Settings (Inbox). */
+  fixed?: boolean;
+};
+
+type Integration = {
+  id: string;
+  label: string;
+  icon: ComponentType<{ className?: string }>;
+  children: NavChild[];
+};
+
+/** The sidebar, organized by integration. Each integration is a full section
+ *  that owns its own views — adding one (or a view to one) is a single entry
+ *  here, and it shows up in the sidebar and in Settings → Inbox automatically. */
+const INTEGRATIONS: Integration[] = [
   {
-    id: "pull_requests",
-    title: "PRs",
-    icon: GitPullRequest,
-    to: "/pull-requests",
+    id: "gmail",
+    label: "Gmail",
+    icon: MailIcon,
+    children: [
+      { id: "inbox", title: "Inbox", icon: Inbox, folder: "inbox", fixed: true },
+      { id: "labeled", title: "Labeled", icon: Tag, folder: "labeled" },
+      { id: "sent", title: "Sent", icon: Send, folder: "sent" },
+      { id: "drafts", title: "Drafts", icon: FileText, folder: "drafts" },
+      { id: "archived", title: "Archived", icon: Archive, folder: "archived" },
+      { id: "spam", title: "Spam", icon: ShieldAlert, folder: "spam" },
+      { id: "trash", title: "Trash", icon: Trash2, folder: "trash" },
+      { id: "webhooks", title: "Webhooks", icon: Webhook, soon: true },
+    ],
   },
-  { id: "issues", title: "Issues", icon: SquareCheck, disabled: true },
-  { id: "webhooks", title: "Webhooks", icon: Webhook, disabled: true },
+  {
+    id: "github",
+    label: "GitHub",
+    icon: GithubMark,
+    children: [
+      {
+        id: "pull_requests",
+        title: "Pull requests",
+        icon: GitPullRequest,
+        to: "/pull-requests",
+      },
+      { id: "github_issues", title: "Issues", icon: CircleDot, soon: true },
+      { id: "github_reviews", title: "Reviews", icon: Eye, soon: true },
+    ],
+  },
+  {
+    id: "linear",
+    label: "Linear",
+    icon: SquareKanban,
+    children: [
+      {
+        id: "linear_assigned",
+        title: "Assigned to you",
+        icon: SquareCheck,
+        soon: true,
+      },
+      {
+        id: "linear_created",
+        title: "Created by you",
+        icon: CircleDot,
+        soon: true,
+      },
+    ],
+  },
 ];
 
-/** Sidebar nav grouped by section, derived straight from the arrays above so
- *  Settings → Appearance always mirrors the real sidebar. `fixed` items (Inbox)
- *  can't be hidden. Exported for the Appearance show/hide toggles. */
+/** Navigable route targets — used to tell when a non-mail page is active so the
+ *  mailbox items don't also show as selected. */
+const ROUTE_TARGETS = INTEGRATIONS.flatMap((integration) =>
+  integration.children
+    .filter((child) => child.to && !child.soon)
+    .map((child) => child.to as string),
+);
+
+/** Sidebar nav as toggleable items per integration. Settings → Inbox mirrors
+ *  this so any view (Issues, Reviews, Assigned to you…) can be shown/hidden.
+ *  `fixed` items (Inbox) can't be hidden. */
 export const NAV_SECTIONS: {
   section: string;
   items: { id: string; title: string; fixed?: boolean }[];
-}[] = [
-  {
-    section: "Mailbox",
-    items: mailbox.map((item) => ({
-      id: item.id,
-      title: item.title,
-      fixed: item.id === "inbox",
-    })),
-  },
-  {
-    section: "Work",
-    items: developer.map((item) => ({ id: item.id, title: item.title })),
-  },
-];
+}[] = INTEGRATIONS.map((integration) => ({
+  section: integration.label,
+  items: integration.children.map((child) => ({
+    id: child.id,
+    title: child.title,
+    fixed: child.fixed,
+  })),
+}));
 
 const groupLabel =
-  "px-1.5 pt-2 pb-[5px] font-mono text-[10.5px] font-medium tracking-[0.5px] uppercase text-muted-foreground/70";
+  "flex items-center gap-1.5 px-1.5 pt-2 pb-[5px] font-mono text-[10.5px] font-medium tracking-[0.5px] uppercase text-muted-foreground/70 [&_svg]:size-3 [&_svg]:opacity-80";
 const navButton = "h-7 gap-[9px] px-2 text-[13px]";
 /* soon items: dimmed harder than the stock disabled 50% */
 const soonButton = `${navButton} disabled:opacity-35 aria-disabled:opacity-35`;
@@ -159,9 +213,7 @@ export function AppSidebar({
       fn(...args);
       closeMobile();
     };
-  const onLiveDev = embedded
-    ? !!activeDevId
-    : developer.some((item) => item.to === pathname);
+  const onLiveDev = embedded ? !!activeDevId : ROUTE_TARGETS.includes(pathname);
   // The account view box only matters on mail pages — it scopes which inboxes
   // you're reading. Hide it on the developer/tool pages where it does nothing.
   const SCOPE_HIDDEN_PREFIXES = ["/webhooks", "/pull-requests"];
@@ -174,13 +226,9 @@ export function AppSidebar({
     .filter((account) => scopeIds.includes(account.accountId))
     .reduce((sum, account) => sum + account.unread, 0);
 
-  // Inbox is never hideable; everything else respects the Appearance toggles.
-  const visibleMailbox = mailbox.filter(
-    (item) => item.id === "inbox" || !hiddenNav.includes(item.id),
-  );
-  const visibleDeveloper = developer.filter(
-    (item) => !hiddenNav.includes(item.id),
-  );
+  // Inbox is never hideable; everything else respects the Settings toggles.
+  const childVisible = (child: NavChild) =>
+    child.fixed || !hiddenNav.includes(child.id);
 
   const inner = (
     <>
@@ -212,92 +260,95 @@ export function AppSidebar({
       </SidebarHeader>
 
       <SidebarContent className="px-2.5">
-        <SidebarGroup className="p-0">
-          <SidebarGroupLabel className={groupLabel}>Mailbox</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu className="gap-px">
-              {visibleMailbox.map((item) => (
-                <SidebarMenuItem key={item.id}>
-                  <SidebarMenuButton
-                    isActive={!onLiveDev && folder === item.id}
-                    onClick={after(() => onFolder(item.id))}
-                    className={navButton}
-                  >
-                    <item.icon />
-                    <span>{item.title}</span>
-                  </SidebarMenuButton>
-                  {item.id === "inbox" && scopedUnread > 0 ? (
-                    <SidebarMenuBadge className={countBadge}>
-                      {formatCount(scopedUnread)}
-                    </SidebarMenuBadge>
+        {INTEGRATIONS.map((integration) => {
+          const children = integration.children.filter(childVisible);
+          if (children.length === 0) return null;
+          const isGmail = integration.id === "gmail";
+          return (
+            <SidebarGroup key={integration.id} className="p-0">
+              <SidebarGroupLabel className={groupLabel}>
+                <integration.icon />
+                {integration.label}
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu className="gap-px">
+                  {children.map((child) => {
+                    if (child.soon) {
+                      return (
+                        <SidebarMenuItem key={child.id}>
+                          <SidebarMenuButton disabled className={soonButton}>
+                            <child.icon />
+                            <span>{child.title}</span>
+                          </SidebarMenuButton>
+                          <SidebarMenuBadge className={soonBadge}>
+                            Soon
+                          </SidebarMenuBadge>
+                        </SidebarMenuItem>
+                      );
+                    }
+                    if (child.folder) {
+                      const childFolder = child.folder;
+                      return (
+                        <SidebarMenuItem key={child.id}>
+                          <SidebarMenuButton
+                            isActive={!onLiveDev && folder === childFolder}
+                            onClick={after(() => onFolder(childFolder))}
+                            className={navButton}
+                          >
+                            <child.icon />
+                            <span>{child.title}</span>
+                          </SidebarMenuButton>
+                          {child.id === "inbox" && scopedUnread > 0 ? (
+                            <SidebarMenuBadge className={countBadge}>
+                              {formatCount(scopedUnread)}
+                            </SidebarMenuBadge>
+                          ) : null}
+                        </SidebarMenuItem>
+                      );
+                    }
+                    const to = child.to as string;
+                    return (
+                      <SidebarMenuItem key={child.id}>
+                        <SidebarMenuButton
+                          isActive={
+                            embedded ? activeDevId === child.id : pathname === to
+                          }
+                          onClick={after(() =>
+                            embedded && onOpenDevPage
+                              ? onOpenDevPage(child.id)
+                              : navigate({ to }),
+                          )}
+                          className={navButton}
+                        >
+                          <child.icon />
+                          <span>{child.title}</span>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+
+              {/* Multi-account scope lives under Gmail — it's a Gmail concept. */}
+              {isGmail && showAccountScope && (
+                <SidebarGroupContent className="px-0 pt-2">
+                  {loading ? (
+                    <ViewCardSkeleton />
+                  ) : accounts.length > 0 ? (
+                    <ViewCard
+                      accounts={accounts}
+                      scopeIds={scopeIds}
+                      allOn={allOn}
+                      onToggle={onToggleScope}
+                      onAddAccount={() => linkGoogle()}
+                      onAddTestAccount={onAddTestAccount}
+                    />
                   ) : null}
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {visibleDeveloper.length > 0 && (
-          <SidebarGroup className="p-0">
-            <SidebarGroupLabel className={groupLabel}>Work</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu className="gap-px">
-                {visibleDeveloper.map((item) => {
-                  // Enabled by default; `to` falls back to /{id}. `disabled`
-                  // is the only thing that turns an item into a "Soon" stub.
-                  const to = item.to ?? `/${item.id}`;
-                  return !item.disabled ? (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton
-                        isActive={
-                          embedded ? activeDevId === item.id : pathname === to
-                        }
-                        onClick={after(() =>
-                          embedded && onOpenDevPage
-                            ? onOpenDevPage(item.id)
-                            : navigate({ to: to as string }),
-                        )}
-                        className={navButton}
-                      >
-                        <item.icon />
-                        <span>{item.title}</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ) : (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton disabled className={soonButton}>
-                        <item.icon />
-                        <span>{item.title}</span>
-                      </SidebarMenuButton>
-                      <SidebarMenuBadge className={soonBadge}>
-                        Soon
-                      </SidebarMenuBadge>
-                    </SidebarMenuItem>
-                  );
-                })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-
-        {showAccountScope && (
-          <SidebarGroup className="mt-auto p-0 pb-3">
-            <SidebarGroupContent>
-              {loading ? (
-                <ViewCardSkeleton />
-              ) : accounts.length > 0 ? (
-                <ViewCard
-                  accounts={accounts}
-                  scopeIds={scopeIds}
-                  allOn={allOn}
-                  onToggle={onToggleScope}
-                  onAddAccount={() => linkGoogle()}
-                  onAddTestAccount={onAddTestAccount}
-                />
-              ) : null}
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
+                </SidebarGroupContent>
+              )}
+            </SidebarGroup>
+          );
+        })}
       </SidebarContent>
 
       <SidebarFooter className="border-t pb-[max(0.5rem,env(safe-area-inset-bottom))]">
