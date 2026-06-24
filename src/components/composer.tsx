@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CheckIcon,
   ChevronDownIcon,
@@ -32,6 +32,10 @@ import { isTestAccount } from "@/lib/test-account";
 import { AccountDot } from "@/components/account-dot";
 import { RichTextEditor } from "@/components/rich-text-editor";
 import { useSnippetMap } from "@/hooks/use-snippets";
+import {
+  signatureHtmlForAccount,
+  useSignaturesQuery,
+} from "@/hooks/use-signatures";
 import { Button } from "@/components/ui/button";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { Hint } from "@/components/ui/tooltip";
@@ -138,6 +142,25 @@ export function Composer({
   const contacts = useContactsQuery(from?.accountId, open).data ?? [];
   // Snippets expand inline in the editor (e.g. "/ty "). Fetched only while open.
   const snippets = useSnippetMap(open);
+
+  // Signature: auto-insert the From account's assigned signature, Gmail-style.
+  // Seeds on a fresh compose and swaps when you change the From account, but
+  // only while the editor is untouched — once you type, the body is yours.
+  const sigData = useSignaturesQuery(open).data;
+  const desiredSig = open
+    ? signatureHtmlForAccount(sigData, from?.accountId)
+    : "";
+  const appliedSigRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!open) {
+      appliedSigRef.current = null;
+      return;
+    }
+    const untouched = body === "" || body === appliedSigRef.current;
+    if (!untouched) return;
+    if (body !== desiredSig) onContentChange({ body: desiredSig });
+    appliedSigRef.current = desiredSig;
+  }, [open, desiredSig, body, onContentChange]);
 
   if (!open) return null;
 

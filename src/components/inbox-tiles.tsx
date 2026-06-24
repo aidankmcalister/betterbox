@@ -72,6 +72,10 @@ import {
 import { MARK_READ_MS, useSettings } from "@/hooks/use-settings";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useSnippetMap } from "@/hooks/use-snippets";
+import {
+  signatureHtmlForAccount,
+  useSignaturesQuery,
+} from "@/hooks/use-signatures";
 import { Composer, type ComposerContent } from "@/components/composer";
 import { AppliedTags, TagPicker, useTagActions } from "@/components/tag-picker";
 import { LabeledView } from "@/components/labeled-view";
@@ -678,6 +682,24 @@ function ReaderPane({
   const replySnippets = useSnippetMap(replyOpen);
   const [replyBody, setReplyBody] = useState("");
   const [replySending, setReplySending] = useState(false);
+
+  // Signature: seed the account's assigned signature into the reply once, when
+  // it opens (Gmail-style). Waits for the query to load, and skips if you've
+  // already typed something.
+  const replySig = useSignaturesQuery(replyOpen).data;
+  const replySigSeededRef = useRef(false);
+  useEffect(() => {
+    if (!replyOpen) {
+      replySigSeededRef.current = false;
+      return;
+    }
+    if (replySigSeededRef.current || !replySig) return;
+    if (replyBody === "") {
+      const sig = signatureHtmlForAccount(replySig, accountId);
+      if (sig) setReplyBody(sig);
+    }
+    replySigSeededRef.current = true;
+  }, [replyOpen, replySig, accountId, replyBody]);
   const [replySent, setReplySent] = useState(false);
   const replyRef = useRef<HTMLDivElement>(null);
 
