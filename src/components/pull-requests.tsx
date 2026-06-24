@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import {
   CheckIcon,
+  ChevronDownIcon,
   ClockIcon,
   EyeIcon,
   GitMergeIcon,
@@ -15,12 +16,17 @@ import {
 import { toast } from "sonner";
 
 import { linkGithub } from "@/lib/auth-client";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { usePullRequestsQuery, type PullRequest } from "@/lib/github-queries";
 import demoPullRequests from "@/data/demo-pull-requests.json";
 import { GithubMark } from "@/components/github-mark";
 import { Button } from "@/components/ui/button";
 import { Hint } from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
 function relTime(iso: string, now: number): string {
@@ -127,49 +133,19 @@ function CiDot({ ci }: { ci: PullRequest["ci"] }) {
   );
 }
 
-function DiffStat({
-  pr,
-  inline = false,
-}: {
-  pr: PullRequest;
-  inline?: boolean;
-}) {
+/** Inline +adds / −dels with a split bar — sits on one line so it shares a
+ *  baseline with the pill, comments and CI in the card's metrics row. */
+function DiffStat({ pr }: { pr: PullRequest }) {
   const total = pr.additions + pr.deletions || 1;
   const addPct = Math.round((pr.additions / total) * 100);
-  if (inline) {
-    // Mobile: numbers and bar sit on one centered line so the diff shares a
-    // baseline with the pill, comments and CI in the card's metrics row
-    // (the stacked layout below floats the numbers above the row's centerline).
-    return (
-      <span className="inline-flex items-center gap-2 font-mono text-[11px] leading-none">
-        <span className="text-label-green">
-          +{pr.additions.toLocaleString()}
-        </span>
-        <span className="flex h-[3px] w-10 overflow-hidden rounded-full bg-muted">
-          <span className="bg-label-green" style={{ width: `${addPct}%` }} />
-          <span
-            className="bg-label-red"
-            style={{ width: `${100 - addPct}%` }}
-          />
-        </span>
-        <span className="text-label-red">−{pr.deletions.toLocaleString()}</span>
-      </span>
-    );
-  }
   return (
-    // +adds / −dels on their own side, with a split bar underneath whose green
-    // (left) and red (right) line up with the number above each.
-    <span className="flex w-[96px] flex-none flex-col gap-[3px] font-mono text-[11px] leading-none">
-      <span className="flex items-baseline justify-between">
-        <span className="text-label-green">
-          +{pr.additions.toLocaleString()}
-        </span>
-        <span className="text-label-red">−{pr.deletions.toLocaleString()}</span>
-      </span>
-      <span className="flex h-[3px] w-full overflow-hidden rounded-full bg-muted">
+    <span className="inline-flex items-center gap-2 font-mono text-[11px] leading-none">
+      <span className="text-label-green">+{pr.additions.toLocaleString()}</span>
+      <span className="flex h-[3px] w-10 overflow-hidden rounded-full bg-muted">
         <span className="bg-label-green" style={{ width: `${addPct}%` }} />
         <span className="bg-label-red" style={{ width: `${100 - addPct}%` }} />
       </span>
+      <span className="text-label-red">−{pr.deletions.toLocaleString()}</span>
     </span>
   );
 }
@@ -183,109 +159,10 @@ function demoOpenToast(pr: PullRequest) {
   });
 }
 
-function Row({
-  pr,
-  now,
-  demo,
-}: {
-  pr: PullRequest;
-  now: number;
-  demo: boolean;
-}) {
-  const { Icon, cls } = STATE_ICON[pr.state];
-  const dim = pr.state === "merged" || pr.state === "closed";
-  // Demo rows carry a placeholder url; clicking toasts the intent rather than
-  // opening GitHub. Real rows link out normally.
-  const navigable = !!pr.url && pr.url !== "#";
-  return (
-    <a
-      href={navigable ? pr.url : undefined}
-      target={navigable ? "_blank" : undefined}
-      rel="noopener noreferrer"
-      onClick={
-        demo
-          ? (event) => {
-              event.preventDefault();
-              demoOpenToast(pr);
-            }
-          : undefined
-      }
-      className={cn(
-        "flex h-[34px] items-center gap-4 border-b border-l-2 border-border px-5 hover:bg-muted/50",
-        pr.awaitsYou ? "border-l-primary" : "border-l-transparent",
-        navigable || demo ? "cursor-pointer" : "cursor-default",
-      )}
-    >
-      <Icon className={cn("size-4 flex-none", cls)} />
-
-      {/* repo */}
-      <span className="w-[140px] flex-none truncate font-mono text-[11.5px] text-muted-foreground">
-        {pr.repo}
-      </span>
-
-      {/* PR number */}
-      <span className="w-[52px] flex-none font-mono text-[11.5px] text-muted-foreground/60">
-        #{pr.num}
-      </span>
-
-      {/* title + faint branch — single line, no wrap */}
-      <span className="min-w-0 flex-1 truncate text-muted-foreground/60">
-        <span
-          className={cn(
-            "text-[12.5px]",
-            pr.awaitsYou ? "font-semibold" : "font-medium",
-            dim ? "text-muted-foreground/70" : "text-foreground",
-          )}
-        >
-          {pr.title}
-        </span>
-        <span className="font-mono text-[11px] text-muted-foreground/60">
-          {`  —  ${pr.branch}`}
-        </span>
-      </span>
-
-      {/* status — self-contained review state (Approved / Needs changes / …) */}
-      <span className="flex w-[124px] flex-none justify-start">
-        <ReviewPill pr={pr} />
-      </span>
-
-      {/* changes */}
-      <Hint
-        label={`+${pr.additions.toLocaleString()} added · −${pr.deletions.toLocaleString()} removed`}
-      >
-        <span className="flex w-[96px] flex-none">
-          <DiffStat pr={pr} />
-        </span>
-      </Hint>
-
-      {/* comments */}
-      <Hint label={`${pr.comments} comment${pr.comments === 1 ? "" : "s"}`}>
-        <span className="flex w-[48px] flex-none items-center gap-1 font-mono text-[11px] text-muted-foreground/60">
-          <MessageSquareIcon className="size-3" />
-          {pr.comments}
-        </span>
-      </Hint>
-
-      {/* CI */}
-      <span className="flex w-[22px] flex-none">
-        <Hint label={`CI ${pr.ci === "none" ? "not run" : pr.ci}`}>
-          <span className="flex">
-            <CiDot ci={pr.ci} />
-          </span>
-        </Hint>
-      </span>
-
-      {/* age */}
-      <span className="w-[44px] flex-none font-mono text-[11px] text-muted-foreground/60">
-        {relTime(pr.updated, now)}
-      </span>
-    </a>
-  );
-}
-
-/** Mobile rendering of a PR — stacked instead of a wide table row, so the title
- *  is fully readable and the metrics wrap onto their own line. */
-function MobileCard({
+/** A single PR as a stacked card: repo · #num · age, the title, then a wrapping
+ *  metrics row. No fixed-width columns, so it never overflows the pane — the
+ *  same card works whether the panel is a narrow tile or full width. */
+function PrCard({
   pr,
   now,
   demo,
@@ -311,7 +188,7 @@ function MobileCard({
           : undefined
       }
       className={cn(
-        "flex flex-col gap-1.5 border-b border-l-2 border-border px-4 py-3 hover:bg-muted/50",
+        "flex flex-col gap-1.5 border-b border-l-2 border-border px-3 py-2.5 hover:bg-muted/50",
         pr.awaitsYou ? "border-l-primary" : "border-l-transparent",
         navigable || demo ? "cursor-pointer" : "cursor-default",
       )}
@@ -347,49 +224,57 @@ function MobileCard({
         </p>
       </div>
 
-      {/* metrics row */}
+      {/* metrics — wraps onto its own line(s), never pushes the card wide */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 pt-0.5">
         <ReviewPill pr={pr} />
-        <DiffStat pr={pr} inline />
+        <DiffStat pr={pr} />
         <span className="inline-flex items-center gap-1 font-mono text-[11px] text-muted-foreground/60">
           <MessageSquareIcon className="size-3" />
           {pr.comments}
         </span>
-        <CiDot ci={pr.ci} />
+        <Hint label={`CI ${pr.ci === "none" ? "not run" : pr.ci}`}>
+          <span className="flex">
+            <CiDot ci={pr.ci} />
+          </span>
+        </Hint>
       </div>
     </a>
   );
 }
 
-function Kpi({
+/** Compact stat chip — wraps with its siblings so four stats fit a narrow pane
+ *  without a fixed grid that would overflow. */
+function KpiChip({
   label,
   value,
-  sub,
+  accent = false,
 }: {
   label: string;
   value: number;
-  sub?: string;
+  accent?: boolean;
 }) {
   return (
-    <div className="border-l border-border px-3 pt-[9px] pb-2.5 nth-[n+3]:border-t odd:border-l-0 sm:px-5 sm:first:border-l-0 sm:nth-[n+3]:border-t-0 sm:odd:border-l">
-      <div className="mb-1 text-[11px] text-muted-foreground/80">{label}</div>
-      <div className="flex items-baseline gap-2">
-        <span className="text-[22px] font-semibold tracking-[-0.8px] text-foreground">
-          {value}
-        </span>
-        {sub && (
-          <span className="font-mono text-[11px] text-muted-foreground/60">
-            {sub}
-          </span>
+    <div className="inline-flex items-baseline gap-1.5 rounded-md border border-border bg-muted/30 px-2 py-1">
+      <span
+        className={cn(
+          "text-[14px] font-semibold tracking-[-0.3px]",
+          accent && value > 0 ? "text-primary" : "text-foreground",
         )}
-      </div>
+      >
+        {value}
+      </span>
+      <span className="text-[10.5px] whitespace-nowrap text-muted-foreground/70">
+        {label}
+      </span>
     </div>
   );
 }
 
 type FilterId = "all" | "open" | "review" | "approved" | "merged" | "closed";
 
-function Segmented({
+/** Filter as a dropdown (not a tab strip) so it stays one compact control at any
+ *  pane width instead of overflowing or scrolling. */
+function FilterMenu({
   value,
   onChange,
   items,
@@ -398,37 +283,36 @@ function Segmented({
   onChange: (id: FilterId) => void;
   items: { id: FilterId; label: string; count?: number }[];
 }) {
+  const current = items.find((it) => it.id === value);
   return (
-    <div className="inline-flex items-center gap-0.5 rounded-[7px] border border-border bg-muted/50 p-0.5">
-      {items.map((it) => {
-        const on = it.id === value;
-        return (
-          <button
-            key={it.id}
-            type="button"
-            onClick={() => onChange(it.id)}
-            className={cn(
-              "inline-flex h-6 items-center gap-1.5 rounded-[5px] px-2.5 font-mono text-[11.5px] whitespace-nowrap",
-              on
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground/80 hover:text-foreground",
-            )}
-          >
-            {it.label}
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={<Button variant="outline" size="sm" className="h-7 font-mono" />}
+      >
+        <span className="text-[11.5px]">{current?.label ?? "Filter"}</span>
+        {current?.count != null && (
+          <span className="text-[10.5px] text-muted-foreground/70">
+            {current.count}
+          </span>
+        )}
+        <ChevronDownIcon className="size-3.5" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-48">
+        {items.map((it) => (
+          <DropdownMenuItem key={it.id} onClick={() => onChange(it.id)}>
+            <span className="flex-1 text-[13px]">{it.label}</span>
             {it.count != null && (
-              <span
-                className={cn(
-                  "text-[10.5px]",
-                  on ? "text-muted-foreground/80" : "text-muted-foreground/60",
-                )}
-              >
+              <span className="font-mono text-[11px] text-muted-foreground/60">
                 {it.count}
               </span>
             )}
-          </button>
-        );
-      })}
-    </div>
+            {it.id === value && (
+              <CheckIcon className="size-3.5 shrink-0 text-primary" />
+            )}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -470,7 +354,6 @@ export function PullRequestsPage({
   demo?: boolean;
 }) {
   const [filter, setFilter] = useState<FilterId>("open");
-  const isMobile = useIsMobile();
   const query = usePullRequestsQuery(signedIn && !demo);
   // biome-ignore lint/correctness/useExhaustiveDependencies: recompute the "now" baseline for relative times only when fresh PR data lands.
   const now = useMemo(() => Date.now(), [query.dataUpdatedAt]);
@@ -490,7 +373,6 @@ export function PullRequestsPage({
   }
 
   const prs = demo ? demoPrs : (query.data?.prs ?? []);
-  const login = demo ? "octocat" : query.data?.login;
   const fetching = !demo && query.isFetching;
   const refresh = () => {
     if (!demo) query.refetch();
@@ -516,66 +398,44 @@ export function PullRequestsPage({
 
   return (
     <div className="flex h-full min-w-0 flex-col bg-background">
-      {/* page header */}
-      <div className="flex h-[52px] flex-none items-center gap-2.5 border-b border-border px-3 sm:px-5">
-        <h2 className="text-lg font-semibold tracking-[-0.4px] whitespace-nowrap">
-          Pull requests
-        </h2>
-        <span className="hidden font-mono text-[11.5px] whitespace-nowrap text-muted-foreground/60 sm:inline">
+      {/* summary + refresh — the pane header already carries the title */}
+      <div className="flex h-9 flex-none items-center gap-2 border-b border-border px-3">
+        <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted-foreground/70">
           {nOpen} open · {nReview} awaiting you
         </span>
-        <div className="ml-auto flex items-center gap-2 font-mono text-[11px] text-muted-foreground/80 sm:gap-3.5">
-          <span className="inline-flex items-center gap-1.5 text-success">
-            <span className="size-1.5 rounded-full bg-success shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-success)_20%,transparent)]" />
-            live
-          </span>
-          {login && <span className="hidden sm:inline">@{login}</span>}
+        <span className="inline-flex flex-none items-center gap-1 font-mono text-[10.5px] text-success">
+          <span className="size-1.5 rounded-full bg-success" />
+          live
+        </span>
+        <Hint label="Refresh">
           <button
             type="button"
             onClick={refresh}
-            className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+            className="inline-flex size-6 flex-none items-center justify-center rounded text-muted-foreground/70 hover:bg-muted hover:text-foreground"
           >
-            <RefreshCwIcon
-              className={cn("size-3", fetching && "animate-spin")}
-            />
-            Refresh
+            <RefreshCwIcon className={cn("size-3.5", fetching && "animate-spin")} />
           </button>
-        </div>
+        </Hint>
       </div>
 
-      {/* KPI strip */}
-      <div className="grid flex-none grid-cols-2 border-b border-border sm:grid-cols-4">
-        <Kpi label="Open" value={nOpen} sub="incl. drafts" />
-        <Kpi label="Awaiting your review" value={nReview} />
-        <Kpi label="Changes requested" value={nChanges} />
-        <Kpi label="Merged" value={nMerged} />
+      {/* KPI chips — wrap onto a second line on a narrow pane, never overflow */}
+      <div className="flex flex-none flex-wrap gap-1.5 border-b border-border px-3 py-2">
+        <KpiChip label="Open" value={nOpen} />
+        <KpiChip label="Awaiting you" value={nReview} accent />
+        <KpiChip label="Changes" value={nChanges} />
+        <KpiChip label="Merged" value={nMerged} />
       </div>
 
-      {/* filter bar */}
-      <div className="flex flex-none items-center gap-3 border-b border-border px-3 py-[9px] sm:px-5">
-        <div className="-mx-1 no-scrollbar min-w-0 flex-1 overflow-x-auto px-1 sm:flex-none">
-          <Segmented value={filter} onChange={setFilter} items={items} />
-        </div>
-        <span className="ml-auto hidden font-mono text-[10.5px] whitespace-nowrap text-muted-foreground/60 sm:inline">
+      {/* filter + count */}
+      <div className="flex flex-none items-center gap-2 border-b border-border px-3 py-2">
+        <FilterMenu value={filter} onChange={setFilter} items={items} />
+        <span className="ml-auto font-mono text-[10.5px] text-muted-foreground/60">
           {rows.length} shown
         </span>
       </div>
 
-      {/* list */}
+      {/* list — stacked cards, no horizontal overflow at any width */}
       <div className="flex-1 overflow-y-auto">
-        {/* Column header — desktop table only; mobile uses stacked cards. */}
-        <div className="sticky top-0 z-1 hidden h-[30px] items-center gap-4 border-b border-l-2 border-border border-l-transparent bg-background px-5 text-[10.5px] tracking-[0.4px] text-muted-foreground/60 uppercase md:flex">
-          <span className="w-4 flex-none" />
-          <span className="w-[140px] flex-none">Repo</span>
-          <span className="w-[52px] flex-none">PR</span>
-          <span className="min-w-0 flex-1 truncate">Title</span>
-          <span className="w-[124px] flex-none">Status</span>
-          <span className="w-[96px] flex-none">Changes</span>
-          <span className="w-[48px] flex-none">Cmts</span>
-          <span className="w-[22px] flex-none">CI</span>
-          <span className="w-[44px] flex-none">Age</span>
-        </div>
-
         {rows.length === 0 ? (
           <div className="flex flex-col items-center gap-2.5 px-6 py-14 text-center">
             <span className="inline-flex size-9 items-center justify-center rounded-full bg-muted">
@@ -588,14 +448,10 @@ export function PullRequestsPage({
           </div>
         ) : (
           <>
-            {rows.map((pr) =>
-              isMobile ? (
-                <MobileCard key={pr.id} pr={pr} now={now} demo={demo} />
-              ) : (
-                <Row key={pr.id} pr={pr} now={now} demo={demo} />
-              ),
-            )}
-            <div className="flex items-center justify-center gap-2 p-3.5 font-mono text-[10.5px] text-muted-foreground/60">
+            {rows.map((pr) => (
+              <PrCard key={pr.id} pr={pr} now={now} demo={demo} />
+            ))}
+            <div className="flex items-center justify-center gap-2 p-3 font-mono text-[10.5px] text-muted-foreground/60">
               <GithubMark className="size-3" />
               live from the GitHub API
             </div>
@@ -609,33 +465,30 @@ export function PullRequestsPage({
 function LoadingState() {
   return (
     <div className="flex h-full flex-col bg-background">
-      <div className="flex h-[52px] flex-none items-center gap-2.5 border-b border-border px-3 sm:px-5">
-        <h2 className="text-lg font-semibold tracking-[-0.4px]">
-          Pull requests
-        </h2>
+      <div className="flex h-9 flex-none items-center border-b border-border px-3">
+        <div className="h-2.5 w-32 animate-pulse rounded bg-muted" />
       </div>
-      <div className="grid flex-none grid-cols-2 border-b border-border sm:grid-cols-4">
+      <div className="flex flex-none flex-wrap gap-1.5 border-b border-border px-3 py-2">
         {Array.from({ length: 4 }).map((_, i) => (
           <div
             // biome-ignore lint/suspicious/noArrayIndexKey: fixed-length skeleton placeholders, never reordered.
             key={i}
-            className="border-l border-border px-3 py-3 nth-[n+3]:border-t odd:border-l-0 sm:px-5 sm:first:border-l-0 sm:nth-[n+3]:border-t-0 sm:odd:border-l"
-          >
-            <div className="mb-2 h-2.5 w-24 animate-pulse rounded bg-muted" />
-            <div className="h-5 w-10 animate-pulse rounded bg-muted" />
-          </div>
+            className="h-7 w-20 animate-pulse rounded-md bg-muted/60"
+          />
         ))}
       </div>
       <div className="flex-1 space-y-px p-px">
-        {Array.from({ length: 8 }).map((_, i) => (
+        {Array.from({ length: 6 }).map((_, i) => (
           <div
             // biome-ignore lint/suspicious/noArrayIndexKey: fixed-length skeleton placeholders, never reordered.
             key={i}
-            className="flex h-[34px] items-center gap-2.5 px-3 sm:px-5"
+            className="flex flex-col gap-1.5 px-3 py-2.5"
           >
-            <div className="size-4 animate-pulse rounded-full bg-muted" />
-            <div className="h-3 w-32 animate-pulse rounded bg-muted" />
-            <div className="h-3 flex-1 animate-pulse rounded bg-muted/60" />
+            <div className="flex items-center gap-2">
+              <div className="size-4 animate-pulse rounded-full bg-muted" />
+              <div className="h-2.5 w-24 animate-pulse rounded bg-muted" />
+            </div>
+            <div className="h-3 w-3/4 animate-pulse rounded bg-muted/60" />
           </div>
         ))}
       </div>
