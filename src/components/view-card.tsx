@@ -102,24 +102,29 @@ export function ViewCard({
                   locked ? "cursor-default" : "hover:bg-sidebar-accent",
                 )}
               >
-                <span
-                  className="flex size-3.5 shrink-0 items-center justify-center rounded-[4px]"
-                  style={
-                    on
-                      ? { background: color }
-                      : {
-                          boxShadow: `inset 0 0 0 1.5px ${color}`,
-                          opacity: 0.45,
-                        }
-                  }
-                >
-                  {on && (
-                    <CheckIcon className="size-2.5 text-term" strokeWidth={3} />
-                  )}
+                <span className="flex size-4 shrink-0 items-center justify-center">
+                  <span
+                    className="flex size-3.5 items-center justify-center rounded-[5px]"
+                    style={
+                      on
+                        ? { background: color }
+                        : {
+                            boxShadow: `inset 0 0 0 1.5px ${color}`,
+                            opacity: 0.45,
+                          }
+                    }
+                  >
+                    {on && (
+                      <CheckIcon
+                        className="size-2.5 text-term"
+                        strokeWidth={3}
+                      />
+                    )}
+                  </span>
                 </span>
                 <span
                   className={cn(
-                    "min-w-0 flex-1 truncate text-[12.5px]",
+                    "min-w-0 flex-1 truncate text-[13px]",
                     on ? "text-sidebar-foreground" : "text-muted-foreground",
                   )}
                 >
@@ -149,8 +154,10 @@ export function ViewCard({
               "text-muted-foreground/70 hover:bg-sidebar-accent hover:text-foreground",
             )}
           >
-            <PlusIcon className="size-3.5 shrink-0" />
-            <span className="text-[12.5px]">Add account</span>
+            <span className="flex size-4 shrink-0 items-center justify-center">
+              <PlusIcon className="size-3.5" />
+            </span>
+            <span className="text-[13px]">Add account</span>
           </button>
         </li>
       )}
