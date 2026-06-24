@@ -80,6 +80,7 @@ import {
 } from "@/hooks/use-signatures";
 import { Composer, type ComposerContent } from "@/components/composer";
 import { PullRequestsPage } from "@/components/pull-requests";
+import { usePullRequestsQuery } from "@/lib/github-queries";
 import { AppliedTags, TagPicker, useTagActions } from "@/components/tag-picker";
 import { LabeledView } from "@/components/labeled-view";
 import type { Folder } from "@/lib/folders";
@@ -651,6 +652,8 @@ function PullRequestsPane({
   const beginHeaderDrag = useTileDrag();
   const { data: session } = useSession();
   const { demoMode } = useSettings();
+  const query = usePullRequestsQuery(!!session && !demoMode);
+  const live = !demoMode && query.data?.linked;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -663,6 +666,25 @@ function PullRequestsPane({
         <span className="min-w-0 flex-1 truncate font-mono text-xs font-medium">
           Pull requests
         </span>
+        {live && (
+          <span className="inline-flex shrink-0 items-center gap-1 font-mono text-[10.5px] text-success">
+            <span className="size-1.5 rounded-full bg-success" />
+            live
+          </span>
+        )}
+        {!demoMode && (
+          <Hint label="Refresh">
+            <button
+              type="button"
+              onClick={() => query.refetch()}
+              className="inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground/70 hover:bg-muted hover:text-foreground"
+            >
+              <RefreshCwIcon
+                className={cn("size-3.5", query.isFetching && "animate-spin")}
+              />
+            </button>
+          </Hint>
+        )}
         <Hint label="Close panel">
           <button
             type="button"

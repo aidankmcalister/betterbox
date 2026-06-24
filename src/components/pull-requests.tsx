@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   CheckIcon,
   ChevronDownIcon,
@@ -133,19 +133,47 @@ function CiDot({ ci }: { ci: PullRequest["ci"] }) {
   );
 }
 
-/** Inline +adds / −dels with a split bar — sits on one line so it shares a
- *  baseline with the pill, comments and CI in the card's metrics row. */
-function DiffStat({ pr }: { pr: PullRequest }) {
+function DiffStat({
+  pr,
+  inline = false,
+}: {
+  pr: PullRequest;
+  inline?: boolean;
+}) {
   const total = pr.additions + pr.deletions || 1;
   const addPct = Math.round((pr.additions / total) * 100);
+  if (inline) {
+    // Card: numbers + bar on one centered line, sharing a baseline with the
+    // pill, comments and CI in the metrics row.
+    return (
+      <span className="inline-flex items-center gap-2 font-mono text-[11px] leading-none">
+        <span className="text-label-green">
+          +{pr.additions.toLocaleString()}
+        </span>
+        <span className="flex h-[3px] w-10 overflow-hidden rounded-full bg-muted">
+          <span className="bg-label-green" style={{ width: `${addPct}%` }} />
+          <span
+            className="bg-label-red"
+            style={{ width: `${100 - addPct}%` }}
+          />
+        </span>
+        <span className="text-label-red">−{pr.deletions.toLocaleString()}</span>
+      </span>
+    );
+  }
+  // Table: +adds / −dels split across the column, bar underneath.
   return (
-    <span className="inline-flex items-center gap-2 font-mono text-[11px] leading-none">
-      <span className="text-label-green">+{pr.additions.toLocaleString()}</span>
-      <span className="flex h-[3px] w-10 overflow-hidden rounded-full bg-muted">
+    <span className="flex w-[96px] flex-none flex-col gap-[3px] font-mono text-[11px] leading-none">
+      <span className="flex items-baseline justify-between">
+        <span className="text-label-green">
+          +{pr.additions.toLocaleString()}
+        </span>
+        <span className="text-label-red">−{pr.deletions.toLocaleString()}</span>
+      </span>
+      <span className="flex h-[3px] w-full overflow-hidden rounded-full bg-muted">
         <span className="bg-label-green" style={{ width: `${addPct}%` }} />
         <span className="bg-label-red" style={{ width: `${100 - addPct}%` }} />
       </span>
-      <span className="text-label-red">−{pr.deletions.toLocaleString()}</span>
     </span>
   );
 }
@@ -159,9 +187,93 @@ function demoOpenToast(pr: PullRequest) {
   });
 }
 
-/** A single PR as a stacked card: repo · #num · age, the title, then a wrapping
- *  metrics row. No fixed-width columns, so it never overflows the pane — the
- *  same card works whether the panel is a narrow tile or full width. */
+/** Wide layout: a dense table row that spreads metrics across fixed columns, so
+ *  a wide pane uses its horizontal space instead of stacking everything left. */
+function Row({
+  pr,
+  now,
+  demo,
+}: {
+  pr: PullRequest;
+  now: number;
+  demo: boolean;
+}) {
+  const { Icon, cls } = STATE_ICON[pr.state];
+  const dim = pr.state === "merged" || pr.state === "closed";
+  const navigable = !!pr.url && pr.url !== "#";
+  return (
+    <a
+      href={navigable ? pr.url : undefined}
+      target={navigable ? "_blank" : undefined}
+      rel="noopener noreferrer"
+      onClick={
+        demo
+          ? (event) => {
+              event.preventDefault();
+              demoOpenToast(pr);
+            }
+          : undefined
+      }
+      className={cn(
+        "flex h-[34px] items-center gap-4 border-b border-l-2 border-border px-5 hover:bg-muted/50",
+        pr.awaitsYou ? "border-l-primary" : "border-l-transparent",
+        navigable || demo ? "cursor-pointer" : "cursor-default",
+      )}
+    >
+      <Icon className={cn("size-4 flex-none", cls)} />
+      <span className="w-[140px] flex-none truncate font-mono text-[11.5px] text-muted-foreground">
+        {pr.repo}
+      </span>
+      <span className="w-[52px] flex-none font-mono text-[11.5px] text-muted-foreground/60">
+        #{pr.num}
+      </span>
+      <span className="min-w-0 flex-1 truncate text-muted-foreground/60">
+        <span
+          className={cn(
+            "text-[12.5px]",
+            pr.awaitsYou ? "font-semibold" : "font-medium",
+            dim ? "text-muted-foreground/70" : "text-foreground",
+          )}
+        >
+          {pr.title}
+        </span>
+        <span className="font-mono text-[11px] text-muted-foreground/60">
+          {`  —  ${pr.branch}`}
+        </span>
+      </span>
+      <span className="flex w-[124px] flex-none justify-start">
+        <ReviewPill pr={pr} />
+      </span>
+      <Hint
+        label={`+${pr.additions.toLocaleString()} added · −${pr.deletions.toLocaleString()} removed`}
+      >
+        <span className="flex w-[96px] flex-none">
+          <DiffStat pr={pr} />
+        </span>
+      </Hint>
+      <Hint label={`${pr.comments} comment${pr.comments === 1 ? "" : "s"}`}>
+        <span className="flex w-[48px] flex-none items-center gap-1 font-mono text-[11px] text-muted-foreground/60">
+          <MessageSquareIcon className="size-3" />
+          {pr.comments}
+        </span>
+      </Hint>
+      <span className="flex w-[22px] flex-none">
+        <Hint label={`CI ${pr.ci === "none" ? "not run" : pr.ci}`}>
+          <span className="flex">
+            <CiDot ci={pr.ci} />
+          </span>
+        </Hint>
+      </span>
+      <span className="w-[44px] flex-none font-mono text-[11px] text-muted-foreground/60">
+        {relTime(pr.updated, now)}
+      </span>
+    </a>
+  );
+}
+
+/** Narrow layout: a single PR as a stacked card — repo · #num · age, the title,
+ *  then a wrapping metrics row. No fixed-width columns, so it never overflows a
+ *  thin pane. */
 function PrCard({
   pr,
   now,
@@ -227,7 +339,7 @@ function PrCard({
       {/* metrics — wraps onto its own line(s), never pushes the card wide */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 pt-0.5">
         <ReviewPill pr={pr} />
-        <DiffStat pr={pr} />
+        <DiffStat pr={pr} inline />
         <span className="inline-flex items-center gap-1 font-mono text-[11px] text-muted-foreground/60">
           <MessageSquareIcon className="size-3" />
           {pr.comments}
@@ -345,6 +457,29 @@ function makeDemoPullRequests(): PullRequest[] {
   );
 }
 
+/** The panel's own width (not the viewport), so the narrow-cards / wide-table
+ *  switch tracks the pane size rather than the browser size. A callback ref
+ *  (re)attaches the observer whenever the measured node mounts — important
+ *  because the node only appears after the loading/connect states clear. */
+function usePanelWidth() {
+  const [width, setWidth] = useState(0);
+  const observerRef = useRef<ResizeObserver | null>(null);
+  const ref = useCallback((node: HTMLDivElement | null) => {
+    observerRef.current?.disconnect();
+    if (!node) {
+      observerRef.current = null;
+      return;
+    }
+    const observer = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width;
+      if (w) setWidth(w);
+    });
+    observer.observe(node);
+    observerRef.current = observer;
+  }, []);
+  return [ref, width] as const;
+}
+
 export function PullRequestsPage({
   signedIn = false,
   demo = false,
@@ -354,6 +489,11 @@ export function PullRequestsPage({
   demo?: boolean;
 }) {
   const [filter, setFilter] = useState<FilterId>("open");
+  const [ref, width] = usePanelWidth();
+  // Below this the fixed table columns squeeze the title to nothing, so the
+  // cards (full-width title) cover narrow → medium; the table only takes over
+  // once it has real room to breathe.
+  const wide = width >= 880;
   const query = usePullRequestsQuery(signedIn && !demo);
   // biome-ignore lint/correctness/useExhaustiveDependencies: recompute the "now" baseline for relative times only when fresh PR data lands.
   const now = useMemo(() => Date.now(), [query.dataUpdatedAt]);
@@ -373,10 +513,6 @@ export function PullRequestsPage({
   }
 
   const prs = demo ? demoPrs : (query.data?.prs ?? []);
-  const fetching = !demo && query.isFetching;
-  const refresh = () => {
-    if (!demo) query.refetch();
-  };
   const nOpen = prs.filter(
     (p) => p.state === "open" || p.state === "draft",
   ).length;
@@ -397,27 +533,7 @@ export function PullRequestsPage({
   const rows = prs.filter((p) => matches(p, filter));
 
   return (
-    <div className="flex h-full min-w-0 flex-col bg-background">
-      {/* summary + refresh — the pane header already carries the title */}
-      <div className="flex h-9 flex-none items-center gap-2 border-b border-border px-3">
-        <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted-foreground/70">
-          {nOpen} open · {nReview} awaiting you
-        </span>
-        <span className="inline-flex flex-none items-center gap-1 font-mono text-[10.5px] text-success">
-          <span className="size-1.5 rounded-full bg-success" />
-          live
-        </span>
-        <Hint label="Refresh">
-          <button
-            type="button"
-            onClick={refresh}
-            className="inline-flex size-6 flex-none items-center justify-center rounded text-muted-foreground/70 hover:bg-muted hover:text-foreground"
-          >
-            <RefreshCwIcon className={cn("size-3.5", fetching && "animate-spin")} />
-          </button>
-        </Hint>
-      </div>
-
+    <div ref={ref} className="flex h-full min-w-0 flex-col bg-background">
       {/* KPI chips — wrap onto a second line on a narrow pane, never overflow */}
       <div className="flex flex-none flex-wrap gap-1.5 border-b border-border px-3 py-2">
         <KpiChip label="Open" value={nOpen} />
@@ -434,8 +550,21 @@ export function PullRequestsPage({
         </span>
       </div>
 
-      {/* list — stacked cards, no horizontal overflow at any width */}
+      {/* list — wide pane gets the dense table, narrow gets stacked cards */}
       <div className="flex-1 overflow-y-auto">
+        {wide && rows.length > 0 && (
+          <div className="sticky top-0 z-1 flex h-[30px] items-center gap-4 border-b border-l-2 border-border border-l-transparent bg-background px-5 text-[10.5px] tracking-[0.4px] text-muted-foreground/60 uppercase">
+            <span className="w-4 flex-none" />
+            <span className="w-[140px] flex-none">Repo</span>
+            <span className="w-[52px] flex-none">PR</span>
+            <span className="min-w-0 flex-1 truncate">Title</span>
+            <span className="w-[124px] flex-none">Status</span>
+            <span className="w-[96px] flex-none">Changes</span>
+            <span className="w-[48px] flex-none">Cmts</span>
+            <span className="w-[22px] flex-none">CI</span>
+            <span className="w-[44px] flex-none">Age</span>
+          </div>
+        )}
         {rows.length === 0 ? (
           <div className="flex flex-col items-center gap-2.5 px-6 py-14 text-center">
             <span className="inline-flex size-9 items-center justify-center rounded-full bg-muted">
@@ -448,9 +577,13 @@ export function PullRequestsPage({
           </div>
         ) : (
           <>
-            {rows.map((pr) => (
-              <PrCard key={pr.id} pr={pr} now={now} demo={demo} />
-            ))}
+            {rows.map((pr) =>
+              wide ? (
+                <Row key={pr.id} pr={pr} now={now} demo={demo} />
+              ) : (
+                <PrCard key={pr.id} pr={pr} now={now} demo={demo} />
+              ),
+            )}
             <div className="flex items-center justify-center gap-2 p-3 font-mono text-[10.5px] text-muted-foreground/60">
               <GithubMark className="size-3" />
               live from the GitHub API
@@ -465,9 +598,6 @@ export function PullRequestsPage({
 function LoadingState() {
   return (
     <div className="flex h-full flex-col bg-background">
-      <div className="flex h-9 flex-none items-center border-b border-border px-3">
-        <div className="h-2.5 w-32 animate-pulse rounded bg-muted" />
-      </div>
       <div className="flex flex-none flex-wrap gap-1.5 border-b border-border px-3 py-2">
         {Array.from({ length: 4 }).map((_, i) => (
           <div
