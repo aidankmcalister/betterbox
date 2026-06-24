@@ -194,14 +194,14 @@ const SlashMenuList = forwardRef<
 
   if (items.length === 0) {
     return (
-      <div className="w-72 rounded-lg border bg-popover p-2 text-[12px] text-muted-foreground shadow-xl ring-1 ring-foreground/10">
+      <div className="w-72 max-w-[calc(100vw-1rem)] rounded-lg border bg-popover p-2 text-[12px] text-muted-foreground shadow-xl ring-1 ring-foreground/10">
         No matches
       </div>
     );
   }
 
   return (
-    <div className="max-h-72 w-72 overflow-y-auto rounded-lg border bg-popover p-1 shadow-xl ring-1 ring-foreground/10">
+    <div className="max-h-72 w-72 max-w-[calc(100vw-1rem)] overflow-y-auto rounded-lg border bg-popover p-1 shadow-xl ring-1 ring-foreground/10">
       {items.map((item, i) => {
         const showHeader = i === 0 || items[i - 1].group !== item.group;
         const Icon = item.icon;
@@ -266,7 +266,13 @@ function positionMenu(
     spaceBelow < menuHeight + 12 && rect.top > menuHeight
       ? rect.top - menuHeight - 6
       : rect.bottom + 6;
-  el.style.left = `${Math.round(rect.left)}px`;
+  // Clamp horizontally so the menu never runs off a narrow (mobile) viewport.
+  const menuWidth = el.offsetWidth || 288;
+  const left = Math.max(
+    8,
+    Math.min(rect.left, window.innerWidth - menuWidth - 8),
+  );
+  el.style.left = `${Math.round(left)}px`;
   el.style.top = `${Math.round(top)}px`;
 }
 
