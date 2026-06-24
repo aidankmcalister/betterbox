@@ -299,14 +299,14 @@ export function AppSidebar({
                         />
                       </CollapsibleTrigger>
                       <CollapsibleContent>
-                        <SidebarMenuSub className="gap-px">
+                        <SidebarMenuSub className="gap-px mr-0 pr-0">
                           {children.map((child) => {
                             if (child.soon) {
                               return (
                                 <SidebarMenuSubItem key={child.id}>
                                   <SidebarMenuSubButton
                                     aria-disabled
-                                    className="pointer-events-none opacity-40"
+                                    className="w-full text-left pointer-events-none opacity-40"
                                   >
                                     <child.icon />
                                     <span className="flex-1 truncate">
@@ -334,6 +334,7 @@ export function AppSidebar({
                                 <SidebarMenuSubButton
                                   isActive={isActive}
                                   onClick={handle}
+                                  className="w-full text-left"
                                   render={<button type="button" />}
                                 >
                                   <child.icon />
