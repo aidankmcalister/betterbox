@@ -14,6 +14,7 @@ import {
   ShieldAlert,
   SquareCheck,
   Trash2,
+  Users,
   Webhook,
 } from "lucide-react";
 import type { ComponentType } from "react";
@@ -28,7 +29,7 @@ import { NavUser } from "@/components/nav-user";
 import { GithubMark } from "@/components/github-mark";
 import { GmailMark } from "@/components/gmail-mark";
 import { LinearMark } from "@/components/linear-mark";
-import { ViewCard, ViewCardSkeleton } from "@/components/view-card";
+import { ViewCard } from "@/components/view-card";
 import type { Account } from "@/lib/account";
 import type { Folder } from "@/lib/folders";
 import { Button } from "@/components/ui/button";
@@ -218,17 +219,14 @@ export function AppSidebar({
       closeMobile();
     };
   const onLiveDev = embedded ? !!activeDevId : ROUTE_TARGETS.includes(pathname);
-  // The account view box only matters on mail pages — it scopes which inboxes
-  // you're reading. Hide it on the developer/tool pages where it does nothing.
-  const SCOPE_HIDDEN_PREFIXES = ["/webhooks", "/pull-requests"];
-  const showAccountScope = embedded
-    ? !activeDevId
-    : !SCOPE_HIDDEN_PREFIXES.some(
-        (p) => pathname === p || pathname.startsWith(`${p}/`),
-      );
-  const scopedUnread = accounts
-    .filter((account) => scopeIds.includes(account.accountId))
-    .reduce((sum, account) => sum + account.unread, 0);
+  const inViewAccounts = accounts.filter((account) =>
+    scopeIds.includes(account.accountId),
+  );
+  const scopedCount = inViewAccounts.length;
+  const scopedUnread = inViewAccounts.reduce(
+    (sum, account) => sum + account.unread,
+    0,
+  );
 
   // Inbox is never hideable; everything else respects the Settings toggles.
   const childVisible = (child: NavChild) =>
@@ -270,7 +268,6 @@ export function AppSidebar({
               {INTEGRATIONS.map((integration) => {
                 const children = integration.children.filter(childVisible);
                 if (children.length === 0) return null;
-                const isGmail = integration.id === "gmail";
                 // Whole integration is upcoming when every child is — flag it on
                 // the header so the group reads as "Soon" before you expand it.
                 const allSoon = children.every((child) => child.soon);
@@ -350,23 +347,6 @@ export function AppSidebar({
                               </SidebarMenuSubItem>
                             );
                           })}
-                          {/* Account scope lives under Gmail, inside the same
-                              indented sub-list so it sits right of the rule and
-                              continues the folder items. */}
-                          {isGmail &&
-                            showAccountScope &&
-                            (loading ? (
-                              <ViewCardSkeleton />
-                            ) : accounts.length > 0 ? (
-                              <ViewCard
-                                accounts={accounts}
-                                scopeIds={scopeIds}
-                                allOn={allOn}
-                                onToggle={onToggleScope}
-                                onAddAccount={() => linkGoogle()}
-                                onAddTestAccount={onAddTestAccount}
-                              />
-                            ) : null)}
                         </SidebarMenuSub>
                       </CollapsibleContent>
                     </Collapsible>
@@ -378,7 +358,47 @@ export function AppSidebar({
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="border-t pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+      <SidebarFooter className="gap-1 border-t pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+        {/* Account scope is a global view control ("which inboxes feed the
+            board"), so it's pinned here — route-independent, never reflows when
+            you switch integrations. Manage accounts in Settings; toggle which
+            are in view here. Collapses to a one-liner when viewing all. */}
+        {loading ? (
+          <div className="flex h-7 items-center gap-2 px-2">
+            <span className="size-4 shrink-0 animate-pulse rounded bg-muted" />
+            <span className="h-2.5 w-16 animate-pulse rounded bg-muted" />
+          </div>
+        ) : accounts.length > 0 ? (
+          <Collapsible defaultOpen={!allOn}>
+            <CollapsibleTrigger
+              render={
+                <button
+                  type="button"
+                  className="group/acct flex h-7 w-full items-center gap-2 rounded-md px-2 text-left hover:bg-sidebar-accent"
+                />
+              }
+            >
+              <Users className="size-4 shrink-0 text-muted-foreground/70" />
+              <span className="text-[13px] font-medium">Accounts</span>
+              <span className="ml-auto font-mono text-[11px] text-muted-foreground/70">
+                {allOn ? "All" : `${scopedCount} of ${accounts.length}`}
+              </span>
+              <ChevronRight className="size-3.5 shrink-0 text-muted-foreground/60 transition-transform group-data-[panel-open]/acct:rotate-90" />
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="pt-0.5">
+                <ViewCard
+                  accounts={accounts}
+                  scopeIds={scopeIds}
+                  onToggle={onToggleScope}
+                  onAddAccount={() => linkGoogle()}
+                  onAddTestAccount={onAddTestAccount}
+                />
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        ) : null}
+
         <NavUser
           onOpenSettings={after(onOpenSettings)}
           loading={loading}
