@@ -12,6 +12,7 @@ import {
   Send,
   ShieldAlert,
   SquareCheck,
+  SquareTerminal,
   Trash2,
   Users,
   Webhook,
@@ -74,6 +75,8 @@ type Integration = {
   id: string;
   label: string;
   icon: ComponentType<{ className?: string }>;
+  /** Whole integration is upcoming — dimmed and not expandable (e.g. Linear). */
+  soon?: boolean;
   children: NavChild[];
 };
 
@@ -86,14 +89,19 @@ const INTEGRATIONS: Integration[] = [
     label: "Gmail",
     icon: GmailMark,
     children: [
-      { id: "inbox", title: "Inbox", icon: Inbox, folder: "inbox", fixed: true },
+      {
+        id: "inbox",
+        title: "Inbox",
+        icon: Inbox,
+        folder: "inbox",
+        fixed: true,
+      },
       { id: "labeled", title: "Labeled", icon: Tag, folder: "labeled" },
       { id: "sent", title: "Sent", icon: Send, folder: "sent" },
       { id: "drafts", title: "Drafts", icon: FileText, folder: "drafts" },
       { id: "archived", title: "Archived", icon: Archive, folder: "archived" },
       { id: "spam", title: "Spam", icon: ShieldAlert, folder: "spam" },
       { id: "trash", title: "Trash", icon: Trash2, folder: "trash" },
-      { id: "webhooks", title: "Webhooks", icon: Webhook, soon: true },
     ],
   },
   {
@@ -119,6 +127,7 @@ const INTEGRATIONS: Integration[] = [
     id: "linear",
     label: "Linear",
     icon: LinearMark,
+    soon: true,
     children: [
       {
         id: "linear_assigned",
@@ -132,6 +141,14 @@ const INTEGRATIONS: Integration[] = [
         icon: CircleDot,
         soon: true,
       },
+    ],
+  },
+  {
+    id: "developer",
+    label: "Developer",
+    icon: SquareTerminal,
+    children: [
+      { id: "webhooks", title: "Webhooks", icon: Webhook, soon: true },
     ],
   },
 ];
@@ -279,42 +296,50 @@ export function AppSidebar({
               {INTEGRATIONS.map((integration) => {
                 const children = integration.children.filter(childVisible);
                 if (children.length === 0) return null;
-                // Whole integration is upcoming when every child is — flag it on
-                // the header so the group reads as "Soon" before you expand it.
-                const allSoon = children.every((child) => child.soon);
+                // Open a real section by default only when it has a live child.
+                const hasLive = children.some((child) => !child.soon);
+                // A "soon" integration (e.g. Linear) is a dimmed placeholder —
+                // not expandable.
+                if (integration.soon) {
+                  return (
+                    <SidebarMenuItem key={integration.id}>
+                      <SidebarMenuButton
+                        disabled
+                        className={cn(navButton, "font-medium opacity-50")}
+                      >
+                        <integration.icon />
+                        <span>{integration.label}</span>
+                        <span className={soonBadge}>Soon</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                }
                 return (
                   <SidebarMenuItem key={integration.id}>
-                    <Collapsible defaultOpen={!allSoon}>
+                    <Collapsible defaultOpen={hasLive}>
                       <CollapsibleTrigger
                         render={
                           <SidebarMenuButton
                             className={cn(
                               navButton,
                               "group/collapsible font-medium",
-                              allSoon && "opacity-50",
                             )}
                           />
                         }
                       >
                         <integration.icon />
                         <span>{integration.label}</span>
-                        {allSoon && <span className={soonBadge}>Soon</span>}
-                        <ChevronRight
-                          className={cn(
-                            "size-3.5 text-muted-foreground/60 transition-transform group-data-[panel-open]/collapsible:rotate-90",
-                            allSoon ? "ml-1" : "ml-auto",
-                          )}
-                        />
+                        <ChevronRight className="ml-auto size-3.5 text-muted-foreground/60 transition-transform group-data-[panel-open]/collapsible:rotate-90" />
                       </CollapsibleTrigger>
                       <CollapsibleContent>
-                        <SidebarMenuSub className="gap-px mr-0 pr-0">
+                        <SidebarMenuSub className="mr-0 gap-px pr-0">
                           {children.map((child) => {
                             if (child.soon) {
                               return (
                                 <SidebarMenuSubItem key={child.id}>
                                   <SidebarMenuSubButton
                                     aria-disabled
-                                    className="w-full text-left pointer-events-none opacity-40"
+                                    className="pointer-events-none w-full text-left opacity-40"
                                   >
                                     <child.icon />
                                     <span className="flex-1 truncate">
@@ -400,7 +425,7 @@ export function AppSidebar({
               }
             >
               <Users className="size-4 shrink-0 text-muted-foreground/70" />
-              <span className="text-[13px] font-medium">Accounts</span>
+              <span className="text-[13px] font-medium">Gmail Accounts</span>
               <span className="ml-auto font-mono text-[11px] text-muted-foreground/70">
                 {allOn ? "All" : `${scopedCount} of ${accounts.length}`}
               </span>

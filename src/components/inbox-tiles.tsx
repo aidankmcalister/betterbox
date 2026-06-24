@@ -235,22 +235,6 @@ function getPaneType(paneId: string): PaneType {
   return "email";
 }
 
-/** Minimum pane size (in the split direction) per type, so a pane can't be
- *  resized small enough to break its content — e.g. the GitHub panels' stat
- *  strip + dense rows need room. */
-function paneMinSizeFor(paneId: string): string | undefined {
-  switch (getPaneType(paneId)) {
-    case "panel":
-      return "360px";
-    case "composer":
-      return "360px";
-    case "reader":
-      return "320px";
-    default:
-      return undefined; // email inboxes keep the fraction-based min
-  }
-}
-
 /** Everything a pane renderer/drag-label needs from the board's live state. */
 type PaneRenderCtx = {
   accounts: Account[];
@@ -536,7 +520,7 @@ export function InboxTiles({
 
   const ctx: TilesCtx = {
     accounts,
-    removable: scoped.length > 1,
+    removable: scoped.length >= 1,
     onRemovePane,
     folder,
     openEmail,
@@ -580,7 +564,6 @@ export function InboxTiles({
           renderPane={renderPane}
           storage={storage}
           renderDragLabel={renderDragLabel}
-          paneMinSize={paneMinSizeFor}
           resetEvent={RESET_TILE_LAYOUT_EVENT}
           emptyLabel="No linked accounts."
         />

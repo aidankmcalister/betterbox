@@ -33,7 +33,6 @@ export function ViewCard({
     <div className="flex flex-col gap-px">
       {accounts.map((account, index) => {
         const on = scopeIds.includes(account.accountId);
-        const locked = on && scopeIds.length === 1;
         const color = resolveAccountColor(
           index,
           account.accountId,
@@ -44,9 +43,7 @@ export function ViewCard({
             key={account.accountId}
             label={
               on
-                ? locked
-                  ? "At least one account stays in view"
-                  : `Remove ${account.email} from view`
+                ? `Remove ${account.email} from view`
                 : `Add ${account.email} to view`
             }
           >
@@ -56,10 +53,7 @@ export function ViewCard({
               role="checkbox"
               aria-checked={on}
               onClick={() => onToggle(account.accountId)}
-              className={cn(
-                row,
-                locked ? "cursor-default" : "hover:bg-sidebar-accent",
-              )}
+              className={cn(row, "hover:bg-sidebar-accent")}
             >
               <span className="flex size-4 shrink-0 items-center justify-center">
                 <span

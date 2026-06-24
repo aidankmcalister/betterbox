@@ -36,7 +36,6 @@ export function useAccountScope(accountIds: string[]) {
       } else {
         const current = new Set(scopeIds);
         if (current.has(id)) {
-          if (current.size === 1) return; // last account stays in view
           current.delete(id);
         } else {
           current.add(id);

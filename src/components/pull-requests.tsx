@@ -12,6 +12,7 @@ import { linkGithub } from "@/lib/auth-client";
 import { usePullRequestsQuery, type PullRequest } from "@/lib/github-queries";
 import demoPullRequests from "@/data/demo-pull-requests.json";
 import { GithubMark } from "@/components/github-mark";
+import { Hint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import {
   ConnectState,
@@ -161,7 +162,9 @@ function PRRow({
             <span className="shrink-0 text-muted-foreground/60">#{pr.num}</span>
             <span className="flex-1" />
             {pr.awaitsYou && (
-              <EyeIcon className="size-[11px] shrink-0 text-primary" />
+              <Hint label="Awaiting your review">
+                <EyeIcon className="size-[11px] shrink-0 text-primary" />
+              </Hint>
             )}
             <span className="shrink-0 text-muted-foreground/60">
               {relTime(pr.updated, now)}
@@ -273,7 +276,7 @@ export function PullRequestsPage({
       <StatStrip
         segs={[
           { value: nOpen, label: "open" },
-          { value: nReview, label: "awaiting you", you: true },
+          { value: nReview, label: "awaiting", you: true },
           { value: nChanges, label: "changes" },
           { value: nMerged, label: "merged" },
         ]}
