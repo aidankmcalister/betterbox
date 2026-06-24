@@ -1,432 +1,193 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   CheckIcon,
-  ChevronDownIcon,
   ClockIcon,
   EyeIcon,
-  GitMergeIcon,
-  GitPullRequestArrowIcon,
-  GitPullRequestClosedIcon,
-  GitPullRequestDraftIcon,
   MessageSquareIcon,
-  RefreshCwIcon,
   XIcon,
 } from "lucide-react";
-
 import { toast } from "sonner";
 
 import { linkGithub } from "@/lib/auth-client";
 import { usePullRequestsQuery, type PullRequest } from "@/lib/github-queries";
 import demoPullRequests from "@/data/demo-pull-requests.json";
 import { GithubMark } from "@/components/github-mark";
-import { Button } from "@/components/ui/button";
-import { Hint } from "@/components/ui/tooltip";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import {
+  ConnectState,
+  EmptyState,
+  ErrorState,
+  FilterTabs,
+  GithubFooter,
+  PanelSkeleton,
+  Sparkbar,
+  SpineRow,
+  StatStrip,
+  StatusDot,
+  WIDE_AT,
+  relTime,
+  usePanelWidth,
+} from "@/components/github-panel";
 
-function relTime(iso: string, now: number): string {
-  const m = Math.round((now - new Date(iso).getTime()) / 60000);
-  if (m < 1) return "now";
-  if (m < 60) return `${m}m`;
-  if (m < 1440) return `${Math.round(m / 60)}h`;
-  return `${Math.round(m / 1440)}d`;
+type CiState = PullRequest["ci"];
+
+/** Left-spine color: accent when it needs you, else the PR's state color. */
+function prSpine(pr: PullRequest): string {
+  if (pr.awaitsYou) return "bg-primary";
+  if (pr.state === "merged") return "bg-label-purple";
+  if (pr.state === "closed") return "bg-label-red";
+  if (pr.state === "draft") return "bg-muted-foreground/40";
+  if (pr.review === "changes") return "bg-label-red";
+  return "bg-label-green";
 }
 
-const STATE_ICON = {
-  open: { Icon: GitPullRequestArrowIcon, cls: "text-label-green" },
-  draft: { Icon: GitPullRequestDraftIcon, cls: "text-muted-foreground/70" },
-  merged: { Icon: GitMergeIcon, cls: "text-label-purple" },
-  closed: { Icon: GitPullRequestClosedIcon, cls: "text-label-red" },
-} as const;
-
-function ReviewPill({ pr }: { pr: PullRequest }) {
-  const { label, cls, hint } = reviewLook(pr);
-  return (
-    <Hint label={hint}>
-      <span
-        className={cn(
-          "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-px text-[11px] whitespace-nowrap",
-          cls,
-        )}
-      >
-        <span className="size-[5px] flex-none rounded-full bg-current" />
-        {label}
-      </span>
-    </Hint>
-  );
-}
-
-function reviewLook(pr: PullRequest): {
-  label: string;
-  cls: string;
-  hint: string;
-} {
+/** The dot+label review status shown on the row. */
+function prStatus(pr: PullRequest): { color: string; label: string } {
   if (pr.state === "merged")
-    return {
-      label: "Merged",
-      cls: "border-label-purple/40 text-label-purple",
-      hint: "Merged",
-    };
+    return { color: "text-label-purple", label: "merged" };
   if (pr.state === "closed")
-    return {
-      label: "Closed",
-      cls: "border-label-red/40 text-label-red",
-      hint: "Closed without merging",
-    };
+    return { color: "text-label-red", label: "closed" };
   if (pr.state === "draft")
-    return {
-      label: "Draft",
-      cls: "border-muted-foreground/30 text-muted-foreground/70",
-      hint: "Still a draft, not open for review yet",
-    };
+    return { color: "text-muted-foreground/70", label: "draft" };
   if (pr.review === "approved")
-    return {
-      label: "Approved",
-      cls: "border-success/40 text-success",
-      hint: "Approved by a reviewer",
-    };
+    return { color: "text-label-green", label: "approved" };
   if (pr.review === "changes")
-    return {
-      label: "Needs changes",
-      cls: "border-label-red/40 text-label-red",
-      hint: "A reviewer requested changes",
-    };
+    return { color: "text-label-red", label: "changes" };
   if (pr.review === "commented")
-    return {
-      label: "Commented",
-      cls: "border-label-blue/40 text-label-blue",
-      hint: "Reviewers commented without an approval or change request",
-    };
-  return {
-    label: "Needs review",
-    cls: "border-muted-foreground/30 text-muted-foreground/80",
-    hint: "Open and waiting on a review",
-  };
+    return { color: "text-label-blue", label: "commented" };
+  return { color: "text-muted-foreground/70", label: "review" };
 }
 
-function CiDot({ ci }: { ci: PullRequest["ci"] }) {
+function Ci({ ci }: { ci: CiState }) {
   if (ci === "none")
     return (
-      <span className="w-[18px] text-center font-mono text-xs text-muted-foreground/60">
+      <span className="shrink-0 font-mono text-[10.5px] text-muted-foreground/50">
         —
       </span>
     );
   const look = {
-    passing: { Icon: CheckIcon, cls: "text-success bg-success/15" },
+    passing: { Icon: CheckIcon, cls: "text-label-green bg-label-green/15" },
     failing: { Icon: XIcon, cls: "text-label-red bg-label-red/15" },
     pending: { Icon: ClockIcon, cls: "text-label-yellow bg-label-yellow/15" },
   }[ci];
   return (
     <span
       className={cn(
-        "inline-flex size-[18px] flex-none items-center justify-center rounded-full",
+        "inline-flex size-[15px] shrink-0 items-center justify-center rounded-full",
         look.cls,
       )}
     >
-      <look.Icon className="size-[11px]" strokeWidth={2.5} />
+      <look.Icon className="size-[10px]" strokeWidth={2.5} />
     </span>
   );
 }
 
-function DiffStat({
+function Diff({ pr }: { pr: PullRequest }) {
+  return (
+    <span className="inline-flex shrink-0 items-center gap-[7px] font-mono text-[10.5px]">
+      <span className="text-label-green">+{pr.additions.toLocaleString()}</span>
+      <span className="text-label-red">−{pr.deletions.toLocaleString()}</span>
+      <Sparkbar additions={pr.additions} deletions={pr.deletions} />
+    </span>
+  );
+}
+
+function Comments({ n }: { n: number }) {
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1 font-mono text-[10.5px] text-muted-foreground/60">
+      <MessageSquareIcon className="size-3" />
+      {n}
+    </span>
+  );
+}
+
+function PRRow({
   pr,
-  inline = false,
+  now,
+  wide,
+  demo,
 }: {
   pr: PullRequest;
-  inline?: boolean;
+  now: number;
+  wide: boolean;
+  demo: boolean;
 }) {
-  const total = pr.additions + pr.deletions || 1;
-  const addPct = Math.round((pr.additions / total) * 100);
-  if (inline) {
-    // Card: numbers + bar on one centered line, sharing a baseline with the
-    // pill, comments and CI in the metrics row.
-    return (
-      <span className="inline-flex items-center gap-2 font-mono text-[11px] leading-none">
-        <span className="text-label-green">
-          +{pr.additions.toLocaleString()}
-        </span>
-        <span className="flex h-[3px] w-10 overflow-hidden rounded-full bg-muted">
-          <span className="bg-label-green" style={{ width: `${addPct}%` }} />
+  const status = prStatus(pr);
+  const onClick = demo
+    ? (e: React.MouseEvent) => {
+        e.preventDefault();
+        toast("Opens on GitHub", {
+          icon: <GithubMark className="size-4" />,
+          description: `In the live app, ${pr.repo} #${pr.num} opens on github.com — sealed in this demo.`,
+        });
+      }
+    : undefined;
+
+  return (
+    <SpineRow spine={prSpine(pr)} href={pr.url} onClick={onClick}>
+      {wide ? (
+        <div className="flex h-8 items-center gap-[10px] px-[11px]">
+          <span className="max-w-[130px] shrink-0 truncate font-mono text-[11px] text-muted-foreground">
+            {pr.repo}
+          </span>
+          <span className="shrink-0 font-mono text-[11px] text-muted-foreground/60">
+            #{pr.num}
+          </span>
           <span
-            className="bg-label-red"
-            style={{ width: `${100 - addPct}%` }}
-          />
-        </span>
-        <span className="text-label-red">−{pr.deletions.toLocaleString()}</span>
-      </span>
-    );
-  }
-  // Table: +adds / −dels split across the column, bar underneath.
-  return (
-    <span className="flex w-[96px] flex-none flex-col gap-[3px] font-mono text-[11px] leading-none">
-      <span className="flex items-baseline justify-between">
-        <span className="text-label-green">
-          +{pr.additions.toLocaleString()}
-        </span>
-        <span className="text-label-red">−{pr.deletions.toLocaleString()}</span>
-      </span>
-      <span className="flex h-[3px] w-full overflow-hidden rounded-full bg-muted">
-        <span className="bg-label-green" style={{ width: `${addPct}%` }} />
-        <span className="bg-label-red" style={{ width: `${100 - addPct}%` }} />
-      </span>
-    </span>
-  );
-}
-
-/** Demo: a PR row would open github.com in the real app. Toast that intent
- *  instead of navigating (the demo's urls are sealed placeholders). */
-function demoOpenToast(pr: PullRequest) {
-  toast("Opens on GitHub", {
-    icon: <GithubMark className="size-4" />,
-    description: `In the live app, ${pr.repo} #${pr.num} opens on github.com — sealed in this demo.`,
-  });
-}
-
-/** Wide layout: a dense table row that spreads metrics across fixed columns, so
- *  a wide pane uses its horizontal space instead of stacking everything left. */
-function Row({
-  pr,
-  now,
-  demo,
-}: {
-  pr: PullRequest;
-  now: number;
-  demo: boolean;
-}) {
-  const { Icon, cls } = STATE_ICON[pr.state];
-  const dim = pr.state === "merged" || pr.state === "closed";
-  const navigable = !!pr.url && pr.url !== "#";
-  return (
-    <a
-      href={navigable ? pr.url : undefined}
-      target={navigable ? "_blank" : undefined}
-      rel="noopener noreferrer"
-      onClick={
-        demo
-          ? (event) => {
-              event.preventDefault();
-              demoOpenToast(pr);
-            }
-          : undefined
-      }
-      className={cn(
-        "flex h-[34px] items-center gap-4 border-b border-l-2 border-border px-5 hover:bg-muted/50",
-        pr.awaitsYou ? "border-l-primary" : "border-l-transparent",
-        navigable || demo ? "cursor-pointer" : "cursor-default",
-      )}
-    >
-      <Icon className={cn("size-4 flex-none", cls)} />
-      <span className="w-[140px] flex-none truncate font-mono text-[11.5px] text-muted-foreground">
-        {pr.repo}
-      </span>
-      <span className="w-[52px] flex-none font-mono text-[11.5px] text-muted-foreground/60">
-        #{pr.num}
-      </span>
-      <span className="min-w-0 flex-1 truncate text-muted-foreground/60">
-        <span
-          className={cn(
-            "text-[12.5px]",
-            pr.awaitsYou ? "font-semibold" : "font-medium",
-            dim ? "text-muted-foreground/70" : "text-foreground",
-          )}
-        >
-          {pr.title}
-        </span>
-        <span className="font-mono text-[11px] text-muted-foreground/60">
-          {`  —  ${pr.branch}`}
-        </span>
-      </span>
-      <span className="flex w-[124px] flex-none justify-start">
-        <ReviewPill pr={pr} />
-      </span>
-      <Hint
-        label={`+${pr.additions.toLocaleString()} added · −${pr.deletions.toLocaleString()} removed`}
-      >
-        <span className="flex w-[96px] flex-none">
-          <DiffStat pr={pr} />
-        </span>
-      </Hint>
-      <Hint label={`${pr.comments} comment${pr.comments === 1 ? "" : "s"}`}>
-        <span className="flex w-[48px] flex-none items-center gap-1 font-mono text-[11px] text-muted-foreground/60">
-          <MessageSquareIcon className="size-3" />
-          {pr.comments}
-        </span>
-      </Hint>
-      <span className="flex w-[22px] flex-none">
-        <Hint label={`CI ${pr.ci === "none" ? "not run" : pr.ci}`}>
-          <span className="flex">
-            <CiDot ci={pr.ci} />
-          </span>
-        </Hint>
-      </span>
-      <span className="w-[44px] flex-none font-mono text-[11px] text-muted-foreground/60">
-        {relTime(pr.updated, now)}
-      </span>
-    </a>
-  );
-}
-
-/** Narrow layout: a single PR as a stacked card — repo · #num · age, the title,
- *  then a wrapping metrics row. No fixed-width columns, so it never overflows a
- *  thin pane. */
-function PrCard({
-  pr,
-  now,
-  demo,
-}: {
-  pr: PullRequest;
-  now: number;
-  demo: boolean;
-}) {
-  const { Icon, cls } = STATE_ICON[pr.state];
-  const dim = pr.state === "merged" || pr.state === "closed";
-  const navigable = !!pr.url && pr.url !== "#";
-  return (
-    <a
-      href={navigable ? pr.url : undefined}
-      target={navigable ? "_blank" : undefined}
-      rel="noopener noreferrer"
-      onClick={
-        demo
-          ? (event) => {
-              event.preventDefault();
-              demoOpenToast(pr);
-            }
-          : undefined
-      }
-      className={cn(
-        "flex flex-col gap-1.5 border-b border-l-2 border-border px-3 py-2.5 hover:bg-muted/50",
-        pr.awaitsYou ? "border-l-primary" : "border-l-transparent",
-        navigable || demo ? "cursor-pointer" : "cursor-default",
-      )}
-    >
-      {/* repo · #num · when */}
-      <div className="flex items-center gap-2">
-        <Icon className={cn("size-4 flex-none", cls)} />
-        <span className="min-w-0 truncate font-mono text-[11.5px] text-muted-foreground">
-          {pr.repo}
-        </span>
-        <span className="flex-none font-mono text-[11.5px] text-muted-foreground/60">
-          #{pr.num}
-        </span>
-        {pr.awaitsYou && <EyeIcon className="size-3 flex-none text-primary" />}
-        <span className="ml-auto flex-none font-mono text-[11px] text-muted-foreground/60">
-          {relTime(pr.updated, now)}
-        </span>
-      </div>
-
-      {/* title + branch */}
-      <div>
-        <p
-          className={cn(
-            "line-clamp-2 text-[13.5px] leading-snug",
-            pr.awaitsYou ? "font-semibold" : "font-medium",
-            dim ? "text-muted-foreground/70" : "text-foreground",
-          )}
-        >
-          {pr.title}
-        </p>
-        <p className="truncate font-mono text-[11px] text-muted-foreground/60">
-          {pr.branch}
-        </p>
-      </div>
-
-      {/* metrics — wraps onto its own line(s), never pushes the card wide */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 pt-0.5">
-        <ReviewPill pr={pr} />
-        <DiffStat pr={pr} inline />
-        <span className="inline-flex items-center gap-1 font-mono text-[11px] text-muted-foreground/60">
-          <MessageSquareIcon className="size-3" />
-          {pr.comments}
-        </span>
-        <Hint label={`CI ${pr.ci === "none" ? "not run" : pr.ci}`}>
-          <span className="flex">
-            <CiDot ci={pr.ci} />
-          </span>
-        </Hint>
-      </div>
-    </a>
-  );
-}
-
-/** Compact stat chip — wraps with its siblings so four stats fit a narrow pane
- *  without a fixed grid that would overflow. */
-function KpiChip({
-  label,
-  value,
-  accent = false,
-}: {
-  label: string;
-  value: number;
-  accent?: boolean;
-}) {
-  return (
-    <div className="inline-flex items-baseline gap-1.5 rounded-md border border-border bg-muted/30 px-2 py-1">
-      <span
-        className={cn(
-          "text-[14px] font-semibold tracking-[-0.3px]",
-          accent && value > 0 ? "text-primary" : "text-foreground",
-        )}
-      >
-        {value}
-      </span>
-      <span className="text-[10.5px] whitespace-nowrap text-muted-foreground/70">
-        {label}
-      </span>
-    </div>
-  );
-}
-
-type FilterId = "all" | "open" | "review" | "approved" | "merged" | "closed";
-
-/** Filter as a dropdown (not a tab strip) so it stays one compact control at any
- *  pane width instead of overflowing or scrolling. */
-function FilterMenu({
-  value,
-  onChange,
-  items,
-}: {
-  value: FilterId;
-  onChange: (id: FilterId) => void;
-  items: { id: FilterId; label: string; count?: number }[];
-}) {
-  const current = items.find((it) => it.id === value);
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        render={<Button variant="outline" size="sm" className="h-7 font-mono" />}
-      >
-        <span className="text-[11.5px]">{current?.label ?? "Filter"}</span>
-        {current?.count != null && (
-          <span className="text-[10.5px] text-muted-foreground/70">
-            {current.count}
-          </span>
-        )}
-        <ChevronDownIcon className="size-3.5" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-48">
-        {items.map((it) => (
-          <DropdownMenuItem key={it.id} onClick={() => onChange(it.id)}>
-            <span className="flex-1 text-[13px]">{it.label}</span>
-            {it.count != null && (
-              <span className="font-mono text-[11px] text-muted-foreground/60">
-                {it.count}
-              </span>
+            className={cn(
+              "min-w-0 flex-1 truncate text-[12.5px] text-foreground",
+              pr.awaitsYou && "font-semibold",
             )}
-            {it.id === value && (
-              <CheckIcon className="size-3.5 shrink-0 text-primary" />
+          >
+            {pr.title}
+          </span>
+          <span className="hidden max-w-[150px] shrink-0 truncate font-mono text-[10.5px] text-muted-foreground/60 @2xl:inline">
+            {pr.branch} → {pr.base}
+          </span>
+          <StatusDot color={status.color}>{status.label}</StatusDot>
+          <Diff pr={pr} />
+          <Ci ci={pr.ci} />
+          <Comments n={pr.comments} />
+          <span className="shrink-0 font-mono text-[10.5px] text-muted-foreground/60">
+            {relTime(pr.updated, now)}
+          </span>
+        </div>
+      ) : (
+        <div className="px-3 py-2.5">
+          <div className="flex items-center gap-2 font-mono text-[11px]">
+            <span className="min-w-0 truncate text-muted-foreground">
+              {pr.repo}
+            </span>
+            <span className="shrink-0 text-muted-foreground/60">#{pr.num}</span>
+            <span className="flex-1" />
+            {pr.awaitsYou && (
+              <EyeIcon className="size-[11px] shrink-0 text-primary" />
             )}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+            <span className="shrink-0 text-muted-foreground/60">
+              {relTime(pr.updated, now)}
+            </span>
+          </div>
+          <p
+            className={cn(
+              "my-[5px] line-clamp-2 text-[12.5px] leading-[1.35] text-foreground",
+              pr.awaitsYou && "font-semibold",
+            )}
+          >
+            {pr.title}
+          </p>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <StatusDot color={status.color}>{status.label}</StatusDot>
+            <Diff pr={pr} />
+            <Ci ci={pr.ci} />
+            <Comments n={pr.comments} />
+          </div>
+        </div>
+      )}
+    </SpineRow>
   );
 }
+
+type FilterId = "all" | "open" | "review" | "approved" | "merged";
 
 const matches = (p: PullRequest, f: FilterId) => {
   if (f === "all") return true;
@@ -434,7 +195,6 @@ const matches = (p: PullRequest, f: FilterId) => {
   if (f === "review") return p.awaitsYou;
   if (f === "approved") return p.state === "open" && p.review === "approved";
   if (f === "merged") return p.state === "merged";
-  if (f === "closed") return p.state === "closed";
   return true;
 };
 
@@ -442,8 +202,6 @@ type DemoPr = Omit<PullRequest, "url" | "author" | "labels" | "updated"> & {
   minutesAgo: number;
 };
 
-/** Seeded PRs for the landing-page sandbox — no network, fresh relative times.
- *  Data lives in `@/data/demo-pull-requests`. */
 function makeDemoPullRequests(): PullRequest[] {
   const now = Date.now();
   return (demoPullRequests as unknown as DemoPr[]).map(
@@ -457,29 +215,6 @@ function makeDemoPullRequests(): PullRequest[] {
   );
 }
 
-/** The panel's own width (not the viewport), so the narrow-cards / wide-table
- *  switch tracks the pane size rather than the browser size. A callback ref
- *  (re)attaches the observer whenever the measured node mounts — important
- *  because the node only appears after the loading/connect states clear. */
-function usePanelWidth() {
-  const [width, setWidth] = useState(0);
-  const observerRef = useRef<ResizeObserver | null>(null);
-  const ref = useCallback((node: HTMLDivElement | null) => {
-    observerRef.current?.disconnect();
-    if (!node) {
-      observerRef.current = null;
-      return;
-    }
-    const observer = new ResizeObserver((entries) => {
-      const w = entries[0]?.contentRect.width;
-      if (w) setWidth(w);
-    });
-    observer.observe(node);
-    observerRef.current = observer;
-  }, []);
-  return [ref, width] as const;
-}
-
 export function PullRequestsPage({
   signedIn = false,
   demo = false,
@@ -490,21 +225,26 @@ export function PullRequestsPage({
 }) {
   const [filter, setFilter] = useState<FilterId>("open");
   const [ref, width] = usePanelWidth();
-  // Below this the fixed table columns squeeze the title to nothing, so the
-  // cards (full-width title) cover narrow → medium; the table only takes over
-  // once it has real room to breathe.
-  const wide = width >= 880;
+  const wide = width >= WIDE_AT;
   const query = usePullRequestsQuery(signedIn && !demo);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: recompute the "now" baseline for relative times only when fresh PR data lands.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: refresh the "now" baseline only when fresh data lands.
   const now = useMemo(() => Date.now(), [query.dataUpdatedAt]);
   const demoPrs = useMemo(() => (demo ? makeDemoPullRequests() : []), [demo]);
 
   if (!demo) {
-    if (query.isLoading) return <LoadingState />;
-    if (query.data && !query.data.linked) return <ConnectState />;
+    if (query.isLoading) return <PanelSkeleton />;
+    if (query.data && !query.data.linked) {
+      return (
+        <ConnectState
+          blurb="Link your GitHub account to BetterBox (no new account, just a sign-in) and your open pull requests show up here — authored and review-requested, with status, CI, and diff size."
+          onConnect={linkGithub}
+        />
+      );
+    }
     if (query.isError || query.data?.error) {
       return (
         <ErrorState
+          title="Couldn’t load pull requests"
           message={query.data?.error ?? String(query.error)}
           onRetry={() => query.refetch()}
         />
@@ -521,159 +261,44 @@ export function PullRequestsPage({
     (p) => p.state === "open" && p.review === "changes",
   ).length;
   const nMerged = prs.filter((p) => p.state === "merged").length;
-
-  const items: { id: FilterId; label: string; count?: number }[] = [
-    { id: "open", label: "Open", count: nOpen },
-    { id: "review", label: "Review requested", count: nReview },
-    { id: "approved", label: "Approved" },
-    { id: "merged", label: "Merged" },
-    { id: "closed", label: "Closed" },
-    { id: "all", label: "All", count: prs.length },
-  ];
   const rows = prs.filter((p) => matches(p, filter));
 
   return (
-    <div ref={ref} className="flex h-full min-w-0 flex-col bg-background">
-      {/* KPI chips — wrap onto a second line on a narrow pane, never overflow */}
-      <div className="flex flex-none flex-wrap gap-1.5 border-b border-border px-3 py-2">
-        <KpiChip label="Open" value={nOpen} />
-        <KpiChip label="Awaiting you" value={nReview} accent />
-        <KpiChip label="Changes" value={nChanges} />
-        <KpiChip label="Merged" value={nMerged} />
-      </div>
-
-      {/* filter + count */}
-      <div className="flex flex-none items-center gap-2 border-b border-border px-3 py-2">
-        <FilterMenu value={filter} onChange={setFilter} items={items} />
-        <span className="ml-auto font-mono text-[10.5px] text-muted-foreground/60">
-          {rows.length} shown
-        </span>
-      </div>
-
-      {/* list — wide pane gets the dense table, narrow gets stacked cards */}
+    <div
+      ref={ref}
+      className="@container flex h-full min-w-0 flex-col bg-background"
+    >
+      <StatStrip
+        segs={[
+          { value: nOpen, label: "open" },
+          { value: nReview, label: "awaiting you", you: true },
+          { value: nChanges, label: "changes" },
+          { value: nMerged, label: "merged" },
+        ]}
+      />
+      <FilterTabs
+        value={filter}
+        onChange={setFilter}
+        shown={rows.length}
+        items={[
+          { id: "open", label: "open" },
+          { id: "review", label: "review" },
+          { id: "approved", label: "approved" },
+          { id: "merged", label: "merged" },
+          { id: "all", label: "all" },
+        ]}
+      />
       <div className="flex-1 overflow-y-auto">
-        {wide && rows.length > 0 && (
-          <div className="sticky top-0 z-1 flex h-[30px] items-center gap-4 border-b border-l-2 border-border border-l-transparent bg-background px-5 text-[10.5px] tracking-[0.4px] text-muted-foreground/60 uppercase">
-            <span className="w-4 flex-none" />
-            <span className="w-[140px] flex-none">Repo</span>
-            <span className="w-[52px] flex-none">PR</span>
-            <span className="min-w-0 flex-1 truncate">Title</span>
-            <span className="w-[124px] flex-none">Status</span>
-            <span className="w-[96px] flex-none">Changes</span>
-            <span className="w-[48px] flex-none">Cmts</span>
-            <span className="w-[22px] flex-none">CI</span>
-            <span className="w-[44px] flex-none">Age</span>
-          </div>
-        )}
         {rows.length === 0 ? (
-          <div className="flex flex-col items-center gap-2.5 px-6 py-14 text-center">
-            <span className="inline-flex size-9 items-center justify-center rounded-full bg-muted">
-              <GitPullRequestArrowIcon className="size-[17px] text-muted-foreground/60" />
-            </span>
-            <span className="text-[13.5px] font-semibold">Nothing here</span>
-            <span className="text-[12.5px] text-muted-foreground/80">
-              No pull requests match this filter.
-            </span>
-          </div>
+          <EmptyState label="No pull requests match this filter." />
         ) : (
           <>
-            {rows.map((pr) =>
-              wide ? (
-                <Row key={pr.id} pr={pr} now={now} demo={demo} />
-              ) : (
-                <PrCard key={pr.id} pr={pr} now={now} demo={demo} />
-              ),
-            )}
-            <div className="flex items-center justify-center gap-2 p-3 font-mono text-[10.5px] text-muted-foreground/60">
-              <GithubMark className="size-3" />
-              live from the GitHub API
-            </div>
+            {rows.map((pr) => (
+              <PRRow key={pr.id} pr={pr} now={now} wide={wide} demo={demo} />
+            ))}
+            <GithubFooter />
           </>
         )}
-      </div>
-    </div>
-  );
-}
-
-function LoadingState() {
-  return (
-    <div className="flex h-full flex-col bg-background">
-      <div className="flex flex-none flex-wrap gap-1.5 border-b border-border px-3 py-2">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div
-            // biome-ignore lint/suspicious/noArrayIndexKey: fixed-length skeleton placeholders, never reordered.
-            key={i}
-            className="h-7 w-20 animate-pulse rounded-md bg-muted/60"
-          />
-        ))}
-      </div>
-      <div className="flex-1 space-y-px p-px">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div
-            // biome-ignore lint/suspicious/noArrayIndexKey: fixed-length skeleton placeholders, never reordered.
-            key={i}
-            className="flex flex-col gap-1.5 px-3 py-2.5"
-          >
-            <div className="flex items-center gap-2">
-              <div className="size-4 animate-pulse rounded-full bg-muted" />
-              <div className="h-2.5 w-24 animate-pulse rounded bg-muted" />
-            </div>
-            <div className="h-3 w-3/4 animate-pulse rounded bg-muted/60" />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function ConnectState() {
-  return (
-    <div className="flex h-full items-center justify-center bg-background px-6">
-      <div className="flex max-w-sm flex-col items-center gap-4 text-center">
-        <span className="inline-flex size-12 items-center justify-center rounded-xl bg-muted">
-          <GithubMark className="size-6 text-foreground" />
-        </span>
-        <h2 className="text-xl font-semibold tracking-[-0.3px]">
-          Connect GitHub
-        </h2>
-        <p className="text-[13px] leading-relaxed text-muted-foreground">
-          Link your GitHub account to BetterBox (no new account, just a sign-in)
-          and your pull requests show up here: open, awaiting your review,
-          approved, and merged, across every repo you touch.
-        </p>
-        <Button onClick={linkGithub} className="mt-1">
-          <GithubMark className="size-4" />
-          Connect GitHub
-        </Button>
-        <span className="font-mono text-[11px] text-muted-foreground/60">
-          read-only · authored + review-requested PRs
-        </span>
-      </div>
-    </div>
-  );
-}
-
-function ErrorState({
-  message,
-  onRetry,
-}: {
-  message: string;
-  onRetry: () => void;
-}) {
-  return (
-    <div className="flex h-full items-center justify-center bg-background px-6">
-      <div className="flex max-w-sm flex-col items-center gap-3 text-center">
-        <span className="inline-flex size-10 items-center justify-center rounded-full bg-label-red/15">
-          <XIcon className="size-5 text-label-red" />
-        </span>
-        <h2 className="text-base font-semibold">Couldn’t load pull requests</h2>
-        <p className="font-mono text-[11.5px] wrap-break-word text-muted-foreground/80">
-          {message}
-        </p>
-        <Button variant="outline" size="sm" onClick={onRetry}>
-          <RefreshCwIcon className="size-3.5" />
-          Retry
-        </Button>
       </div>
     </div>
   );
