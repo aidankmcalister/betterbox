@@ -17,13 +17,13 @@ export const Route = createFileRoute("/privacy")({
 });
 
 /** Last updated — bump this whenever the policy text changes. */
-const LAST_UPDATED = "June 16, 2026";
+const LAST_UPDATED = "June 24, 2026";
 const CONTACT_EMAIL = "aidankmcalister@gmail.com";
 
 function Privacy() {
   return (
     <main className="min-h-svh w-full bg-canvas text-ink">
-      <div className="mx-auto max-w-[720px] px-6 pt-16 pb-24">
+      <div className="mx-auto max-w-180 px-6 pt-16 pb-24">
         <Link
           to="/"
           className="inline-flex items-center gap-2.5 text-ink-subtle transition-colors hover:text-ink"
@@ -43,7 +43,8 @@ function Privacy() {
 
         <p className="mt-6 text-[15px] leading-[1.7] text-ink-muted">
           BetterBox is a faster, denser web client for your Google inboxes,
-          built on the Gmail API. It is operated by Aidan McAlister as an
+          built on the Gmail API, that can also bring your GitHub pull requests
+          and issues alongside your mail. It is operated by Aidan McAlister as an
           individual developer (&ldquo;BetterBox,&rdquo; &ldquo;we,&rdquo;
           &ldquo;us&rdquo;). This policy explains what data we access, why, how
           long we keep it, and the choices you have. BetterBox is not affiliated
@@ -96,11 +97,14 @@ function Privacy() {
           </p>
           <Subhead>From GitHub (optional, if you connect it)</Subhead>
           <p>
-            BetterBox can show your GitHub pull requests and review requests
-            alongside your inbox. If you connect a GitHub account, we store the
-            OAuth tokens GitHub issues (encrypted at rest, the same as Google)
-            and use them to call the GitHub API on your behalf. Connecting
-            GitHub is optional; you can use BetterBox with Gmail alone.
+            BetterBox can show your GitHub pull requests, review requests, and
+            issues (those assigned to or opened by you) alongside your inbox. If
+            you connect a GitHub account, we store the OAuth tokens GitHub
+            provides (encrypted at rest, the same as Google) and use them to
+            make read-only calls to the GitHub API on your behalf. We do not
+            write to your repositories, and your GitHub data is fetched on
+            demand rather than stored on our servers. Connecting GitHub is
+            optional; you can use BetterBox with Gmail alone.
           </p>
           <Subhead>Automatically, to operate the service</Subhead>
           <List>
@@ -180,7 +184,7 @@ function Privacy() {
             </li>
             <li>
               <strong>GitHub</strong>, if you connect it, to access the GitHub
-              API at your direction and show your pull requests.
+              API at your direction and show your pull requests and issues.
             </li>
             <li>
               <strong>Stripe</strong> (coming soon), our payment processor for

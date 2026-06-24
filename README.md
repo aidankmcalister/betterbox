@@ -6,7 +6,7 @@
 
 **All your inboxes. One tab.**
 
-A new interface for the Gmail accounts you already have. Built on the Gmail API, not another email service.
+Your Gmail inboxes, GitHub pull requests, and issues — side by side as resizable panels. Built on the Gmail and GitHub APIs, not another service. Your mail stays in Google.
 
 [Website](https://betterbox.dev) · [Privacy](https://betterbox.dev/privacy) · [Contributing](.github/CONTRIBUTING.md)
 
@@ -24,17 +24,17 @@ A new interface for the Gmail accounts you already have. Built on the Gmail API,
 
 ## What it is
 
-BetterBox is a different interface for Gmail, not a new email service. Link the Google accounts you already have and see every inbox at once, arranged as panes you drag, split, and resize, like a tiling window manager for your mail.
+BetterBox is a triage board for the tools developers live in. Link the Gmail accounts you already have and drop them onto a canvas as panels you drag, split, and resize, like a tiling window manager for your mail. Your GitHub pull requests and issues open as panels right beside them, so everything that needs you sits on one screen instead of a dozen tabs.
 
-Nothing migrates. BetterBox reads and sends through the Gmail API, so your mail stays in Google and is never stored on a server. Your open GitHub pull requests live in the same window, with Linear issues coming next.
+Nothing migrates. BetterBox reads and sends through the Gmail API, so your mail stays in Google and is never stored on a server. The sidebar is a launcher: add a panel for any inbox, your pull requests, or your issues. Linear is next.
 
 ## Features
 
-- **Every inbox, one screen.** Drag, split, and resize your Gmail accounts like windows.
+- **Every inbox, one screen.** Drag, split, and resize your Gmail accounts like windows — then add GitHub panels to the same board.
 - **Reading pane.** Movable, with inline reply. HTML renders sandboxed with trackers stripped.
 - **Command palette.** Compose, search, switch accounts, and export from ⌘K.
-- **Pull requests.** Your open GitHub PRs, reviews, and CI status, live in a pane.
-- **Issues.** Your assigned Linear issues, next to your mail. (Soon.)
+- **Pull requests.** GitHub PRs you authored or were asked to review — with review state, CI, and diff size — live in a panel.
+- **Issues.** GitHub issues assigned to or opened by you, in a panel beside your mail. (Linear coming next.)
 - **Labels as tags.** Create, rename, and recolor Gmail labels. They stay in Gmail.
 - **Private by design.** Mail lives in your browser, never our servers. Tokens encrypted, no analytics.
 - **Open source.** Read every line, fork it, or self-host it free.
@@ -113,10 +113,10 @@ bun run set-owner you@example.com
 
 ### GitHub (optional)
 
-Enables the Pull requests page.
+Enables the GitHub pull requests and issues panels.
 
 1. Create an OAuth app in [GitHub Developer Settings](https://github.com/settings/developers) with callback `http://localhost:3000/api/auth/callback/github`.
-2. Add the keys to `.env`, restart, then connect GitHub from Settings. It requests `read:user` and `repo` so it can read your private PRs.
+2. Add the keys to `.env`, restart, then connect GitHub from Settings. It requests `read:user` and `repo` so it can read your private PRs and issues.
 
 ```bash
 # ── GitHub integration (optional) ─────────────────────────
@@ -126,7 +126,7 @@ GITHUB_CLIENT_SECRET=...
 
 ### Linear (coming soon)
 
-The Issues page isn't built yet. When it ships it will work like GitHub: add the keys and connect Linear from Settings.
+Linear isn't wired up yet. When it ships it will work like GitHub: add the keys and connect Linear from Settings to get your assigned and created issues as a panel.
 
 ```bash
 # ── Linear integration (optional, coming soon) ────────────
