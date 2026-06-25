@@ -11,6 +11,7 @@ import {
   BadgeCheckIcon,
   BracesIcon,
   CheckIcon,
+  ChevronDownIcon,
   CircleDotIcon,
   ClipboardIcon,
   CodeXmlIcon,
@@ -88,7 +89,7 @@ import {
 } from "@/lib/github-queries";
 import { AppliedTags, TagPicker, useTagActions } from "@/components/tag-picker";
 import { LabeledView } from "@/components/labeled-view";
-import type { Folder } from "@/lib/folders";
+import { FOLDERS, type Folder } from "@/lib/folders";
 import { Button } from "@/components/ui/button";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { cn } from "@/lib/utils";
@@ -334,7 +335,9 @@ type TilesCtx = {
   accounts: Account[];
   removable: boolean;
   onRemovePane: (accountId: string) => void;
-  folder: Folder;
+  /** This pane's folder — per-pane, so two inboxes can show different folders. */
+  folderFor: (accountId: string) => Folder;
+  setPaneFolder: (accountId: string, folder: Folder) => void;
   openEmail: (accountId: string, emailId: string) => void;
   getOpenEmail: (accountId: string) => string | null;
   /* Per-account search lives here (not in the pane) so it survives pane
@@ -419,10 +422,26 @@ export function InboxTiles({
   // a message routes through the URL and overlays full-screen, never a 2nd pane.
   const split = readerMode === "split" && !isMobile;
 
+  // Per-pane folder: each inbox pane can show a different folder. Falls back to
+  // the global (sidebar/route) folder until the pane's header picker overrides
+  // it — so the sidebar still drives any pane the user hasn't pinned.
+  const [paneFolders, setPaneFolders] = useState<Record<string, Folder>>({});
+  const paneFoldersRef = useRef(paneFolders);
+  paneFoldersRef.current = paneFolders;
+  const folderFor = useCallback(
+    (accountId: string) => paneFoldersRef.current[accountId] ?? folder,
+    [folder],
+  );
+  const setPaneFolder = useCallback(
+    (accountId: string, next: Folder) =>
+      setPaneFolders((current) => ({ ...current, [accountId]: next })),
+    [],
+  );
+
   const openEmail = useCallback(
     (accountId: string, emailId: string) => {
       // A draft isn't a message to read — open it in the composer to edit/send.
-      if (folder === "drafts" && onEditDraft) {
+      if (folderFor(accountId) === "drafts" && onEditDraft) {
         onEditDraft(accountId, emailId);
         return;
       }
@@ -430,7 +449,7 @@ export function InboxTiles({
         setOpenEmails((current) => ({ ...current, [accountId]: emailId }));
       else onOpenEmail(accountId, emailId);
     },
-    [folder, onEditDraft, split, onOpenEmail],
+    [folderFor, onEditDraft, split, onOpenEmail],
   );
   const getOpenEmail = useCallback(
     (accountId: string) =>
@@ -522,7 +541,8 @@ export function InboxTiles({
     accounts,
     removable: scoped.length >= 1,
     onRemovePane,
-    folder,
+    folderFor,
+    setPaneFolder,
     openEmail,
     getOpenEmail,
     paneSearch,
@@ -899,7 +919,8 @@ function ReaderPane({
   emailId: string | null;
   onClose: () => void;
 }) {
-  const { accounts, folder } = useTiles();
+  const { accounts, folderFor } = useTiles();
+  const folder = folderFor(accountId);
   const beginHeaderDrag = useTileDrag();
   const { clock, markRead, rawByDefault } = useSettings();
   const queryClient = useQueryClient();
@@ -1860,6 +1881,45 @@ const SEARCH_OPERATORS: { token: string; hint: string }[] = [
   { token: "in:important", hint: "Marked important" },
 ];
 
+/** Per-pane folder switcher in the pane header — changes only this pane's
+ *  folder, leaving the other inboxes alone. Renders as a button, so the
+ *  pane-header drag (which ignores buttons) won't fire when you open it. */
+function FolderPicker({
+  folder,
+  onSelect,
+}: {
+  folder: Folder;
+  onSelect: (folder: Folder) => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <button
+            type="button"
+            className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.5 font-mono text-[11px] text-muted-foreground/70 capitalize hover:bg-muted hover:text-foreground"
+          />
+        }
+      >
+        {folder}
+        <ChevronDownIcon className="size-3 opacity-60" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="min-w-32">
+        {FOLDERS.map((f) => (
+          <DropdownMenuItem
+            key={f}
+            onClick={() => onSelect(f)}
+            className="font-mono text-[12px] capitalize"
+          >
+            {f}
+            {f === folder && <CheckIcon className="ml-auto size-3.5" />}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 function PaneHeader({
   account,
   dotIndex,
@@ -1881,7 +1941,8 @@ function PaneHeader({
   onSearchChange: (value: string) => void;
   activeQuery: string;
 }) {
-  const { removable, onRemovePane, folder } = useTiles();
+  const { removable, onRemovePane, folderFor, setPaneFolder } = useTiles();
+  const folder = folderFor(account.accountId);
   const beginHeaderDrag = useTileDrag();
   const queryClient = useQueryClient();
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -1967,6 +2028,10 @@ function PaneHeader({
       <span className="min-w-0 truncate font-mono text-xs font-medium">
         {label}
       </span>
+      <FolderPicker
+        folder={folder}
+        onSelect={(next) => setPaneFolder(account.accountId, next)}
+      />
       {account.unread > 0 && (
         <span className="shrink-0 font-mono text-[11px] font-medium text-primary">
           {formatCount(account.unread)} new
@@ -2101,7 +2166,8 @@ function PaneBody({
   dotIndex: number;
   search: string;
 }) {
-  const { getOpenEmail, openEmail, folder, portalContainer } = useTiles();
+  const { getOpenEmail, openEmail, folderFor, portalContainer } = useTiles();
+  const folder = folderFor(account.accountId);
   const { density } = useSettings();
   const query = useEmailsQuery(account.accountId, folder, search);
   const { error, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } =
