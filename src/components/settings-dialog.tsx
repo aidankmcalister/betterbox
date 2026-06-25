@@ -18,6 +18,7 @@ import {
   Signature as SignatureIcon,
   SquareTerminal,
   CircleUserRound,
+  TextCursorIcon,
   Unplug,
   Wrench,
   XIcon,
@@ -75,7 +76,10 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
@@ -1060,14 +1064,6 @@ function KeyboardPage() {
 }
 
 // One-click field tokens for the snippet editor — no typing {{ }} by hand.
-const FIELD_TOKENS: { label: string; token: string; hint: string }[] = [
-  { label: "First name", token: "{{first_name}}", hint: "auto-fills" },
-  { label: "Last name", token: "{{last_name}}", hint: "auto-fills" },
-  { label: "Full name", token: "{{name}}", hint: "auto-fills" },
-  { label: "Email", token: "{{email}}", hint: "auto-fills" },
-  { label: "Cursor", token: "{{cursor}}", hint: "caret lands here" },
-];
-
 function SnippetsPage() {
   const queryClient = useQueryClient();
   const { data: snippets = [], isLoading } = useSnippetsQuery(true);
@@ -1228,32 +1224,49 @@ function SnippetsPage() {
               spellCheck={false}
             />
           </Field>
-          {/* One-click field insert — no typing {{ }} by hand. */}
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="mr-0.5 text-[11px] text-muted-foreground/70">
+          {/* Insert a field — variables auto-fill from the recipient; anything
+              else becomes a Tab-through fill-in blank. No typing {{ }} by hand. */}
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button variant="outline" size="sm" className="w-fit gap-1.5" />
+              }
+            >
+              <PlusIcon />
               Insert field
-            </span>
-            {FIELD_TOKENS.map((f) => (
-              <Hint key={f.token} label={`${f.token} — ${f.hint}`}>
-                <button
-                  type="button"
-                  onClick={() => insertToken(f.token)}
-                  className="rounded-md border px-2 py-0.5 font-mono text-[11px] text-primary transition-colors hover:bg-muted"
-                >
-                  {f.label}
-                </button>
-              </Hint>
-            ))}
-            <Hint label="A blank you Tab to and fill in when you use the snippet">
-              <button
-                type="button"
-                onClick={insertCustomField}
-                className="rounded-md border border-dashed px-2 py-0.5 font-mono text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              >
-                Custom…
-              </button>
-            </Hint>
-          </div>
+              <ChevronDownIcon className="text-muted-foreground/60" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-52">
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>Auto-fill from recipient</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => insertToken("{{first_name}}")}>
+                  <CircleUserRound />
+                  First name
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => insertToken("{{last_name}}")}>
+                  <CircleUserRound />
+                  Last name
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => insertToken("{{name}}")}>
+                  <CircleUserRound />
+                  Full name
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => insertToken("{{email}}")}>
+                  <MailIcon />
+                  Email
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={insertCustomField}>
+                <Pencil />
+                Fill-in field…
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => insertToken("{{cursor}}")}>
+                <TextCursorIcon />
+                Cursor position
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           {/* Rich snippet body — bold/code/links/lists serialize email-safe on send. */}
           <RichTextEditor
             value={text}
