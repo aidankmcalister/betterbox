@@ -1,9 +1,14 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  BracesIcon,
   CheckIcon,
   ChevronDownIcon,
+  ChevronUpIcon,
+  SearchIcon,
+  SparklesIcon,
+  SquareSlashIcon,
   Clapperboard,
   Command,
   Inbox,
@@ -63,6 +68,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { RichTextEditor } from "@/components/rich-text-editor";
 import type { Editor } from "@tiptap/react";
+import DOMPurify from "dompurify";
+import { escapeHtml } from "@/lib/email/serialize";
 import {
   snippetsQueryKey,
   useSnippetsQuery,
@@ -1063,41 +1070,441 @@ function KeyboardPage() {
   );
 }
 
-// One-click field tokens for the snippet editor — no typing {{ }} by hand.
+// ── Snippets (Direction A — inline accordion) ───────────────────────────────
+
+// Sample recipient used to preview how a snippet expands.
+const PREVIEW_CONTACT: Record<string, string> = {
+  first_name: "Maya",
+  last_name: "Chen",
+  name: "Maya Chen",
+  full_name: "Maya Chen",
+  email: "maya@acme.com",
+};
+const AUTO_KEYS = new Set([
+  "first_name",
+  "last_name",
+  "name",
+  "full_name",
+  "email",
+]);
+const TOKEN_RE = /\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g;
+
+/** Resolve tokens for the live preview: variables → the sample value, fill
+ *  fields → a chip, cursor → a caret. */
+function snippetPreviewHtml(html: string): string {
+  return html.replace(TOKEN_RE, (_m, raw: string) => {
+    const k = raw.toLowerCase();
+    if (k === "cursor")
+      return '<span class="ml-px inline-block h-[1.05em] w-px translate-y-[2px] rounded-sm bg-primary align-baseline"></span>';
+    if (AUTO_KEYS.has(k)) return escapeHtml(PREVIEW_CONTACT[k] ?? k);
+    return `<span class="rounded border border-primary/35 bg-primary/[0.13] px-1 font-mono text-[0.85em] text-primary">${escapeHtml(k)}</span>`;
+  });
+}
+
+/** One-line plain preview for a collapsed row. */
+function plainSnippetPreview(html: string): string {
+  const resolved = html.replace(TOKEN_RE, (_m, raw: string) => {
+    const k = raw.toLowerCase();
+    if (k === "cursor") return "";
+    return AUTO_KEYS.has(k) ? (PREVIEW_CONTACT[k] ?? k) : k;
+  });
+  return (
+    resolved.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() ||
+    "Empty snippet"
+  );
+}
+
+function validateTrigger(value: string, taken: string[]): string | null {
+  const v = value.trim();
+  if (v === "" || v === "/") return null; // pristine — don't nag yet
+  if (!v.startsWith("/")) return "must start with /";
+  if (!/^\/[a-z0-9_-]+$/i.test(v)) return "letters, numbers, - or _";
+  if (taken.some((t) => t.toLowerCase() === v.toLowerCase()))
+    return "trigger already in use";
+  return null;
+}
+
+/** Teaching strip — variables (auto-fill) vs fill-in fields (tab-stops). */
+function TokenLegend() {
+  return (
+    <div className="flex gap-5 rounded-lg border bg-muted/40 px-3.5 py-3">
+      <div className="flex flex-1 items-start gap-2.5">
+        <span className="mt-px shrink-0 rounded border border-label-blue/35 bg-label-blue/[0.13] px-1.5 py-px font-mono text-[10.5px] text-label-blue">
+          first_name
+        </span>
+        <div className="min-w-0">
+          <div className="text-[12.5px] font-medium text-foreground">
+            Variables — auto-fill
+          </div>
+          <div className="mt-px text-[11.5px] leading-snug text-muted-foreground/70">
+            Resolve from the recipient the moment you expand.
+          </div>
+        </div>
+      </div>
+      <span className="w-px shrink-0 bg-border" />
+      <div className="flex flex-1 items-start gap-2.5">
+        <span className="mt-px shrink-0 rounded border border-primary/35 bg-primary/[0.13] px-1.5 py-px font-mono text-[10.5px] text-primary">
+          topic
+        </span>
+        <div className="min-w-0">
+          <div className="text-[12.5px] font-medium text-foreground">
+            Fill-in fields — Tab stops
+          </div>
+          <div className="mt-px text-[11.5px] leading-snug text-muted-foreground/70">
+            Become highlighted blanks; Tab cycles through them.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Insert-field dropdown — variables, custom fill-in, cursor. */
+function InsertFieldMenu({ onInsert }: { onInsert: (token: string) => void }) {
+  const custom = () => {
+    const name = window.prompt("Fill-in field name (e.g. company)");
+    const slug = name?.trim().toLowerCase().replace(/\s+/g, "_");
+    if (slug) onInsert(`{{${slug}}}`);
+  };
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={<Button variant="outline" size="sm" className="h-7 gap-1.5" />}
+      >
+        <BracesIcon />
+        Insert field
+        <ChevronDownIcon className="text-muted-foreground/60" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-52">
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>Auto-fill from recipient</DropdownMenuLabel>
+          <DropdownMenuItem onClick={() => onInsert("{{first_name}}")}>
+            <CircleUserRound />
+            First name
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onInsert("{{last_name}}")}>
+            <CircleUserRound />
+            Last name
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onInsert("{{name}}")}>
+            <CircleUserRound />
+            Full name
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onInsert("{{email}}")}>
+            <MailIcon />
+            Email
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={custom}>
+          <Pencil />
+          Fill-in field…
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onInsert("{{cursor}}")}>
+          <TextCursorIcon />
+          Cursor position
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+/** Live preview of the snippet expanding for a sample recipient. */
+function SnippetPreview({ html }: { html: string }) {
+  const clean =
+    typeof window === "undefined"
+      ? ""
+      : DOMPurify.sanitize(snippetPreviewHtml(html));
+  return (
+    <div>
+      <div className="mb-1.5 flex items-baseline gap-2">
+        <span className="font-mono text-[10px] font-medium tracking-[0.5px] text-muted-foreground/60 uppercase">
+          Preview
+        </span>
+        <span className="font-mono text-[10px] text-muted-foreground/50">
+          to: maya@acme.com
+        </span>
+      </div>
+      <div
+        className="border-l-2 border-input py-0.5 pl-3.5 text-[13px] leading-relaxed text-muted-foreground [&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_code]:font-mono [&_code]:text-[0.88em] [&_p]:m-0 [&_p]:mb-1 [&_strong]:text-foreground"
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: a sanitized preview of the user's own snippet.
+        dangerouslySetInnerHTML={{
+          __html:
+            clean ||
+            '<span class="text-muted-foreground/50">Nothing yet.</span>',
+        }}
+      />
+    </div>
+  );
+}
+
+type SnippetDraft = { trigger: string; text: string };
+
+/** The inline editor revealed when a snippet row is open. */
+function SnippetEditor({
+  draft,
+  onChange,
+  onSave,
+  onCancel,
+  saving,
+  error,
+  taken,
+}: {
+  draft: SnippetDraft;
+  onChange: (patch: Partial<SnippetDraft>) => void;
+  onSave: () => void;
+  onCancel: () => void;
+  saving: boolean;
+  error: string | null;
+  taken: string[];
+}) {
+  const [editor, setEditor] = useState<Editor | null>(null);
+  const triggerError = validateTrigger(draft.trigger, taken);
+  const bodyEmpty =
+    draft.text.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() === "";
+  const canSave = draft.trigger.trim().length > 1 && !triggerError && !bodyEmpty;
+
+  return (
+    <div className="border-t bg-muted/40 px-3.5 pt-3.5 pb-4">
+      <div className="mb-3 flex items-center gap-3">
+        <span className="font-mono text-[10.5px] font-medium tracking-[0.5px] text-muted-foreground/60 uppercase">
+          Trigger
+        </span>
+        <input
+          value={draft.trigger}
+          onChange={(e) =>
+            onChange({
+              trigger: e.target.value.replace(/[^a-zA-Z0-9_/-]/g, ""),
+            })
+          }
+          placeholder="/ty"
+          spellCheck={false}
+          autoComplete="off"
+          className={cn(
+            "h-8 w-52 rounded-md border bg-background px-2.5 font-mono text-[13.5px] outline-none focus:border-ring/60",
+            triggerError && "border-label-red/55",
+          )}
+        />
+        <span
+          className={cn(
+            "font-mono text-[10.5px]",
+            triggerError ? "text-label-red" : "text-muted-foreground/60",
+          )}
+        >
+          {triggerError ?? "type this in the composer to expand"}
+        </span>
+      </div>
+      <div className="mb-2 flex justify-end">
+        <InsertFieldMenu
+          onInsert={(t) => editor?.chain().focus().insertContent(t).run()}
+        />
+      </div>
+      <RichTextEditor
+        value={draft.text}
+        onChange={(text) => onChange({ text })}
+        onEditorReady={setEditor}
+        placeholder="Write the reply — bold, code, lists, and insert a field for fill-ins…"
+        minHeight={120}
+      />
+      <div className="mt-3.5">
+        <SnippetPreview html={draft.text} />
+      </div>
+      {error && <p className="mt-2 text-[12px] text-destructive">{error}</p>}
+      <div className="mt-4 flex items-center justify-end gap-2">
+        <Button variant="ghost" size="sm" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button size="sm" disabled={!canSave || saving} onClick={onSave}>
+          {saving ? "Saving…" : "Save snippet"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/** A snippet as a collapsible accordion row. */
+function SnippetRow({
+  snippet,
+  isOpen,
+  draft,
+  onOpen,
+  onChange,
+  onSave,
+  onCancel,
+  saving,
+  error,
+  onDelete,
+  taken,
+}: {
+  snippet: Snippet;
+  isOpen: boolean;
+  draft: SnippetDraft;
+  onOpen: () => void;
+  onChange: (patch: Partial<SnippetDraft>) => void;
+  onSave: () => void;
+  onCancel: () => void;
+  saving: boolean;
+  error: string | null;
+  onDelete: () => void;
+  taken: string[];
+}) {
+  return (
+    <div
+      className={cn(
+        "group overflow-hidden rounded-lg border transition-colors",
+        isOpen ? "border-input bg-muted/40" : "border-border",
+      )}
+    >
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: the per-row Edit button is the keyboard control; the row click is a pointer convenience. */}
+      <div
+        onClick={() => !isOpen && onOpen()}
+        className={cn(
+          "flex h-11 items-center gap-3 px-3 pr-2",
+          !isOpen && "cursor-pointer hover:bg-muted/40",
+        )}
+      >
+        <span className="shrink-0 font-mono text-[13px] font-medium text-primary">
+          {snippet.trigger}
+        </span>
+        <span className="min-w-0 flex-1 truncate text-[12.5px] text-muted-foreground/70">
+          {plainSnippetPreview(snippet.text)}
+        </span>
+        <div
+          className={cn(
+            "flex shrink-0 items-center gap-0.5 transition-opacity",
+            isOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+          )}
+        >
+          {!isOpen && (
+            <Hint label="Edit">
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={`Edit ${snippet.trigger}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpen();
+                }}
+              >
+                <Pencil />
+              </Button>
+            </Hint>
+          )}
+          <Hint label="Delete">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={`Delete ${snippet.trigger}`}
+              className="hover:text-label-red"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+            >
+              <Trash2 />
+            </Button>
+          </Hint>
+          {isOpen && (
+            <Hint label="Collapse">
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Collapse"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onCancel();
+                }}
+              >
+                <ChevronUpIcon />
+              </Button>
+            </Hint>
+          )}
+        </div>
+      </div>
+      {isOpen && (
+        <SnippetEditor
+          draft={draft}
+          onChange={onChange}
+          onSave={onSave}
+          onCancel={onCancel}
+          saving={saving}
+          error={error}
+          taken={taken}
+        />
+      )}
+    </div>
+  );
+}
+
+function SnippetEmptyState({
+  onSeed,
+  seeding,
+}: {
+  onSeed: () => void;
+  seeding: boolean;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-3.5 px-6 py-14 text-center">
+      <span className="inline-flex size-11 items-center justify-center rounded-xl border bg-muted text-muted-foreground">
+        <SquareSlashIcon className="size-5" />
+      </span>
+      <div className="max-w-[340px]">
+        <div className="text-[15px] font-semibold text-foreground">
+          No snippets yet
+        </div>
+        <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted-foreground">
+          Save a reply once, expand it forever. Type a{" "}
+          <span className="font-mono text-primary">/trigger</span> in the
+          composer and it fills in — recipient names auto-resolve, the rest
+          become Tab-through blanks.
+        </p>
+      </div>
+      <Button size="sm" disabled={seeding} onClick={onSeed}>
+        <SparklesIcon />
+        {seeding ? "Adding…" : "Add starter snippets"}
+      </Button>
+    </div>
+  );
+}
+
+const NEW_SNIPPET = "__new__";
+
 function SnippetsPage() {
   const queryClient = useQueryClient();
   const { data: snippets = [], isLoading } = useSnippetsQuery(true);
-  const [trigger, setTrigger] = useState("");
-  const [text, setText] = useState("");
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [q, setQ] = useState("");
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<SnippetDraft>({ trigger: "", text: "" });
   const [error, setError] = useState<string | null>(null);
-  const [editor, setEditor] = useState<Editor | null>(null);
 
-  const insertToken = (token: string) =>
-    editor?.chain().focus().insertContent(token).run();
-  const insertCustomField = () => {
-    const name = window.prompt("Fill-in field name (e.g. company)");
-    const slug = name?.trim().toLowerCase().replace(/\s+/g, "_");
-    if (slug) insertToken(`{{${slug}}}`);
-  };
-
-  const reset = () => {
-    setEditingId(null);
-    setTrigger("");
-    setText("");
+  const close = () => {
+    setOpenId(null);
     setError(null);
   };
+  const openExisting = (s: Snippet) => {
+    setOpenId(s.id);
+    setDraft({ trigger: s.trigger, text: s.text });
+    setError(null);
+  };
+  const openNew = () => {
+    setOpenId(NEW_SNIPPET);
+    setDraft({ trigger: "/", text: "" });
+    setError(null);
+  };
+  const patchDraft = (patch: Partial<SnippetDraft>) =>
+    setDraft((d) => ({ ...d, ...patch }));
 
   const save = useMutation({
     mutationFn: async () => {
+      const isNew = openId === NEW_SNIPPET;
       const res = await fetch("/api/snippets", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          op: editingId ? "update" : "create",
-          id: editingId ?? undefined,
-          trigger,
-          text,
+          op: isNew ? "create" : "update",
+          id: isNew ? undefined : openId,
+          trigger: draft.trigger.trim(),
+          text: draft.text,
         }),
       });
       const data = (await res.json().catch(() => ({}))) as { error?: string };
@@ -1105,7 +1512,7 @@ function SnippetsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: snippetsQueryKey });
-      reset();
+      close();
     },
     onError: (e: Error) => setError(e.message),
   });
@@ -1118,17 +1525,20 @@ function SnippetsPage() {
         body: JSON.stringify({ op: "delete", id }),
       });
     },
-    onSuccess: () => {
+    onSuccess: (_d, id) => {
       queryClient.invalidateQueries({ queryKey: snippetsQueryKey });
-      if (editingId) reset();
+      if (openId === id) close();
     },
   });
 
   const seed = useMutation({
     mutationFn: async () => {
       const defaults = [
-        { trigger: "/ty", text: "Thanks so much — really appreciate it!" },
-        { trigger: "/lgtm", text: "Looks good to me, merging." },
+        {
+          trigger: "/intro",
+          text: "<p>Hi {{first_name}},</p><p>Thanks for the note about {{topic}}. {{cursor}}</p><p>Best,<br>Aidan</p>",
+        },
+        { trigger: "/ty", text: "<p>Thanks so much, {{first_name}}!</p>" },
       ];
       for (const d of defaults) {
         await fetch("/api/snippets", {
@@ -1142,168 +1552,105 @@ function SnippetsPage() {
       queryClient.invalidateQueries({ queryKey: snippetsQueryKey }),
   });
 
-  const startEdit = (s: Snippet) => {
-    setEditingId(s.id);
-    setTrigger(s.trigger);
-    setText(s.text);
-    setError(null);
-  };
+  const filtered = useMemo(() => {
+    const t = q.trim().toLowerCase();
+    if (!t) return snippets;
+    return snippets.filter(
+      (s) =>
+        s.trigger.toLowerCase().includes(t) || s.text.toLowerCase().includes(t),
+    );
+  }, [snippets, q]);
 
-  const canSave = trigger.trim().length > 0 && text.trim().length > 0;
+  const taken = snippets.filter((s) => s.id !== openId).map((s) => s.trigger);
 
   return (
     <Page
       title="Snippets"
-      description="Type a trigger in the composer (e.g. /ty) to expand it"
+      description="Reusable replies you expand by typing a / trigger in the composer"
     >
-      <PageSection title="Your snippets">
+      <div className="flex flex-col gap-3.5">
+        <TokenLegend />
         {isLoading ? (
           <span className="font-mono text-xs text-muted-foreground/60">…</span>
         ) : snippets.length === 0 ? (
-          <div className="flex flex-col items-start gap-2">
-            <p className="text-[13px] text-muted-foreground">
-              No snippets yet. Add one below, or start with a couple.
-            </p>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={seed.isPending}
-              onClick={() => seed.mutate()}
-            >
-              {seed.isPending ? "Adding…" : "Add starter snippets"}
-            </Button>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-1">
-            {snippets.map((s) => (
-              <div
-                key={s.id}
-                className="flex items-center gap-3 rounded-lg border px-3 py-2"
-              >
-                <code className="shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-[12px] text-primary">
-                  {s.trigger}
-                </code>
-                <span className="min-w-0 flex-1 truncate text-[13px] text-muted-foreground">
-                  {s.text.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()}
-                </span>
-                <Hint label="Edit">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={`Edit ${s.trigger}`}
-                    onClick={() => startEdit(s)}
-                  >
-                    <Pencil />
-                  </Button>
-                </Hint>
-                <Hint label="Delete">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={`Delete ${s.trigger}`}
-                    disabled={remove.isPending}
-                    onClick={() => remove.mutate(s.id)}
-                  >
-                    <Trash2 />
-                  </Button>
-                </Hint>
-              </div>
-            ))}
-          </div>
-        )}
-      </PageSection>
-
-      <PageSection title={editingId ? "Edit snippet" : "Add snippet"}>
-        <div className="flex flex-col gap-3">
-          <Field label="Trigger">
-            <Input
-              value={trigger}
-              onChange={(e) => setTrigger(e.target.value)}
-              placeholder="/ty"
-              className="w-40 font-mono"
-              spellCheck={false}
-            />
-          </Field>
-          {/* Insert a field — variables auto-fill from the recipient; anything
-              else becomes a Tab-through fill-in blank. No typing {{ }} by hand. */}
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <Button variant="outline" size="sm" className="w-fit gap-1.5" />
-              }
-            >
-              <PlusIcon />
-              Insert field
-              <ChevronDownIcon className="text-muted-foreground/60" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-52">
-              <DropdownMenuGroup>
-                <DropdownMenuLabel>Auto-fill from recipient</DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => insertToken("{{first_name}}")}>
-                  <CircleUserRound />
-                  First name
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => insertToken("{{last_name}}")}>
-                  <CircleUserRound />
-                  Last name
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => insertToken("{{name}}")}>
-                  <CircleUserRound />
-                  Full name
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => insertToken("{{email}}")}>
-                  <MailIcon />
-                  Email
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={insertCustomField}>
-                <Pencil />
-                Fill-in field…
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => insertToken("{{cursor}}")}>
-                <TextCursorIcon />
-                Cursor position
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          {/* Rich snippet body — bold/code/links/lists serialize email-safe on send. */}
-          <RichTextEditor
-            value={text}
-            onChange={setText}
-            onEditorReady={setEditor}
-            placeholder="Write your snippet — insert a field above for fill-ins…"
-            minHeight={90}
+          <SnippetEmptyState
+            onSeed={() => seed.mutate()}
+            seeding={seed.isPending}
           />
-          <p className="text-[11.5px] leading-relaxed text-muted-foreground">
-            Recipient fields like{" "}
-            <code className="rounded bg-muted px-1 font-mono text-[10.5px] text-primary">
-              {"{{first_name}}"}
-            </code>{" "}
-            auto-fill from the To: contact. Any other field is a Tab-through
-            blank you fill in when you use the snippet.
-          </p>
-          {error && <p className="text-[12px] text-destructive">{error}</p>}
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              disabled={!canSave || save.isPending}
-              onClick={() => save.mutate()}
-            >
-              {save.isPending
-                ? "Saving…"
-                : editingId
-                  ? "Save changes"
-                  : "Add snippet"}
-            </Button>
-            {editingId && (
-              <Button variant="ghost" size="sm" onClick={reset}>
-                Cancel
+        ) : (
+          <>
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-8 flex-1 items-center gap-2 rounded-lg border bg-muted/40 px-2.5">
+                <SearchIcon className="size-3.5 shrink-0 text-muted-foreground/60" />
+                <input
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder="Search triggers and text…"
+                  spellCheck={false}
+                  className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-muted-foreground/50"
+                />
+                {q && (
+                  <button
+                    type="button"
+                    onClick={() => setQ("")}
+                    className="shrink-0 text-muted-foreground/60 hover:text-foreground"
+                  >
+                    <XIcon className="size-3.5" />
+                  </button>
+                )}
+              </div>
+              <Button size="sm" className="gap-1.5" onClick={openNew}>
+                <PlusIcon />
+                New snippet
               </Button>
-            )}
-          </div>
-        </div>
-      </PageSection>
+            </div>
+            <div className="flex flex-col gap-2">
+              {openId === NEW_SNIPPET && (
+                <div className="overflow-hidden rounded-lg border border-input bg-muted/40">
+                  <div className="flex h-11 items-center gap-3 px-3">
+                    <span className="font-mono text-[13px] font-medium text-primary">
+                      {draft.trigger || "/…"}
+                    </span>
+                    <span className="text-[12.5px] text-muted-foreground/60">
+                      New snippet
+                    </span>
+                  </div>
+                  <SnippetEditor
+                    draft={draft}
+                    onChange={patchDraft}
+                    onSave={() => save.mutate()}
+                    onCancel={close}
+                    saving={save.isPending}
+                    error={error}
+                    taken={taken}
+                  />
+                </div>
+              )}
+              {filtered.map((s) => (
+                <SnippetRow
+                  key={s.id}
+                  snippet={s}
+                  isOpen={openId === s.id}
+                  draft={draft}
+                  onOpen={() => openExisting(s)}
+                  onChange={patchDraft}
+                  onSave={() => save.mutate()}
+                  onCancel={close}
+                  saving={save.isPending}
+                  error={error}
+                  onDelete={() => remove.mutate(s.id)}
+                  taken={taken}
+                />
+              ))}
+              {filtered.length === 0 && openId !== NEW_SNIPPET && (
+                <div className="px-1 py-5 font-mono text-[11.5px] text-muted-foreground/60">
+                  no snippets match “{q}”.
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
     </Page>
   );
 }
