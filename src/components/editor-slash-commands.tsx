@@ -275,13 +275,13 @@ const SlashMenuList = forwardRef<
                     onSelect={() => command(item)}
                     className="gap-2 px-1.5 py-1"
                   >
-                    <span className="flex size-5 shrink-0 items-center justify-center rounded-[5px] border bg-background text-muted-foreground [&_svg]:size-3">
+                    <span className="flex size-5 shrink-0 items-center justify-center rounded-[5px] border bg-background text-muted-foreground [&_svg]:size-3.5">
                       <Icon />
                     </span>
                     <span className="min-w-0 flex-1 leading-tight">
                       <span
                         className={cn(
-                          "block truncate text-[12.5px] text-foreground",
+                          "block truncate text-[12px] text-foreground",
                           item.group === "Snippets" &&
                             "font-mono text-primary",
                         )}
@@ -289,7 +289,7 @@ const SlashMenuList = forwardRef<
                         {item.title}
                       </span>
                       {item.subtitle && (
-                        <span className="block truncate text-[11px] text-muted-foreground/80">
+                        <span className="block truncate text-[10.5px] text-muted-foreground/80">
                           {item.subtitle}
                         </span>
                       )}
