@@ -4,6 +4,7 @@ import {
   ChevronDownIcon,
   EyeIcon,
   GripVerticalIcon,
+  History,
   OctagonAlertIcon,
   PaperclipIcon,
   PencilIcon,
@@ -31,6 +32,12 @@ import {
   type Contact,
 } from "@/lib/mail-queries";
 import { isTestAccount } from "@/lib/test-account";
+import {
+  clearDraftBuffer,
+  loadDraftBuffer,
+  saveDraftBuffer,
+  type BufferedDraft,
+} from "@/lib/draft-buffer";
 import { AccountDot } from "@/components/account-dot";
 import { RichTextEditor } from "@/components/rich-text-editor";
 import { serializeEmailHtml, type EmailNode } from "@/lib/email/serialize";
@@ -264,6 +271,8 @@ export function Composer({
         if (res) {
           autosaveRef.current = res;
           setSaveStatus("saved");
+          // Gmail holds the draft now — drop the local backstop.
+          void clearDraftBuffer();
           queryClient.invalidateQueries({ queryKey: ["emails", accountId] });
         } else {
           setSaveStatus("idle");
@@ -283,7 +292,67 @@ export function Composer({
     outgoingHtml,
   ]);
 
+  // Offline backstop: mirror in-progress content to a local IndexedDB buffer,
+  // faster than the 2s Gmail autosave so the freshest content survives a crash
+  // or an offline tab. Fresh composes only; skipped for demo accounts.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: from is captured via accountId; the buffer fns are stable.
+  useEffect(() => {
+    const has =
+      to.trim().length > 0 || subject.trim().length > 0 || body.length > 0;
+    if (!open || !from || draft || isTestAccount(from.accountId) || !has) return;
+    const t = setTimeout(() => {
+      void saveDraftBuffer({ fromId, to, cc, bcc, subject, body });
+    }, 700);
+    return () => clearTimeout(t);
+  }, [open, from?.accountId, draft, fromId, to, cc, bcc, subject, body]);
+
+  // On a fresh, empty compose, offer back any buffer the last session left
+  // behind (i.e. it never committed to Gmail). Checked once per open.
+  const [recovered, setRecovered] = useState<BufferedDraft | null>(null);
+  const recoveryCheckedRef = useRef(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the field deps seed the one-shot empty check; the ref makes it run once per open.
+  useEffect(() => {
+    if (!open) {
+      recoveryCheckedRef.current = false;
+      setRecovered(null);
+      return;
+    }
+    if (recoveryCheckedRef.current) return;
+    recoveryCheckedRef.current = true;
+    const empty =
+      !draft &&
+      to.trim() === "" &&
+      cc.trim() === "" &&
+      bcc.trim() === "" &&
+      subject.trim() === "" &&
+      body.trim() === "";
+    if (!empty) return;
+    void loadDraftBuffer().then((b) => {
+      if (b && (b.to || b.subject || b.body)) setRecovered(b);
+    });
+  }, [open, draft, to, cc, bcc, subject, body]);
+
   if (!open) return null;
+
+  const restoreBuffer = () => {
+    if (!recovered) return;
+    onContentChange({
+      fromId: recovered.fromId,
+      to: recovered.to,
+      cc: recovered.cc,
+      bcc: recovered.bcc,
+      subject: recovered.subject,
+      body: recovered.body,
+    });
+    if (recovered.cc.trim()) setCcShown(true);
+    if (recovered.bcc.trim()) setBccShown(true);
+    setRecovered(null);
+  };
+
+  const dismissRecovery = () => {
+    setRecovered(null);
+    void clearDraftBuffer();
+  };
 
   // Require at least one well-formed address (comma-separated allowed) before
   // Send is enabled — so "d" can't be sent. Cc is optional but, when present,
@@ -378,6 +447,7 @@ export function Composer({
       if ((draft || autosaveRef.current) && isTestAccount(from.accountId))
         toast("Draft discarded");
     }
+    void clearDraftBuffer();
     reset();
   };
 
@@ -455,6 +525,8 @@ export function Composer({
       } else {
         toast.success("Message sent", { description: `To ${to.trim()}` });
       }
+      // Sent — drop the local backstop.
+      void clearDraftBuffer();
       setSending(false);
       reset();
     } catch (err) {
@@ -686,6 +758,29 @@ export function Composer({
           className="min-w-0 flex-1 bg-transparent text-[13.5px] outline-none placeholder:text-muted-foreground/60"
         />
       </div>
+
+      {recovered && (
+        <div className="flex items-center gap-2.5 border-b bg-label-yellow/[0.07] px-3.5 py-2 text-[12.5px]">
+          <History className="size-3.5 shrink-0 text-label-yellow" />
+          <span className="min-w-0 flex-1 text-foreground">
+            Unsaved draft recovered from a previous session.
+          </span>
+          <button
+            type="button"
+            onClick={restoreBuffer}
+            className="shrink-0 font-medium text-primary hover:underline"
+          >
+            Restore
+          </button>
+          <button
+            type="button"
+            onClick={dismissRecovery}
+            className="shrink-0 text-muted-foreground hover:text-foreground"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       <div
         className={cn(
