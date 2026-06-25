@@ -135,7 +135,8 @@ function buildSnippetCommands(
   return Object.entries(snippets).map(([trigger, text]) => ({
     id: `snippet:${trigger}`,
     title: trigger,
-    subtitle: text,
+    // Rich snippets are HTML — show a plain-text preview, not tags.
+    subtitle: text.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
     keywords: [trigger.replace(/^\//, "")],
     group: "Snippets",
     icon: TextIcon,
@@ -214,7 +215,7 @@ const SlashMenuList = forwardRef<
         return (
           <div key={item.id}>
             {showHeader && (
-              <div className="px-2 pt-1.5 pb-1 font-mono text-[10.5px] font-medium tracking-[0.5px] text-muted-foreground/70 uppercase">
+              <div className="px-1.5 pt-1.5 pb-0.5 font-mono text-[9.5px] font-medium tracking-[0.5px] text-muted-foreground/60 uppercase">
                 {item.group}
               </div>
             )}
@@ -225,24 +226,24 @@ const SlashMenuList = forwardRef<
               onMouseEnter={() => setSelected(i)}
               onClick={() => command(item)}
               className={cn(
-                "flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left",
+                "flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left",
                 i === selected && "bg-accent text-accent-foreground",
               )}
             >
-              <span className="flex size-7 shrink-0 items-center justify-center rounded border bg-background text-muted-foreground [&_svg]:size-3.5">
+              <span className="flex size-5 shrink-0 items-center justify-center rounded-[5px] border bg-background text-muted-foreground [&_svg]:size-3">
                 <Icon />
               </span>
-              <span className="min-w-0 flex-1">
+              <span className="min-w-0 flex-1 leading-tight">
                 <span
                   className={cn(
-                    "block truncate text-[13px] text-foreground",
+                    "block truncate text-[12.5px] text-foreground",
                     item.group === "Snippets" && "font-mono text-primary",
                   )}
                 >
                   {item.title}
                 </span>
                 {item.subtitle && (
-                  <span className="block truncate text-[11.5px] text-muted-foreground">
+                  <span className="block truncate text-[11px] text-muted-foreground/80">
                     {item.subtitle}
                   </span>
                 )}
