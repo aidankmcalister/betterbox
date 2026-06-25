@@ -1387,9 +1387,9 @@ function ReaderPane({
 
             <div ref={replyRef}>
               {replyOpen ? (
-                <div className="mt-6 rounded-lg border bg-secondary p-3">
-                  <div className="mb-2 flex flex-wrap items-center gap-1.5 text-[12.5px] text-muted-foreground">
-                    <ReplyIcon className="size-3.5" />
+                <div className="mt-6 overflow-hidden rounded-xl border border-input bg-background shadow-sm">
+                  <div className="flex flex-wrap items-center gap-1.5 border-b px-3.5 py-2.5 text-[12.5px] text-muted-foreground">
+                    <ReplyIcon className="size-3.5 shrink-0" />
                     Reply to{" "}
                     <span className="font-medium text-foreground">
                       {(replySender ?? sender).name}
@@ -1398,6 +1398,9 @@ function ReaderPane({
                       &lt;{(replySender ?? sender).address}&gt;
                     </span>
                   </div>
+                  {/* Unified surface: transparent, border-0 editor so the body
+                      shares the card with the header/signature/footer — matches
+                      the main composer. */}
                   <RichTextEditor
                     value={replyBody}
                     onChange={setReplyBody}
@@ -1405,10 +1408,11 @@ function ReaderPane({
                     snippets={replySnippets}
                     placeholder="Write your reply…"
                     autoFocus
-                    minHeight={120}
+                    minHeight={140}
+                    className="rounded-none border-0 bg-transparent"
                   />
                   {showSignature && (
-                    <div className="mt-2 border-t pt-2">
+                    <div className="border-t px-3.5 py-2">
                       <div className="mb-1 flex items-center justify-between">
                         <span className="font-mono text-[10px] tracking-[0.5px] text-muted-foreground/60 uppercase">
                           Signature
@@ -1433,7 +1437,7 @@ function ReaderPane({
                       )}
                     </div>
                   )}
-                  <div className="mt-2 flex items-center gap-2">
+                  <footer className="flex items-center gap-3 border-t px-3.5 py-[11px]">
                     <Button
                       size="sm"
                       disabled={replySending || !replyBody.trim()}
@@ -1442,18 +1446,19 @@ function ReaderPane({
                       <SendIcon data-icon="inline-start" />
                       {replySending ? "Sending…" : "Send reply"}
                     </Button>
+                    <KbdGroup className="hidden text-muted-foreground/45 sm:inline-flex">
+                      <Kbd>⌘</Kbd>
+                      <Kbd>↵</Kbd>
+                    </KbdGroup>
                     <Button
                       variant="ghost"
                       size="sm"
+                      className="ml-auto"
                       onClick={() => setReplyOpen(false)}
                     >
                       Cancel
                     </Button>
-                    <KbdGroup className="ml-auto">
-                      <Kbd>⌘</Kbd>
-                      <Kbd>↵</Kbd>
-                    </KbdGroup>
-                  </div>
+                  </footer>
                 </div>
               ) : replySent ? (
                 <button
