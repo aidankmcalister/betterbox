@@ -26,7 +26,6 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-import { cn } from "@/lib/utils";
 import { insertSnippet } from "@/components/editor-fill-fields";
 import {
   Command,
@@ -276,15 +275,20 @@ const SlashMenuList = forwardRef<
                     className="gap-2 px-2 py-1.5 text-[13px]"
                   >
                     <Icon className="text-muted-foreground" />
-                    <span
-                      className={cn(
-                        "flex-1 truncate",
-                        item.group === "Snippets" &&
-                          "font-mono text-[11.5px] text-primary",
-                      )}
-                    >
-                      {item.title}
-                    </span>
+                    {item.group === "Snippets" ? (
+                      <span className="flex min-w-0 flex-1 items-baseline gap-2">
+                        <span className="shrink-0 font-mono text-[11.5px] text-primary">
+                          {item.title}
+                        </span>
+                        {item.subtitle && (
+                          <span className="min-w-0 flex-1 truncate text-[11.5px] text-muted-foreground/55">
+                            {item.subtitle}
+                          </span>
+                        )}
+                      </span>
+                    ) : (
+                      <span className="flex-1 truncate">{item.title}</span>
+                    )}
                   </CommandItem>
                 );
               })}
