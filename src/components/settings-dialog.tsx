@@ -1126,7 +1126,7 @@ function validateTrigger(value: string, taken: string[]): string | null {
 /** Compact teaching strip — variables (auto-fill) vs fill-in fields (tab-stops). */
 function TokenLegend() {
   return (
-    <div className="flex flex-wrap items-center gap-x-6 gap-y-1.5 rounded-md border bg-muted/30 px-3 py-2 text-[11.5px] text-muted-foreground">
+    <div className="flex flex-wrap items-center gap-x-5 gap-y-1 rounded-md border bg-muted/30 px-2.5 py-1.5 text-[11px] text-muted-foreground">
       <span className="flex items-center gap-2">
         <span className="rounded border border-label-blue/35 bg-label-blue/[0.13] px-1 py-px font-mono text-[10px] text-label-blue">
           first_name
@@ -1249,7 +1249,7 @@ function SnippetEditor({
   const canSave = draft.trigger.trim().length > 1 && !triggerError && !bodyEmpty;
 
   return (
-    <div className="border-t bg-muted/40 px-3.5 pt-3.5 pb-4">
+    <div className="border-t bg-muted/40 px-3 pt-3 pb-3.5">
       <div className="mb-3 flex items-center gap-3">
         <span className="font-mono text-[10.5px] font-medium tracking-[0.5px] text-muted-foreground/60 uppercase">
           Trigger
@@ -1343,7 +1343,7 @@ function SnippetRow({
       <div
         onClick={() => !isOpen && onOpen()}
         className={cn(
-          "flex h-11 items-center gap-3 px-3 pr-2",
+          "flex h-9 items-center gap-3 px-3 pr-2",
           !isOpen && "cursor-pointer hover:bg-muted/40",
         )}
       >
@@ -1432,7 +1432,7 @@ function SnippetEmptyState({
   seeding: boolean;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3.5 px-6 py-14 text-center">
+    <div className="flex flex-col items-center justify-center gap-3 px-6 py-10 text-center">
       <span className="inline-flex size-11 items-center justify-center rounded-xl border bg-muted text-muted-foreground">
         <SquareSlashIcon className="size-5" />
       </span>
@@ -1556,7 +1556,7 @@ function SnippetsPage() {
       title="Snippets"
       description="Reusable replies you expand by typing a / trigger in the composer"
     >
-      <div className="flex flex-col gap-3.5">
+      <div className="flex flex-col gap-2.5">
         <TokenLegend />
         {isLoading ? (
           <span className="font-mono text-xs text-muted-foreground/60">…</span>
@@ -1592,10 +1592,10 @@ function SnippetsPage() {
                 New snippet
               </Button>
             </div>
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1.5">
               {openId === NEW_SNIPPET && (
                 <div className="overflow-hidden rounded-lg border border-input bg-muted/40">
-                  <div className="flex h-11 items-center gap-3 px-3">
+                  <div className="flex h-9 items-center gap-3 px-3">
                     <span className="font-mono text-[13px] font-medium text-primary">
                       {draft.trigger || "/…"}
                     </span>
@@ -1671,7 +1671,7 @@ function SignatureEditor({
 }) {
   const canSave = draft.name.trim().length > 0 && draft.body.trim().length > 0;
   return (
-    <div className="border-t bg-muted/40 px-3.5 pt-3.5 pb-4">
+    <div className="border-t bg-muted/40 px-3 pt-3 pb-3.5">
       <div className="mb-3 flex items-center gap-3">
         <span className="font-mono text-[10.5px] font-medium tracking-[0.5px] text-muted-foreground/60 uppercase">
           Name
@@ -1737,7 +1737,7 @@ function SignatureRow({
       <div
         onClick={() => !isOpen && onOpen()}
         className={cn(
-          "flex h-11 items-center gap-3 px-3 pr-2",
+          "flex h-9 items-center gap-3 px-3 pr-2",
           !isOpen && "cursor-pointer hover:bg-muted/40",
         )}
       >
@@ -1819,7 +1819,7 @@ function SignatureRow({
 
 function SignatureEmptyState({ onNew }: { onNew: () => void }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3.5 px-6 py-14 text-center">
+    <div className="flex flex-col items-center justify-center gap-3 px-6 py-10 text-center">
       <span className="inline-flex size-11 items-center justify-center rounded-xl border bg-muted text-muted-foreground">
         <SignatureIcon className="size-5" />
       </span>
@@ -1926,8 +1926,8 @@ function SignaturesPage({ accounts }: { accounts: Account[] }) {
       title="Signatures"
       description="A sign-off appended to your messages, assigned per account"
     >
-      <div className="flex flex-col gap-6">
-        <div className="flex flex-col gap-2.5">
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2">
           {isLoading ? (
             <span className="font-mono text-xs text-muted-foreground/60">…</span>
           ) : signatures.length === 0 && openId !== NEW_SIGNATURE ? (
@@ -1946,7 +1946,7 @@ function SignaturesPage({ accounts }: { accounts: Account[] }) {
               <div className="flex flex-col gap-2">
                 {openId === NEW_SIGNATURE && (
                   <div className="overflow-hidden rounded-lg border border-input bg-muted/40">
-                    <div className="flex h-11 items-center gap-3 px-3">
+                    <div className="flex h-9 items-center gap-3 px-3">
                       <span className="text-[13px] font-medium text-foreground">
                         {draft.name || "Untitled"}
                       </span>
@@ -1984,7 +1984,7 @@ function SignaturesPage({ accounts }: { accounts: Account[] }) {
           )}
         </div>
 
-        <div className="flex flex-col gap-2.5">
+        <div className="flex flex-col gap-2">
           <span className="font-mono text-[10.5px] font-medium tracking-[0.5px] text-muted-foreground/60 uppercase">
             Assigned per account
           </span>
@@ -2000,7 +2000,7 @@ function SignaturesPage({ accounts }: { accounts: Account[] }) {
                 return (
                   <div
                     key={account.accountId}
-                    className="flex items-center gap-3 rounded-lg border px-3 py-2"
+                    className="flex items-center gap-3 rounded-lg border px-3 py-1.5"
                   >
                     <span className="min-w-0 flex-1 truncate font-mono text-[12.5px] text-muted-foreground">
                       {account.email}
