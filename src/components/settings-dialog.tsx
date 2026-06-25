@@ -1268,7 +1268,7 @@ function SnippetEditor({
 
   return (
     <div className="border-t bg-muted/40 px-3 py-3">
-      <div className="mb-2.5 flex items-center gap-2.5">
+      <div className="mb-2.5 flex flex-wrap items-center gap-x-2.5 gap-y-2">
         <span className="font-mono text-[10px] font-medium tracking-[0.5px] text-muted-foreground/60 uppercase">
           Trigger
         </span>
@@ -1283,7 +1283,7 @@ function SnippetEditor({
           spellCheck={false}
           autoComplete="off"
           className={cn(
-            "h-7 w-40 rounded-md border bg-background px-2 font-mono text-[12.5px] outline-none focus:border-ring/60",
+            "h-7 w-32 min-w-0 flex-1 rounded-md border bg-background px-2 font-mono text-[12.5px] outline-none focus:border-ring/60 sm:w-40 sm:flex-none",
             triggerError && "border-label-red/55",
           )}
         />
@@ -1292,7 +1292,7 @@ function SnippetEditor({
             {triggerError}
           </span>
         )}
-        <div className="ml-auto">
+        <div className="ml-auto shrink-0">
           <InsertFieldMenu
             onInsert={(t) => editor?.chain().focus().insertContent(t).run()}
           />
