@@ -5,7 +5,6 @@ import {
   BracesIcon,
   CheckIcon,
   ChevronDownIcon,
-  ChevronUpIcon,
   SearchIcon,
   SparklesIcon,
   SquareSlashIcon,
@@ -1124,37 +1123,22 @@ function validateTrigger(value: string, taken: string[]): string | null {
   return null;
 }
 
-/** Teaching strip — variables (auto-fill) vs fill-in fields (tab-stops). */
+/** Compact teaching strip — variables (auto-fill) vs fill-in fields (tab-stops). */
 function TokenLegend() {
   return (
-    <div className="flex gap-5 rounded-lg border bg-muted/40 px-3.5 py-3">
-      <div className="flex flex-1 items-start gap-2.5">
-        <span className="mt-px shrink-0 rounded border border-label-blue/35 bg-label-blue/[0.13] px-1.5 py-px font-mono text-[10.5px] text-label-blue">
+    <div className="flex flex-wrap items-center gap-x-6 gap-y-1.5 rounded-md border bg-muted/30 px-3 py-2 text-[11.5px] text-muted-foreground">
+      <span className="flex items-center gap-2">
+        <span className="rounded border border-label-blue/35 bg-label-blue/[0.13] px-1 py-px font-mono text-[10px] text-label-blue">
           first_name
         </span>
-        <div className="min-w-0">
-          <div className="text-[12.5px] font-medium text-foreground">
-            Variables — auto-fill
-          </div>
-          <div className="mt-px text-[11.5px] leading-snug text-muted-foreground/70">
-            Resolve from the recipient the moment you expand.
-          </div>
-        </div>
-      </div>
-      <span className="w-px shrink-0 bg-border" />
-      <div className="flex flex-1 items-start gap-2.5">
-        <span className="mt-px shrink-0 rounded border border-primary/35 bg-primary/[0.13] px-1.5 py-px font-mono text-[10.5px] text-primary">
+        Variables auto-fill from the recipient
+      </span>
+      <span className="flex items-center gap-2">
+        <span className="rounded border border-primary/35 bg-primary/[0.13] px-1 py-px font-mono text-[10px] text-primary">
           topic
         </span>
-        <div className="min-w-0">
-          <div className="text-[12.5px] font-medium text-foreground">
-            Fill-in fields — Tab stops
-          </div>
-          <div className="mt-px text-[11.5px] leading-snug text-muted-foreground/70">
-            Become highlighted blanks; Tab cycles through them.
-          </div>
-        </div>
-      </div>
+        Fill-in fields you Tab through
+      </span>
     </div>
   );
 }
@@ -1369,56 +1353,60 @@ function SnippetRow({
         <span className="min-w-0 flex-1 truncate text-[12.5px] text-muted-foreground/70">
           {plainSnippetPreview(snippet.text)}
         </span>
-        <div
-          className={cn(
-            "flex shrink-0 items-center gap-0.5 transition-opacity",
-            isOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100",
-          )}
-        >
-          {!isOpen && (
-            <Hint label="Edit">
+        <div className="flex shrink-0 items-center gap-0.5">
+          <div
+            className={cn(
+              "flex items-center gap-0.5 transition-opacity",
+              isOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+            )}
+          >
+            {!isOpen && (
+              <Hint label="Edit">
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={`Edit ${snippet.trigger}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpen();
+                  }}
+                >
+                  <Pencil />
+                </Button>
+              </Hint>
+            )}
+            <Hint label="Delete">
               <Button
                 variant="ghost"
                 size="icon-sm"
-                aria-label={`Edit ${snippet.trigger}`}
+                aria-label={`Delete ${snippet.trigger}`}
+                className="hover:text-label-red"
                 onClick={(e) => {
                   e.stopPropagation();
-                  onOpen();
+                  onDelete();
                 }}
               >
-                <Pencil />
+                <Trash2 />
               </Button>
             </Hint>
-          )}
-          <Hint label="Delete">
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label={`Delete ${snippet.trigger}`}
-              className="hover:text-label-red"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete();
-              }}
-            >
-              <Trash2 />
-            </Button>
-          </Hint>
-          {isOpen && (
-            <Hint label="Collapse">
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label="Collapse"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onCancel();
-                }}
-              >
-                <ChevronUpIcon />
-              </Button>
-            </Hint>
-          )}
+          </div>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={isOpen ? "Collapse" : "Expand"}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (isOpen) onCancel();
+              else onOpen();
+            }}
+          >
+            <ChevronDownIcon
+              className={cn(
+                "text-muted-foreground/50 transition-transform",
+                isOpen && "rotate-180",
+              )}
+            />
+          </Button>
         </div>
       </div>
       {isOpen && (
@@ -1759,56 +1747,60 @@ function SignatureRow({
         <span className="min-w-0 flex-1 truncate text-[12.5px] text-muted-foreground/70">
           {signaturePreview(signature.body)}
         </span>
-        <div
-          className={cn(
-            "flex shrink-0 items-center gap-0.5 transition-opacity",
-            isOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100",
-          )}
-        >
-          {!isOpen && (
-            <Hint label="Edit">
+        <div className="flex shrink-0 items-center gap-0.5">
+          <div
+            className={cn(
+              "flex items-center gap-0.5 transition-opacity",
+              isOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+            )}
+          >
+            {!isOpen && (
+              <Hint label="Edit">
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={`Edit ${signature.name}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpen();
+                  }}
+                >
+                  <Pencil />
+                </Button>
+              </Hint>
+            )}
+            <Hint label="Delete">
               <Button
                 variant="ghost"
                 size="icon-sm"
-                aria-label={`Edit ${signature.name}`}
+                aria-label={`Delete ${signature.name}`}
+                className="hover:text-label-red"
                 onClick={(e) => {
                   e.stopPropagation();
-                  onOpen();
+                  onDelete();
                 }}
               >
-                <Pencil />
+                <Trash2 />
               </Button>
             </Hint>
-          )}
-          <Hint label="Delete">
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label={`Delete ${signature.name}`}
-              className="hover:text-label-red"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete();
-              }}
-            >
-              <Trash2 />
-            </Button>
-          </Hint>
-          {isOpen && (
-            <Hint label="Collapse">
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label="Collapse"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onCancel();
-                }}
-              >
-                <ChevronUpIcon />
-              </Button>
-            </Hint>
-          )}
+          </div>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={isOpen ? "Collapse" : "Expand"}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (isOpen) onCancel();
+              else onOpen();
+            }}
+          >
+            <ChevronDownIcon
+              className={cn(
+                "text-muted-foreground/50 transition-transform",
+                isOpen && "rotate-180",
+              )}
+            />
+          </Button>
         </div>
       </div>
       {isOpen && (
