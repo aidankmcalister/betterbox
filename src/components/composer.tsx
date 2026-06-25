@@ -183,8 +183,10 @@ export function Composer({
     };
   }, [to, contacts]);
 
-  // Last-second send checks (no subject, "see attached" with nothing attached,
-  // unfilled snippet fields, mail leaving a work domain, a big blast).
+  // Unfilled snippet tab-stops HARD-BLOCK send — you must fill them first.
+  const unfilledFields = countFillFields(bodyDoc);
+  // Soft last-second checks (no subject, "see attached" with nothing attached,
+  // mail leaving a work domain, a big blast) — these warn + gate, not block.
   const guardrails = useMemo(() => {
     if (!from) return [];
     return checkGuardrails({
@@ -195,9 +197,8 @@ export function Composer({
       bcc,
       fromEmail: from.email,
       attachmentCount: files.length,
-      unfilledFields: countFillFields(bodyDoc),
     });
-  }, [from, subject, body, to, cc, bcc, files.length, bodyDoc]);
+  }, [from, subject, body, to, cc, bcc, files.length]);
   // Any edit that changes the warnings clears the "Send anyway" arming.
   // biome-ignore lint/correctness/useExhaustiveDependencies: re-arm only when the warning set changes identity.
   useEffect(() => setConfirmSend(false), [guardrails]);
@@ -280,7 +281,12 @@ export function Composer({
   const ccValid = cc.trim().length === 0 || isValidRecipients(cc);
   const bccValid = bcc.trim().length === 0 || isValidRecipients(bcc);
   const canSend =
-    !sending && from !== null && recipientsValid && ccValid && bccValid;
+    !sending &&
+    from !== null &&
+    recipientsValid &&
+    ccValid &&
+    bccValid &&
+    unfilledFields === 0;
 
   const hasContent =
     to.trim().length > 0 || subject.trim().length > 0 || body.length > 0;
@@ -767,11 +773,20 @@ export function Composer({
             {saveStatus === "saving" ? "Saving…" : "Saved to drafts"}
           </span>
         )}
-        {!error && ((to.trim().length > 0 && !recipientsValid) || !ccValid) && (
-          <span className="min-w-0 truncate font-mono text-[11px] text-muted-foreground/70">
-            Enter a valid email address
+        {!error && unfilledFields > 0 && (
+          <span className="flex min-w-0 items-center gap-1.5 truncate font-mono text-[11px] text-label-yellow">
+            <TriangleAlertIcon className="size-3 shrink-0" />
+            Fill in {unfilledFields} snippet field
+            {unfilledFields > 1 ? "s" : ""} to send
           </span>
         )}
+        {!error &&
+          unfilledFields === 0 &&
+          ((to.trim().length > 0 && !recipientsValid) || !ccValid) && (
+            <span className="min-w-0 truncate font-mono text-[11px] text-muted-foreground/70">
+              Enter a valid email address
+            </span>
+          )}
         {error && (
           <span className="min-w-0 truncate font-mono text-[11px] text-label-red">
             {error}

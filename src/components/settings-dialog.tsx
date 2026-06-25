@@ -61,6 +61,7 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { RichTextEditor } from "@/components/rich-text-editor";
+import type { Editor } from "@tiptap/react";
 import {
   snippetsQueryKey,
   useSnippetsQuery,
@@ -1058,6 +1059,15 @@ function KeyboardPage() {
   );
 }
 
+// One-click field tokens for the snippet editor — no typing {{ }} by hand.
+const FIELD_TOKENS: { label: string; token: string; hint: string }[] = [
+  { label: "First name", token: "{{first_name}}", hint: "auto-fills" },
+  { label: "Last name", token: "{{last_name}}", hint: "auto-fills" },
+  { label: "Full name", token: "{{name}}", hint: "auto-fills" },
+  { label: "Email", token: "{{email}}", hint: "auto-fills" },
+  { label: "Cursor", token: "{{cursor}}", hint: "caret lands here" },
+];
+
 function SnippetsPage() {
   const queryClient = useQueryClient();
   const { data: snippets = [], isLoading } = useSnippetsQuery(true);
@@ -1065,6 +1075,15 @@ function SnippetsPage() {
   const [text, setText] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [editor, setEditor] = useState<Editor | null>(null);
+
+  const insertToken = (token: string) =>
+    editor?.chain().focus().insertContent(token).run();
+  const insertCustomField = () => {
+    const name = window.prompt("Fill-in field name (e.g. company)");
+    const slug = name?.trim().toLowerCase().replace(/\s+/g, "_");
+    if (slug) insertToken(`{{${slug}}}`);
+  };
 
   const reset = () => {
     setEditingId(null);
@@ -1209,14 +1228,48 @@ function SnippetsPage() {
               spellCheck={false}
             />
           </Field>
-          {/* Rich snippet body: bold/code/links/lists are preserved and
-              serialized email-safe on send. Type {{name}} for a fill-in field. */}
+          {/* One-click field insert — no typing {{ }} by hand. */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="mr-0.5 text-[11px] text-muted-foreground/70">
+              Insert field
+            </span>
+            {FIELD_TOKENS.map((f) => (
+              <Hint key={f.token} label={`${f.token} — ${f.hint}`}>
+                <button
+                  type="button"
+                  onClick={() => insertToken(f.token)}
+                  className="rounded-md border px-2 py-0.5 font-mono text-[11px] text-primary transition-colors hover:bg-muted"
+                >
+                  {f.label}
+                </button>
+              </Hint>
+            ))}
+            <Hint label="A blank you Tab to and fill in when you use the snippet">
+              <button
+                type="button"
+                onClick={insertCustomField}
+                className="rounded-md border border-dashed px-2 py-0.5 font-mono text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                Custom…
+              </button>
+            </Hint>
+          </div>
+          {/* Rich snippet body — bold/code/links/lists serialize email-safe on send. */}
           <RichTextEditor
             value={text}
             onChange={setText}
-            placeholder="Thanks so much! Type {{name}} for a fill-in field…"
+            onEditorReady={setEditor}
+            placeholder="Write your snippet — insert a field above for fill-ins…"
             minHeight={90}
           />
+          <p className="text-[11.5px] leading-relaxed text-muted-foreground">
+            Recipient fields like{" "}
+            <code className="rounded bg-muted px-1 font-mono text-[10.5px] text-primary">
+              {"{{first_name}}"}
+            </code>{" "}
+            auto-fill from the To: contact. Any other field is a Tab-through
+            blank you fill in when you use the snippet.
+          </p>
           {error && <p className="text-[12px] text-destructive">{error}</p>}
           <div className="flex items-center gap-2">
             <Button

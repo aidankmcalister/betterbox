@@ -45,8 +45,6 @@ export function checkGuardrails(input: {
   bcc?: string;
   fromEmail: string;
   attachmentCount: number;
-  /** Count of unfilled snippet tab-stops still in the body. */
-  unfilledFields: number;
   /** Warn once the recipient count reaches this. */
   manyRecipientsAt?: number;
 }): Guardrail[] {
@@ -60,16 +58,6 @@ export function checkGuardrails(input: {
     out.push({
       id: "missing-attachment",
       message: "You mention an attachment, but nothing is attached.",
-    });
-  }
-
-  if (input.unfilledFields > 0) {
-    const n = input.unfilledFields;
-    out.push({
-      id: "unfilled-fields",
-      message: `${n} snippet ${plural(n, "field")} ${
-        n === 1 ? "is" : "are"
-      } still unfilled.`,
     });
   }
 

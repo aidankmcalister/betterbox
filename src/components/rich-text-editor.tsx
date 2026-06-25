@@ -42,6 +42,7 @@ export function RichTextEditor({
   value,
   onChange,
   onDocChange,
+  onEditorReady,
   placeholder = "Write something…",
   onSubmit,
   autoFocus = false,
@@ -55,6 +56,8 @@ export function RichTextEditor({
   /** The editor's document model (TipTap JSON) — what the email-safe serializer
    *  consumes on send. Emitted on create, edit, and external value sync. */
   onDocChange?: (doc: EmailNode) => void;
+  /** Hands the editor instance to the caller (e.g. an "insert field" toolbar). */
+  onEditorReady?: (editor: Editor | null) => void;
   placeholder?: string;
   /** Cmd/Ctrl+Enter handler (e.g. send). */
   onSubmit?: () => void;
@@ -143,6 +146,13 @@ export function RichTextEditor({
       onDocChange?.(editor.getJSON() as EmailNode);
     }
   }, [value, editor, onDocChange]);
+
+  // Hand the editor to the caller so it can insert content (the snippets page
+  // uses this for its "insert field" chips).
+  useEffect(() => {
+    onEditorReady?.(editor ?? null);
+    return () => onEditorReady?.(null);
+  }, [editor, onEditorReady]);
 
   if (!editor) return null;
 

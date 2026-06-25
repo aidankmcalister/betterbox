@@ -8,7 +8,6 @@ const base = {
   to: "a@gmail.com",
   fromEmail: "me@gmail.com",
   attachmentCount: 0,
-  unfilledFields: 0,
 };
 
 const ids = (input: Parameters<typeof checkGuardrails>[0]) =>
@@ -34,10 +33,6 @@ describe("checkGuardrails", () => {
         attachmentCount: 1,
       }),
     ).not.toContain("missing-attachment");
-  });
-
-  test("flags unfilled snippet fields", () => {
-    expect(ids({ ...base, unfilledFields: 2 })).toContain("unfilled-fields");
   });
 
   test("external-domain only fires for a non-free sender domain", () => {
