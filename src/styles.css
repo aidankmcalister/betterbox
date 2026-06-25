@@ -70,6 +70,24 @@
       box-shadow: 0 0 0 0 transparent;
     }
   }
+  /* shadcn/base-ui Accordion enter/exit — animates only on open/close (not on
+     content resize), using base-ui's --accordion-panel-height. */
+  @keyframes bb-accordion-down {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--accordion-panel-height);
+    }
+  }
+  @keyframes bb-accordion-up {
+    from {
+      height: var(--accordion-panel-height);
+    }
+    to {
+      height: 0;
+    }
+  }
   --color-primary-hover: var(--primary-hover);
   --color-primary-focus: var(--primary-focus);
   --color-on-primary: var(--on-primary);

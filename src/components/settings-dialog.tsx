@@ -50,6 +50,12 @@ import { ACCOUNT_COLORS } from "@/components/account-dot";
 import { NAV_SECTIONS } from "@/components/app-sidebar";
 import { useTheme } from "@/components/theme-provider";
 import { cn } from "@/lib/utils";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { Hint } from "@/components/ui/tooltip";
@@ -1306,12 +1312,12 @@ function SnippetEditor({
   );
 }
 
-/** A snippet as a collapsible accordion row. */
+/** A snippet as a row inside the shadcn <Accordion>. The trigger is a button,
+ *  so Delete is overlaid as a sibling; the editor mounts only when open. */
 function SnippetRow({
   snippet,
   isOpen,
   draft,
-  onOpen,
   onChange,
   onSave,
   onCancel,
@@ -1323,7 +1329,6 @@ function SnippetRow({
   snippet: Snippet;
   isOpen: boolean;
   draft: SnippetDraft;
-  onOpen: () => void;
   onChange: (patch: Partial<SnippetDraft>) => void;
   onSave: () => void;
   onCancel: () => void;
@@ -1333,94 +1338,43 @@ function SnippetRow({
   taken: string[];
 }) {
   return (
-    <div
-      className={cn(
-        "group overflow-hidden rounded-lg border transition-colors",
-        isOpen ? "border-input bg-muted/40" : "border-border",
-      )}
-    >
-      {/* biome-ignore lint/a11y/useKeyWithClickEvents: the per-row Edit button is the keyboard control; the row click is a pointer convenience. */}
-      <div
-        onClick={() => !isOpen && onOpen()}
-        className={cn(
-          "flex h-9 items-center gap-3 px-3 pr-2",
-          !isOpen && "cursor-pointer hover:bg-muted/40",
-        )}
-      >
+    <AccordionItem value={snippet.id} className="group relative">
+      <AccordionTrigger className="h-9 gap-3 px-3 py-0 font-normal hover:bg-muted/40 data-[panel-open]:bg-muted/40">
         <span className="shrink-0 font-mono text-[13px] font-medium text-primary">
           {snippet.trigger}
         </span>
         <span className="min-w-0 flex-1 truncate text-[12.5px] text-muted-foreground/70">
           {plainSnippetPreview(snippet.text)}
         </span>
-        <div className="flex shrink-0 items-center gap-0.5">
-          <div
-            className={cn(
-              "flex items-center gap-0.5 transition-opacity",
-              isOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100",
-            )}
-          >
-            {!isOpen && (
-              <Hint label="Edit">
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={`Edit ${snippet.trigger}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onOpen();
-                  }}
-                >
-                  <Pencil />
-                </Button>
-              </Hint>
-            )}
-            <Hint label="Delete">
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label={`Delete ${snippet.trigger}`}
-                className="hover:text-label-red"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete();
-                }}
-              >
-                <Trash2 />
-              </Button>
-            </Hint>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label={isOpen ? "Collapse" : "Expand"}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (isOpen) onCancel();
-              else onOpen();
-            }}
-          >
-            <ChevronDownIcon
-              className={cn(
-                "text-muted-foreground/50 transition-transform",
-                isOpen && "rotate-180",
-              )}
-            />
-          </Button>
-        </div>
-      </div>
-      {isOpen && (
-        <SnippetEditor
-          draft={draft}
-          onChange={onChange}
-          onSave={onSave}
-          onCancel={onCancel}
-          saving={saving}
-          error={error}
-          taken={taken}
-        />
-      )}
-    </div>
+      </AccordionTrigger>
+      <Hint label="Delete">
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label={`Delete ${snippet.trigger}`}
+          className={cn(
+            "absolute top-1 right-9 transition-opacity hover:text-label-red",
+            isOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+          )}
+          onClick={onDelete}
+        >
+          <Trash2 />
+        </Button>
+      </Hint>
+      <AccordionContent className="p-0">
+        {isOpen && (
+          <SnippetEditor
+            draft={draft}
+            onChange={onChange}
+            onSave={onSave}
+            onCancel={onCancel}
+            saving={saving}
+            error={error}
+            taken={taken}
+          />
+        )}
+      </AccordionContent>
+    </AccordionItem>
   );
 }
 
@@ -1614,22 +1568,35 @@ function SnippetsPage() {
                   />
                 </div>
               )}
-              {filtered.map((s) => (
-                <SnippetRow
-                  key={s.id}
-                  snippet={s}
-                  isOpen={openId === s.id}
-                  draft={draft}
-                  onOpen={() => openExisting(s)}
-                  onChange={patchDraft}
-                  onSave={() => save.mutate()}
-                  onCancel={close}
-                  saving={save.isPending}
-                  error={error}
-                  onDelete={() => remove.mutate(s.id)}
-                  taken={taken}
-                />
-              ))}
+              {filtered.length > 0 && (
+                <Accordion
+                  multiple={false}
+                  value={openId && openId !== NEW_SNIPPET ? [openId] : []}
+                  onValueChange={(value) => {
+                    const id = (value as string[])[0];
+                    if (!id) return close();
+                    const s = snippets.find((x) => x.id === id);
+                    if (s) openExisting(s);
+                  }}
+                  className="overflow-hidden rounded-lg border"
+                >
+                  {filtered.map((s) => (
+                    <SnippetRow
+                      key={s.id}
+                      snippet={s}
+                      isOpen={openId === s.id}
+                      draft={draft}
+                      onChange={patchDraft}
+                      onSave={() => save.mutate()}
+                      onCancel={close}
+                      saving={save.isPending}
+                      error={error}
+                      onDelete={() => remove.mutate(s.id)}
+                      taken={taken}
+                    />
+                  ))}
+                </Accordion>
+              )}
               {filtered.length === 0 && openId !== NEW_SNIPPET && (
                 <div className="px-1 py-5 font-mono text-[11.5px] text-muted-foreground/60">
                   no snippets match “{q}”.
@@ -1707,7 +1674,6 @@ function SignatureRow({
   signature,
   isOpen,
   draft,
-  onOpen,
   onChange,
   onSave,
   onCancel,
@@ -1718,7 +1684,6 @@ function SignatureRow({
   signature: Signature;
   isOpen: boolean;
   draft: SignatureDraft;
-  onOpen: () => void;
   onChange: (patch: Partial<SignatureDraft>) => void;
   onSave: () => void;
   onCancel: () => void;
@@ -1727,93 +1692,42 @@ function SignatureRow({
   onDelete: () => void;
 }) {
   return (
-    <div
-      className={cn(
-        "group overflow-hidden rounded-lg border transition-colors",
-        isOpen ? "border-input bg-muted/40" : "border-border",
-      )}
-    >
-      {/* biome-ignore lint/a11y/useKeyWithClickEvents: the per-row Edit button is the keyboard control; the row click is a pointer convenience. */}
-      <div
-        onClick={() => !isOpen && onOpen()}
-        className={cn(
-          "flex h-9 items-center gap-3 px-3 pr-2",
-          !isOpen && "cursor-pointer hover:bg-muted/40",
-        )}
-      >
+    <AccordionItem value={signature.id} className="group relative">
+      <AccordionTrigger className="h-9 gap-3 px-3 py-0 font-normal hover:bg-muted/40 data-[panel-open]:bg-muted/40">
         <span className="shrink-0 text-[13px] font-medium text-foreground">
           {signature.name}
         </span>
-        <span className="min-w-0 flex-1 truncate text-[12.5px] text-muted-foreground/70">
+        <span className="min-w-0 flex-1 truncate text-[12.5px] font-normal text-muted-foreground/70">
           {signaturePreview(signature.body)}
         </span>
-        <div className="flex shrink-0 items-center gap-0.5">
-          <div
-            className={cn(
-              "flex items-center gap-0.5 transition-opacity",
-              isOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100",
-            )}
-          >
-            {!isOpen && (
-              <Hint label="Edit">
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={`Edit ${signature.name}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onOpen();
-                  }}
-                >
-                  <Pencil />
-                </Button>
-              </Hint>
-            )}
-            <Hint label="Delete">
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label={`Delete ${signature.name}`}
-                className="hover:text-label-red"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete();
-                }}
-              >
-                <Trash2 />
-              </Button>
-            </Hint>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label={isOpen ? "Collapse" : "Expand"}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (isOpen) onCancel();
-              else onOpen();
-            }}
-          >
-            <ChevronDownIcon
-              className={cn(
-                "text-muted-foreground/50 transition-transform",
-                isOpen && "rotate-180",
-              )}
-            />
-          </Button>
-        </div>
-      </div>
-      {isOpen && (
-        <SignatureEditor
-          draft={draft}
-          onChange={onChange}
-          onSave={onSave}
-          onCancel={onCancel}
-          saving={saving}
-          error={error}
-        />
-      )}
-    </div>
+      </AccordionTrigger>
+      <Hint label="Delete">
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label={`Delete ${signature.name}`}
+          className={cn(
+            "absolute top-1 right-9 transition-opacity hover:text-label-red",
+            isOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+          )}
+          onClick={onDelete}
+        >
+          <Trash2 />
+        </Button>
+      </Hint>
+      <AccordionContent className="p-0">
+        {isOpen && (
+          <SignatureEditor
+            draft={draft}
+            onChange={onChange}
+            onSave={onSave}
+            onCancel={onCancel}
+            saving={saving}
+            error={error}
+          />
+        )}
+      </AccordionContent>
+    </AccordionItem>
   );
 }
 
@@ -1964,21 +1878,36 @@ function SignaturesPage({ accounts }: { accounts: Account[] }) {
                     />
                   </div>
                 )}
-                {signatures.map((s) => (
-                  <SignatureRow
-                    key={s.id}
-                    signature={s}
-                    isOpen={openId === s.id}
-                    draft={draft}
-                    onOpen={() => openExisting(s)}
-                    onChange={patchDraft}
-                    onSave={() => save.mutate()}
-                    onCancel={close}
-                    saving={save.isPending}
-                    error={error}
-                    onDelete={() => remove.mutate(s.id)}
-                  />
-                ))}
+                {signatures.length > 0 && (
+                  <Accordion
+                    multiple={false}
+                    value={
+                      openId && openId !== NEW_SIGNATURE ? [openId] : []
+                    }
+                    onValueChange={(value) => {
+                      const id = (value as string[])[0];
+                      if (!id) return close();
+                      const s = signatures.find((x) => x.id === id);
+                      if (s) openExisting(s);
+                    }}
+                    className="overflow-hidden rounded-lg border"
+                  >
+                    {signatures.map((s) => (
+                      <SignatureRow
+                        key={s.id}
+                        signature={s}
+                        isOpen={openId === s.id}
+                        draft={draft}
+                        onChange={patchDraft}
+                        onSave={() => save.mutate()}
+                        onCancel={close}
+                        saving={save.isPending}
+                        error={error}
+                        onDelete={() => remove.mutate(s.id)}
+                      />
+                    ))}
+                  </Accordion>
+                )}
               </div>
             </>
           )}
