@@ -1,20 +1,8 @@
-import {
-  ChevronsUpDown,
-  Laptop,
-  LogOut,
-  Moon,
-  Settings,
-  Sun,
-} from "lucide-react";
+import { ChevronsUpDown, LogOut, Settings } from "lucide-react";
 
 import { signOut, useSession } from "@/lib/auth-client";
 import { useSettings } from "@/hooks/use-settings";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Hint } from "@/components/ui/tooltip";
-import { useTheme } from "@/components/theme-provider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { GITHUB_URL, GithubMark } from "@/components/github-mark";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,12 +17,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-
-const THEMES = [
-  { value: "light", label: "Light", icon: Sun },
-  { value: "dark", label: "Dark", icon: Moon },
-  { value: "system", label: "System", icon: Laptop },
-] as const;
 
 /** Profile block at the bottom of the sidebar. The primary (signed-in Google)
  *  account; linked inboxes live in the View card above. */
@@ -52,7 +34,6 @@ export function NavUser({
   demoUser?: { name: string; email: string; image: string | null };
 }) {
   const { data: session } = useSession();
-  const { theme, setTheme } = useTheme();
   const { demoMode } = useSettings();
 
   // Hold the profile block's shape with a skeleton until the sidebar is ready.
@@ -143,57 +124,10 @@ export function NavUser({
               </DropdownMenuLabel>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            {/* Preferences — Settings + theme */}
             <DropdownMenuGroup>
               <DropdownMenuItem onClick={onOpenSettings}>
                 <Settings />
                 Settings
-              </DropdownMenuItem>
-              <DropdownMenuLabel className="font-mono text-[9.5px] tracking-[0.5px] text-muted-foreground/70 uppercase">
-                Theme
-              </DropdownMenuLabel>
-              {/* biome-ignore lint/a11y/useSemanticElements: a visual theme toggle group; a <fieldset> would impose default form styling inside the menu. */}
-              <div
-                role="group"
-                aria-label="Theme"
-                className="flex gap-1 px-1 pb-1"
-              >
-                {THEMES.map((option) => (
-                  <Hint key={option.value} label={option.label}>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      aria-pressed={theme === option.value}
-                      onClick={() => setTheme(option.value)}
-                      className={cn(
-                        "h-7 flex-1",
-                        theme === option.value
-                          ? "border-input bg-accent text-foreground hover:bg-accent"
-                          : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
-                      )}
-                    >
-                      <option.icon />
-                      <span className="sr-only">{option.label}</span>
-                    </Button>
-                  </Hint>
-                ))}
-              </div>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            {/* Links + account exit (sign out last) */}
-            <DropdownMenuGroup>
-              <DropdownMenuItem
-                render={
-                  // biome-ignore lint/a11y/useAnchorContent: content (icon + "GitHub") is composed in by DropdownMenuItem via the render prop.
-                  <a
-                    href={GITHUB_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  />
-                }
-              >
-                <GithubMark />
-                GitHub
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => signOut()}>
                 <LogOut />
