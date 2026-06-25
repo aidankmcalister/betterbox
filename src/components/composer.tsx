@@ -1231,12 +1231,16 @@ function PreviewBody({ html, minHeight }: { html: string; minHeight: number }) {
     );
   }
   const clean = typeof window === "undefined" ? "" : DOMPurify.sanitize(html);
+  // The serialized email carries email-oriented colors (dark text for a white
+  // background). Render it on a light "paper" canvas — exactly as the recipient
+  // sees it — so its text reads right instead of dim against the dark composer.
   return (
-    <div
-      className="tiptap prose-email max-w-none px-3.5 py-3 text-[13px] leading-[1.6] text-foreground"
-      style={{ minHeight }}
-      // biome-ignore lint/security/noDangerouslySetInnerHtml: `clean` is DOMPurify-sanitized one line above; this renders the composer's own preview.
-      dangerouslySetInnerHTML={{ __html: clean }}
-    />
+    <div className="p-3" style={{ minHeight }}>
+      <div
+        className="tiptap prose-email max-w-none rounded-lg border border-black/10 bg-white px-4 py-3.5 text-[13px] leading-[1.6] text-[#1a1a1a] [color-scheme:light]"
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: `clean` is DOMPurify-sanitized one line above; this renders the composer's own preview.
+        dangerouslySetInnerHTML={{ __html: clean }}
+      />
+    </div>
   );
 }
