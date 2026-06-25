@@ -8,10 +8,15 @@ import {
 } from "@/lib/email/serialize";
 
 /** Count unfilled fill-field tab-stops remaining in a document (for the send
- *  guardrail). Pure walk over the TipTap JSON. */
+ *  guardrail). A `dateField` counts only while it has no date picked. Pure walk
+ *  over the TipTap JSON. */
 export function countFillFields(node: EmailNode | null | undefined): number {
   if (!node) return 0;
-  let total = node.type === "fillField" ? 1 : 0;
+  let total =
+    node.type === "fillField" ||
+    (node.type === "dateField" && !node.attrs?.value)
+      ? 1
+      : 0;
   for (const child of node.content ?? []) total += countFillFields(child);
   return total;
 }
@@ -120,6 +125,10 @@ function snippetToContent(
       cursorIndex = content.length;
       continue;
     }
+    if (key === "date") {
+      content.push({ type: "dateField", attrs: { value: "" } });
+      continue;
+    }
     const value = variables[key];
     if (value != null && value !== "") {
       content.push({ type: "text", text: value });
@@ -162,6 +171,7 @@ export function insertSnippet(
       const token = raw.trim();
       const key = token.toLowerCase();
       if (key === "cursor") return "";
+      if (key === "date") return `<span data-date-field data-value=""></span>`;
       const value = variables[key];
       if (value != null && value !== "") return escapeHtml(value);
       const label = escapeHtml(token).replace(/"/g, "&quot;");

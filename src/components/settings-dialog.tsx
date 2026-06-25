@@ -9,6 +9,7 @@ import {
   SparklesIcon,
   SquareSlashIcon,
   Clapperboard,
+  CalendarIcon,
   Command,
   Inbox,
   Lock,
@@ -1192,6 +1193,10 @@ function InsertFieldMenu({ onInsert }: { onInsert: (token: string) => void }) {
         <DropdownMenuItem onClick={custom}>
           <Pencil />
           Fill-in field…
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onInsert("{{date}}")}>
+          <CalendarIcon />
+          Date picker
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => onInsert("{{cursor}}")}>
           <TextCursorIcon />

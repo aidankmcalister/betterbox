@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 import { SlashCommand } from "@/components/editor-slash-commands";
 import { GithubRefs } from "@/components/editor-github-refs";
 import { FillField } from "@/components/editor-fill-fields";
+import { DateField } from "@/components/editor-date-field";
 import type { EmailNode } from "@/lib/email/serialize";
 import { sanitizePastedHtml } from "@/lib/email/sanitize-paste";
 
@@ -97,6 +98,7 @@ export function RichTextEditor({
       Placeholder.configure({ placeholder }),
       GithubRefs,
       FillField,
+      DateField,
       SlashCommand.configure({
         getSnippets: () => snippetsRef.current,
         getVariables: () => variablesRef.current,

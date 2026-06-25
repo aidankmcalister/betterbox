@@ -15,6 +15,7 @@
  */
 
 import { common, createLowlight } from "lowlight";
+import { formatDateLong } from "@/lib/dates";
 
 /** A TipTap/ProseMirror mark (bold, italic, link, …). */
 export type EmailMark = {
@@ -270,6 +271,12 @@ function renderNode(node: EmailNode): string {
           typeof node.attrs?.label === "string" ? node.attrs.label : "",
         ),
       );
+    case "dateField": {
+      // A {{date}} field — emit the picked date as a friendly long date. Send is
+      // blocked while it's empty, so an unpicked one shouldn't reach here.
+      const iso = typeof node.attrs?.value === "string" ? node.attrs.value : "";
+      return escapeHtml(formatDateLong(iso) || "(date)");
+    }
     case "paragraph": {
       const inner = renderInline(node);
       return `<p style="margin:0 0 16px;">${inner || "&nbsp;"}</p>`;
