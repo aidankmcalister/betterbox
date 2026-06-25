@@ -9,6 +9,7 @@ import {
   PenLineIcon,
   SendIcon,
   Trash2Icon,
+  TriangleAlertIcon,
   XIcon,
 } from "lucide-react";
 
@@ -32,6 +33,8 @@ import { isTestAccount } from "@/lib/test-account";
 import { AccountDot } from "@/components/account-dot";
 import { RichTextEditor } from "@/components/rich-text-editor";
 import { serializeEmailHtml, type EmailNode } from "@/lib/email/serialize";
+import { checkGuardrails } from "@/lib/email/guardrails";
+import { countFillFields } from "@/components/editor-fill-fields";
 import { useSnippetMap } from "@/hooks/use-snippets";
 import {
   appendSignature,
@@ -134,6 +137,10 @@ export function Composer({
   // HTML on send/preview. Re-emitted by the editor on mount, so it survives the
   // composer remounting between the board pane and the popout.
   const [bodyDoc, setBodyDoc] = useState<EmailNode | null>(null);
+  // Undo-send: the dispatch is delayed by a cancel window; this holds the timer.
+  const sendTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Guardrails gate the first Send click; a second click ("Send anyway") sends.
+  const [confirmSend, setConfirmSend] = useState(false);
 
   // From: an explicit pick (fromId) wins; otherwise the configured default
   // send-from account, then the primary inbox, then the first sendable one.
@@ -166,6 +173,24 @@ export function Composer({
       email: contact?.email ?? firstEmail,
     };
   }, [to, contacts]);
+
+  // Last-second send checks (no subject, "see attached" with nothing attached,
+  // unfilled snippet fields, mail leaving a work domain, a big blast).
+  const guardrails = useMemo(() => {
+    if (!from) return [];
+    return checkGuardrails({
+      subject,
+      bodyText: body.replace(/<[^>]+>/g, " "),
+      to,
+      cc,
+      fromEmail: from.email,
+      attachmentCount: files.length,
+      unfilledFields: countFillFields(bodyDoc),
+    });
+  }, [from, subject, body, to, cc, files.length, bodyDoc]);
+  // Any edit that changes the warnings clears the "Send anyway" arming.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-arm only when the warning set changes identity.
+  useEffect(() => setConfirmSend(false), [guardrails]);
 
   // Signature: shown as a read-only block below the editor (not inside it, so it
   // can't be edited) and appended to the outgoing HTML at send/draft — unless the
@@ -226,6 +251,11 @@ export function Composer({
     setPreview(false);
     setFiles([]);
     setBodyDoc(null);
+    setConfirmSend(false);
+    if (sendTimerRef.current) {
+      clearTimeout(sendTimerRef.current);
+      sendTimerRef.current = null;
+    }
     setSignatureSkipped(false);
     onOpenChange(false);
   };
@@ -289,8 +319,9 @@ export function Composer({
   const removeFile = (id: string) =>
     setFiles((prev) => prev.filter((f) => f.id !== id));
 
-  const send = async () => {
-    if (!canSend || !from) return;
+  // The actual dispatch, fired after the undo window elapses.
+  const doSend = async () => {
+    if (!from) return;
     setSending(true);
     setError(null);
     const sandbox = isTestAccount(from.accountId);
@@ -331,6 +362,41 @@ export function Composer({
       toast.error("Couldn’t send message", { description: message });
       setSending(false);
     }
+  };
+
+  // Undo-send: hold the message for a few seconds with a cancel toast before it
+  // actually goes out.
+  const UNDO_MS = 5000;
+  const scheduleSend = () => {
+    setSending(true);
+    const timer = setTimeout(() => {
+      sendTimerRef.current = null;
+      void doSend();
+    }, UNDO_MS);
+    sendTimerRef.current = timer;
+    toast("Sending…", {
+      description: `To ${to.trim()}`,
+      duration: UNDO_MS,
+      action: {
+        label: "Undo",
+        onClick: () => {
+          clearTimeout(timer);
+          sendTimerRef.current = null;
+          setSending(false);
+        },
+      },
+    });
+  };
+
+  // Send click: gate on guardrails (first click arms "Send anyway"), then start
+  // the undo window.
+  const send = () => {
+    if (!canSend || !from || sending) return;
+    if (guardrails.length > 0 && !confirmSend) {
+      setConfirmSend(true);
+      return;
+    }
+    scheduleSend();
   };
 
   return (
@@ -561,10 +627,28 @@ export function Composer({
         className="hidden"
       />
 
+      {!preview && guardrails.length > 0 && (
+        <div className="flex flex-col gap-1 border-t border-label-yellow/30 bg-label-yellow/5 px-3.5 py-2">
+          {guardrails.map((g) => (
+            <span
+              key={g.id}
+              className="flex items-center gap-1.5 font-mono text-[11px] text-label-yellow"
+            >
+              <TriangleAlertIcon className="size-3 shrink-0" />
+              {g.message}
+            </span>
+          ))}
+        </div>
+      )}
+
       <footer className="flex items-center gap-2 border-t px-3.5 pt-[11px] pb-[max(11px,env(safe-area-inset-bottom))] sm:pb-[11px]">
-        <Button size="sm" disabled={!canSend} onClick={() => void send()}>
+        <Button size="sm" disabled={!canSend || sending} onClick={() => send()}>
           <SendIcon data-icon="inline-start" />
-          {sending ? "Sending…" : "Send"}
+          {sending
+            ? "Sending…"
+            : confirmSend && guardrails.length > 0
+              ? "Send anyway"
+              : "Send"}
         </Button>
         <KbdGroup className="hidden sm:inline-flex">
           <Kbd>⌘</Kbd>

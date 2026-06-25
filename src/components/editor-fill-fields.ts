@@ -1,5 +1,15 @@
 import { Node } from "@tiptap/core";
 import type { Editor, JSONContent } from "@tiptap/core";
+import type { EmailNode } from "@/lib/email/serialize";
+
+/** Count unfilled fill-field tab-stops remaining in a document (for the send
+ *  guardrail). Pure walk over the TipTap JSON. */
+export function countFillFields(node: EmailNode | null | undefined): number {
+  if (!node) return 0;
+  let total = node.type === "fillField" ? 1 : 0;
+  for (const child of node.content ?? []) total += countFillFields(child);
+  return total;
+}
 
 /**
  * Snippet fill-in fields + variables (Composer Phase 2 — BOX-22).
