@@ -60,6 +60,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/rich-text-editor";
 import {
   snippetsQueryKey,
   useSnippetsQuery,
@@ -1168,7 +1169,7 @@ function SnippetsPage() {
                   {s.trigger}
                 </code>
                 <span className="min-w-0 flex-1 truncate text-[13px] text-muted-foreground">
-                  {s.text}
+                  {s.text.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()}
                 </span>
                 <Hint label="Edit">
                   <Button
@@ -1208,11 +1209,13 @@ function SnippetsPage() {
               spellCheck={false}
             />
           </Field>
-          <Textarea
+          {/* Rich snippet body: bold/code/links/lists are preserved and
+              serialized email-safe on send. Type {{name}} for a fill-in field. */}
+          <RichTextEditor
             value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Thanks so much — really appreciate it!"
-            rows={3}
+            onChange={setText}
+            placeholder="Thanks so much! Type {{name}} for a fill-in field…"
+            minHeight={90}
           />
           {error && <p className="text-[12px] text-destructive">{error}</p>}
           <div className="flex items-center gap-2">

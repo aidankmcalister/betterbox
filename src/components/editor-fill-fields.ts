@@ -1,7 +1,11 @@
 import { Node, mergeAttributes } from "@tiptap/core";
 import type { Editor, JSONContent } from "@tiptap/core";
 import { toast } from "sonner";
-import { humanizeFillLabel, type EmailNode } from "@/lib/email/serialize";
+import {
+  escapeHtml,
+  humanizeFillLabel,
+  type EmailNode,
+} from "@/lib/email/serialize";
 
 /** Count unfilled fill-field tab-stops remaining in a document (for the send
  *  guardrail). Pure walk over the TipTap JSON. */
@@ -150,6 +154,24 @@ export function insertSnippet(
   text: string,
   variables: Record<string, string>,
 ): void {
+  // Rich snippets are stored as HTML — expand the tokens inside the markup and
+  // let TipTap parse it (the fill-field spans round-trip into FillField nodes,
+  // and the formatting flows through the email-safe serializer on send).
+  if (/<[a-z][\s\S]*?>/i.test(text)) {
+    const html = text.replace(/\{\{([^}]+)\}\}/g, (_m, raw: string) => {
+      const token = raw.trim();
+      const key = token.toLowerCase();
+      if (key === "cursor") return "";
+      const value = variables[key];
+      if (value != null && value !== "") return escapeHtml(value);
+      const label = escapeHtml(token).replace(/"/g, "&quot;");
+      return `<span data-fill-field data-label="${label}"></span>`;
+    });
+    editor.chain().focus().deleteRange(range).insertContent(html).run();
+    if (!selectFirstFillField(editor, range.from)) editor.chain().focus().run();
+    return;
+  }
+
   const { content, cursorIndex } = snippetToContent(text, variables);
   const hasField = content.some((c) => c.type === "fillField");
   const start = range.from;
