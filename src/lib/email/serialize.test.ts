@@ -196,6 +196,15 @@ describe("serializeEmailHtml — blocks", () => {
     ).toContain("a<br>b");
   });
 
+  test("an unfilled fill field serializes to its label as plain text", () => {
+    const html = serializeEmailHtml(
+      doc(para(text("Hi "), { type: "fillField", attrs: { label: "name" } })),
+    );
+    expect(html).toContain("Hi name");
+    expect(html).not.toContain("fill-field");
+    expect(html).not.toContain("data-fill-field");
+  });
+
   test("unknown node type degrades to its text, never crashes", () => {
     const html = serializeEmailHtml(
       doc({ type: "callout", content: [para(text("kept"))] }),

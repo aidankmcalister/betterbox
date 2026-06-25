@@ -256,6 +256,12 @@ function renderNode(node: EmailNode): string {
       return renderText(node);
     case "hardBreak":
       return "<br>";
+    case "fillField":
+      // An unfilled snippet tab-stop — emit the label as plain text so it's
+      // visible (a Phase 3 guardrail warns before sending one).
+      return escapeHtml(
+        typeof node.attrs?.label === "string" ? node.attrs.label : "",
+      );
     case "paragraph": {
       const inner = renderInline(node);
       return `<p style="margin:0 0 16px;">${inner || "&nbsp;"}</p>`;

@@ -23,6 +23,7 @@ import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { cn } from "@/lib/utils";
 import { SlashCommand } from "@/components/editor-slash-commands";
 import { GithubRefs } from "@/components/editor-github-refs";
+import { FillField } from "@/components/editor-fill-fields";
 import type { EmailNode } from "@/lib/email/serialize";
 import { sanitizePastedHtml } from "@/lib/email/sanitize-paste";
 
@@ -47,6 +48,7 @@ export function RichTextEditor({
   minHeight = 120,
   className,
   snippets,
+  variables,
 }: {
   value: string;
   onChange: (html: string) => void;
@@ -61,9 +63,13 @@ export function RichTextEditor({
   className?: string;
   /** trigger → text map; typing a trigger + space expands it inline. */
   snippets?: Record<string, string>;
+  /** name → value for snippet `{{variables}}` (e.g. first_name from the To:). */
+  variables?: Record<string, string>;
 }) {
   const snippetsRef = useRef<Record<string, string>>(snippets ?? {});
   snippetsRef.current = snippets ?? {};
+  const variablesRef = useRef<Record<string, string>>(variables ?? {});
+  variablesRef.current = variables ?? {};
 
   const editor = useEditor({
     // TanStack Start renders on the server; defer to the client to avoid
@@ -84,7 +90,11 @@ export function RichTextEditor({
       }),
       Placeholder.configure({ placeholder }),
       GithubRefs,
-      SlashCommand.configure({ getSnippets: () => snippetsRef.current }),
+      FillField,
+      SlashCommand.configure({
+        getSnippets: () => snippetsRef.current,
+        getVariables: () => variablesRef.current,
+      }),
     ],
     content: value || "",
     autofocus: autoFocus ? "end" : false,

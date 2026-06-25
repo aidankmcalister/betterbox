@@ -149,6 +149,24 @@ export function Composer({
   // Snippets expand inline in the editor (e.g. "/ty "). Fetched only while open.
   const snippets = useSnippetMap(open);
 
+  // Variables for snippet `{{tokens}}` — resolved from the first To: recipient
+  // (looked up in contacts for a name). Missing values fall through to tab-stop
+  // fill fields, so {{first_name}} for an unknown address is a field you fill.
+  const variables = useMemo<Record<string, string>>(() => {
+    const firstEmail = to.split(",")[0]?.trim() ?? "";
+    const contact = contacts.find(
+      (c) => c.email.toLowerCase() === firstEmail.toLowerCase(),
+    );
+    const name = contact?.name?.trim() ?? "";
+    const [first, ...rest] = name.split(/\s+/).filter(Boolean);
+    return {
+      name,
+      first_name: first ?? "",
+      last_name: rest.join(" "),
+      email: contact?.email ?? firstEmail,
+    };
+  }, [to, contacts]);
+
   // Signature: shown as a read-only block below the editor (not inside it, so it
   // can't be edited) and appended to the outgoing HTML at send/draft — unless the
   // user removes it for this message. The skip resets when the From account
@@ -475,6 +493,7 @@ export function Composer({
             onChange={(next) => onContentChange({ body: next })}
             onDocChange={setBodyDoc}
             snippets={snippets}
+            variables={variables}
             placeholder="Write your message…"
             minHeight={inPane ? 320 : 200}
             // The editor fills edge-to-edge in both modes — drop the rounded

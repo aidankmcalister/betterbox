@@ -354,3 +354,19 @@ body.bm-dragging {
   height: 0;
   pointer-events: none;
 }
+/* Snippet tab-stop fill fields (FillField node) — a chip you Tab to and type
+   over. Selected (the current stop) inverts to the accent. */
+.tiptap .fill-field {
+  border-radius: 4px;
+  background: color-mix(in oklab, var(--primary) 14%, transparent);
+  color: var(--primary);
+  padding: 0.05em 0.35em;
+  font-size: 0.95em;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.tiptap .fill-field.ProseMirror-selectednode {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  outline: none;
+}

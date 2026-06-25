@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { insertSnippet } from "@/components/editor-fill-fields";
 
 /**
  * Notion-style `/` command menu for the composer. A single registry backs it:
@@ -125,9 +126,11 @@ const STATIC_COMMANDS: SlashCommand[] = [
 ];
 
 /** Turn the user's saved snippets into commands. Each becomes `/trigger` and
- *  inserts its text (replacing the typed query) plus a trailing space. */
+ *  inserts its content — resolving `{{variables}}`, `{{cursor}}`, and tab-stop
+ *  `{{fields}}` (see insertSnippet). Variables are pulled fresh at run time. */
 function buildSnippetCommands(
   snippets: Record<string, string>,
+  getVariables: () => Record<string, string>,
 ): SlashCommand[] {
   return Object.entries(snippets).map(([trigger, text]) => ({
     id: `snippet:${trigger}`,
@@ -136,16 +139,19 @@ function buildSnippetCommands(
     keywords: [trigger.replace(/^\//, "")],
     group: "Snippets",
     icon: TextIcon,
-    run: (e, r) =>
-      e.chain().focus().deleteRange(r).insertContent(`${text} `).run(),
+    run: (e, r) => insertSnippet(e, r, text, getVariables()),
   }));
 }
 
 function filterCommands(
   query: string,
   snippets: Record<string, string>,
+  getVariables: () => Record<string, string>,
 ): SlashCommand[] {
-  const all = [...STATIC_COMMANDS, ...buildSnippetCommands(snippets)];
+  const all = [
+    ...STATIC_COMMANDS,
+    ...buildSnippetCommands(snippets, getVariables),
+  ];
   const q = query.trim().toLowerCase();
   if (!q) return all;
   return all.filter(
@@ -318,20 +324,23 @@ function makeRender(): SuggestionOptions<SlashCommand>["render"] {
  *  the user's current snippets without recreating the editor. */
 export const SlashCommand = Extension.create<{
   getSnippets: () => Record<string, string>;
+  getVariables: () => Record<string, string>;
 }>({
   name: "slashCommand",
   addOptions() {
-    return { getSnippets: () => ({}) };
+    return { getSnippets: () => ({}), getVariables: () => ({}) };
   },
   addProseMirrorPlugins() {
     const getSnippets = this.options.getSnippets;
+    const getVariables = this.options.getVariables;
     return [
       Suggestion<SlashCommand>({
         editor: this.editor,
         char: "/",
         pluginKey: new PluginKey("slashCommand"),
         command: ({ editor, range, props }) => props.run(editor, range),
-        items: ({ query }) => filterCommands(query, getSnippets()),
+        items: ({ query }) =>
+          filterCommands(query, getSnippets(), getVariables),
         render: makeRender(),
       }),
     ];
