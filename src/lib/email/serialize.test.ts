@@ -156,17 +156,35 @@ describe("serializeEmailHtml — blocks", () => {
     expect(html).not.toContain("border-left");
   });
 
-  test("code block is a bgcolor table with pre-wrap mono text, escaped", () => {
+  test("code block is a bgcolor table wrapping a <pre>, highlighted inline", () => {
     const html = serializeEmailHtml(
       doc({
         type: "codeBlock",
-        content: [text("const x = a < b && c;")],
+        attrs: { language: "javascript" },
+        content: [text("const x = 1;")],
       }),
     );
     expect(html).toContain('bgcolor="#f6f8fa"');
+    expect(html).toContain("<pre");
     expect(html).toContain("white-space:pre-wrap");
     expect(html).toContain("font-family:ui-monospace");
-    expect(html).toContain("const x = a &lt; b &amp;&amp; c;");
+    // `const` is a keyword → inline-colored span, never a class (Gmail strips
+    // classes + <style>).
+    expect(html).toContain("color:#cf222e");
+    expect(html).not.toContain("class=");
+  });
+
+  test("code block escapes its content even while highlighting", () => {
+    const html = serializeEmailHtml(
+      doc({
+        type: "codeBlock",
+        content: [text("</pre><script>alert(1 < 2 && 3)</script>")],
+      }),
+    );
+    expect(html).not.toContain("<script>");
+    expect(html).not.toContain("</pre><script");
+    expect(html).toContain("&lt;");
+    expect(html).toContain("&amp;");
   });
 
   test("horizontal rule + hard break", () => {

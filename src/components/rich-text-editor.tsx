@@ -3,6 +3,8 @@ import { EditorContent, useEditor, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
+import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
+import { common, createLowlight } from "lowlight";
 import {
   BoldIcon,
   ItalicIcon,
@@ -22,6 +24,11 @@ import { cn } from "@/lib/utils";
 import { SlashCommand } from "@/components/editor-slash-commands";
 import type { EmailNode } from "@/lib/email/serialize";
 import { sanitizePastedHtml } from "@/lib/email/sanitize-paste";
+
+// Live syntax highlighting that matches the email serializer's output (same
+// lowlight, same token palette in styles.css), so the editor previews the sent
+// code block.
+const lowlight = createLowlight(common);
 
 /**
  * Reusable rich-text editor for compose + reply. Tiptap (ProseMirror) under the
@@ -65,7 +72,9 @@ export function RichTextEditor({
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },
         link: false,
+        codeBlock: false,
       }),
+      CodeBlockLowlight.configure({ lowlight }),
       Link.configure({
         openOnClick: false,
         autolink: true,

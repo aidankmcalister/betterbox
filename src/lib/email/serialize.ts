@@ -14,6 +14,8 @@
  * here, which is why it's the foundation the rest of the overhaul builds on.
  */
 
+import { common, createLowlight } from "lowlight";
+
 /** A TipTap/ProseMirror mark (bold, italic, link, …). */
 export type EmailMark = {
   type: string;
@@ -155,17 +157,88 @@ function renderBlockquote(node: EmailNode): string {
   );
 }
 
+// Syntax highlighting runs at serialize time: lowlight tokenizes the code, then
+// we emit inline-colored <span>s — no classes or <style>, both of which Gmail
+// strips. `common` is highlight.js's ~37 common languages.
+const lowlight = createLowlight(common);
+
+// hljs token class → inline color (a compact GitHub-light palette). Tokens we
+// don't map inherit the base code color.
+const TOKEN_COLORS: Record<string, string> = {
+  "hljs-keyword": "#cf222e",
+  "hljs-built_in": "#cf222e",
+  "hljs-literal": "#0550ae",
+  "hljs-number": "#0550ae",
+  "hljs-symbol": "#0550ae",
+  "hljs-meta": "#0550ae",
+  "hljs-string": "#0a3069",
+  "hljs-regexp": "#0a3069",
+  "hljs-comment": "#6e7781",
+  "hljs-title": "#8250df",
+  "hljs-function": "#8250df",
+  "hljs-class": "#8250df",
+  "hljs-attr": "#0550ae",
+  "hljs-attribute": "#0550ae",
+  "hljs-variable": "#953800",
+  "hljs-template-variable": "#953800",
+  "hljs-property": "#953800",
+  "hljs-type": "#953800",
+  "hljs-tag": "#116329",
+  "hljs-name": "#116329",
+  "hljs-selector-tag": "#116329",
+  "hljs-addition": "#116329",
+  "hljs-deletion": "#82071e",
+};
+
+type HastNode = {
+  type: "root" | "element" | "text";
+  value?: string;
+  properties?: { className?: string[] };
+  children?: HastNode[];
+};
+
+/** Walk lowlight's hast tree → inline-colored spans (color inherited down). */
+function renderHast(node: HastNode, color?: string): string {
+  if (node.type === "text") {
+    const text = escapeHtml(node.value ?? "");
+    return color ? `<span style="color:${color};">${text}</span>` : text;
+  }
+  const next =
+    (node.properties?.className ?? [])
+      .map((cls) => TOKEN_COLORS[cls])
+      .find(Boolean) ?? color;
+  return (node.children ?? []).map((child) => renderHast(child, next)).join("");
+}
+
+/** Highlight code → inline-span HTML; an explicit language wins, else detect. */
+function highlightCode(code: string, language: string): string {
+  if (!code.trim()) return escapeHtml(code);
+  try {
+    const tree =
+      language && lowlight.registered(language)
+        ? lowlight.highlight(language, code)
+        : lowlight.highlightAuto(code);
+    return renderHast(tree as unknown as HastNode);
+  } catch {
+    return escapeHtml(code);
+  }
+}
+
 /**
- * Code block as a `bgcolor` table wrapper with inline-styled monospace text and
- * `white-space:pre-wrap` (Phase 1 adds syntax highlighting on top of this).
+ * Code block as a `bgcolor` table wrapping a `<pre>` — both Gmail and Outlook
+ * respect `<pre>` for whitespace, and `white-space:pre-wrap` lets long lines
+ * wrap instead of overflowing. Highlighting is inline-colored spans only.
  */
 function renderCodeBlock(node: EmailNode): string {
-  const code = (node.content ?? [])
-    .map((child) => escapeHtml(child.text ?? ""))
-    .join("");
+  const code = (node.content ?? []).map((child) => child.text ?? "").join("");
+  const language =
+    typeof node.attrs?.language === "string" ? node.attrs.language : "";
+  const inner = highlightCode(code, language);
   return (
     `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="${CODE_BG}" style="margin:0 0 16px;background:${CODE_BG};border-collapse:collapse;">` +
-    `<tr><td style="padding:12px 14px;font-family:${MONO_STACK};font-size:13px;line-height:1.45;color:${TEXT};white-space:pre-wrap;word-break:break-word;">${code || "&nbsp;"}</td></tr></table>`
+    `<tr><td style="padding:12px 14px;">` +
+    `<pre style="margin:0;font-family:${MONO_STACK};font-size:13px;line-height:1.45;color:${TEXT};white-space:pre-wrap;word-break:break-word;">${inner || "&nbsp;"}</pre>` +
+    `</td></tr></table>`
   );
 }
 

@@ -291,7 +291,11 @@ body.bm-dragging {
 .tiptap :where(pre) {
   font-family: var(--font-mono);
   font-size: 0.92em;
-  background: var(--muted);
+  /* Fixed light palette (not theme-aware): the code block previews its email
+     appearance — the serializer renders the same #f6f8fa block — and keeps the
+     syntax colors readable in dark mode too. */
+  background: #f6f8fa;
+  color: #1a1a1a;
   padding: 0.7em 0.9em;
   border-radius: 8px;
   overflow-x: auto;
@@ -300,6 +304,47 @@ body.bm-dragging {
 .tiptap :where(pre code) {
   background: none;
   padding: 0;
+}
+/* Syntax tokens (CodeBlockLowlight) — mirrors the email serializer's inline
+   TOKEN_COLORS in src/lib/email/serialize.ts so editor + sent email match. */
+.tiptap :where(pre) .hljs-keyword,
+.tiptap :where(pre) .hljs-built_in {
+  color: #cf222e;
+}
+.tiptap :where(pre) .hljs-literal,
+.tiptap :where(pre) .hljs-number,
+.tiptap :where(pre) .hljs-symbol,
+.tiptap :where(pre) .hljs-meta,
+.tiptap :where(pre) .hljs-attr,
+.tiptap :where(pre) .hljs-attribute {
+  color: #0550ae;
+}
+.tiptap :where(pre) .hljs-string,
+.tiptap :where(pre) .hljs-regexp {
+  color: #0a3069;
+}
+.tiptap :where(pre) .hljs-comment {
+  color: #6e7781;
+}
+.tiptap :where(pre) .hljs-title,
+.tiptap :where(pre) .hljs-function,
+.tiptap :where(pre) .hljs-class {
+  color: #8250df;
+}
+.tiptap :where(pre) .hljs-variable,
+.tiptap :where(pre) .hljs-template-variable,
+.tiptap :where(pre) .hljs-property,
+.tiptap :where(pre) .hljs-type {
+  color: #953800;
+}
+.tiptap :where(pre) .hljs-tag,
+.tiptap :where(pre) .hljs-name,
+.tiptap :where(pre) .hljs-selector-tag,
+.tiptap :where(pre) .hljs-addition {
+  color: #116329;
+}
+.tiptap :where(pre) .hljs-deletion {
+  color: #82071e;
 }
 .tiptap p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
