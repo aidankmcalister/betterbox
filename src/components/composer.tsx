@@ -540,7 +540,7 @@ export function Composer({
           <GripVerticalIcon className="size-3.5 shrink-0 text-muted-foreground/70" />
         )}
         <PencilIcon className="size-3.5 text-muted-foreground" />
-        <span className="text-[13.5px] font-semibold">
+        <span className="text-[14.5px] font-semibold tracking-[-0.2px]">
           {draft ? "Edit draft" : "New message"}
         </span>
         <Hint
@@ -696,11 +696,11 @@ export function Composer({
             placeholder="Write your message…"
             minHeight={inPane ? 320 : 200}
             // The editor fills edge-to-edge in both modes — drop the rounded
-            // border so it isn't an inset box (the rows divide it instead).
-            // Fills the full height in pane + full-screen mobile; content-sized
-            // in the desktop popout.
+            // border, and go transparent so the body shares the composer's
+            // surface instead of being a darker inset "void" (the cleaned-up
+            // design is one unified surface). The field rows divide it.
             className={cn(
-              "rounded-none border-0",
+              "rounded-none border-0 bg-transparent",
               inPane ? "h-full" : "h-full sm:h-auto",
             )}
           />
@@ -761,7 +761,15 @@ export function Composer({
       />
 
       {!preview && notices.length > 0 && (
-        <div className="flex flex-col gap-1 border-t px-3.5 py-2">
+        <div
+          className={cn(
+            "flex flex-col gap-1 border-t px-3.5 py-2",
+            // A subtle severity tint (per the cleaned-up design's 7% wash).
+            notices[0]?.tone === "warn"
+              ? "bg-label-yellow/[0.07]"
+              : "bg-label-red/[0.07]",
+          )}
+        >
           {notices.map((n) => (
             <span
               key={n.text}
