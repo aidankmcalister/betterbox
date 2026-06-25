@@ -97,6 +97,40 @@ function isValidRecipients(value: string): boolean {
   return parts.length > 0 && parts.every((part) => EMAIL_RE.test(part));
 }
 
+/** Split a To: entry into its display name + bare email
+ *  ("Maya Chen <maya@x>" → { name: "Maya Chen", email: "maya@x" }). */
+function parseToEntry(entry: string): { name: string; email: string } {
+  const m = /^\s*(.*?)\s*<([^>]+)>\s*$/.exec(entry);
+  if (m) {
+    return {
+      name: m[1].replace(/^["']|["']$/g, "").trim(),
+      email: m[2].trim(),
+    };
+  }
+  return { name: "", email: entry.trim() };
+}
+
+// Bare role addresses don't name a person — never guess "Hi Support,".
+const ROLE_LOCALS = new Set([
+  "support", "info", "noreply", "no-reply", "hello", "team", "contact",
+  "admin", "sales", "help", "hi", "billing", "careers", "jobs", "press",
+  "security", "notifications", "donotreply", "do-not-reply", "mailer",
+]);
+
+/** Guess a name from an email's local part (maya@x → "Maya", first.last@x →
+ *  "First Last"). Empty unless the address looks complete and isn't a role box. */
+function nameFromEmail(email: string): string {
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return "";
+  const local = email.split("@")[0] ?? "";
+  if (ROLE_LOCALS.has(local.toLowerCase())) return "";
+  return local
+    .split(/[._+-]+/)
+    .map((part) => part.replace(/[^a-zA-Z].*$/, "")) // drop trailing digits/junk
+    .filter((part) => part.length > 0)
+    .map((part) => part[0].toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ");
+}
+
 /**
  * Docked composer for a new message (design: fixed bottom-right panel, not a
  * Dialog). Field rows are borderless — plain inputs, label column 44px,
@@ -176,21 +210,28 @@ export function Composer({
   // Snippets expand inline in the editor (e.g. "/ty "). Fetched only while open.
   const snippets = useSnippetMap(open);
 
-  // Variables for snippet `{{tokens}}` — resolved from the first To: recipient
-  // (looked up in contacts for a name). Missing values fall through to tab-stop
-  // fill fields, so {{first_name}} for an unknown address is a field you fill.
+  // Variables for snippet `{{tokens}}`, resolved from the first To: recipient.
+  // Name priority: a saved contact → a display name typed in To: → a name
+  // guessed from the email's local part (maya@… → "Maya"), so {{first_name}}
+  // resolves for fresh addresses, not just known contacts. Still empty (→ a
+  // fill field) when there's no usable name (e.g. a bare role address).
   const variables = useMemo<Record<string, string>>(() => {
-    const firstEmail = to.split(",")[0]?.trim() ?? "";
+    const firstEntry = to.split(",")[0]?.trim() ?? "";
+    const { name: displayName, email } = parseToEntry(firstEntry);
     const contact = contacts.find(
-      (c) => c.email.toLowerCase() === firstEmail.toLowerCase(),
+      (c) => c.email.toLowerCase() === email.toLowerCase(),
     );
-    const name = contact?.name?.trim() ?? "";
+    const name = (
+      contact?.name?.trim() ||
+      displayName ||
+      nameFromEmail(email)
+    ).trim();
     const [first, ...rest] = name.split(/\s+/).filter(Boolean);
     return {
       name,
       first_name: first ?? "",
       last_name: rest.join(" "),
-      email: contact?.email ?? firstEmail,
+      email: contact?.email ?? email,
     };
   }, [to, contacts]);
 

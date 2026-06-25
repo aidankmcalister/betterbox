@@ -155,6 +155,26 @@ export function RichTextEditor({
     }
   }, [value, editor, onDocChange]);
 
+  // Auto-fill snippet variable fields (first_name, …) the moment the recipient
+  // resolves them to a value — so expanding a snippet *then* adding the To:
+  // address still fills the name in. Custom fill-ins (no matching variable) are
+  // left for you to type. Replaces from the end so earlier positions stay valid.
+  useEffect(() => {
+    if (!editor || !variables) return;
+    const hits: { from: number; to: number; text: string }[] = [];
+    editor.state.doc.descendants((node, pos) => {
+      if (node.type.name !== "fillField") return;
+      const value = variables[String(node.attrs.label ?? "").toLowerCase()];
+      if (value) hits.push({ from: pos, to: pos + node.nodeSize, text: value });
+    });
+    if (hits.length === 0) return;
+    let tr = editor.state.tr;
+    for (const h of hits.reverse()) {
+      tr = tr.replaceWith(h.from, h.to, editor.schema.text(h.text));
+    }
+    editor.view.dispatch(tr.setMeta("addToHistory", false));
+  }, [editor, variables]);
+
   // Hand the editor to the caller so it can insert content (the snippets page
   // uses this for its "insert field" chips).
   useEffect(() => {
