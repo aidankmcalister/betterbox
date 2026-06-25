@@ -23,6 +23,7 @@ import { Route as ApiLabelsRouteImport } from './routes/api/labels'
 import { Route as ApiImageProxyRouteImport } from './routes/api/image-proxy'
 import { Route as ApiGithubIssuesRouteImport } from './routes/api/github-issues'
 import { Route as ApiEmailsRouteImport } from './routes/api/emails'
+import { Route as ApiDraftRouteImport } from './routes/api/draft'
 import { Route as ApiContactsRouteImport } from './routes/api/contacts'
 import { Route as ApiAccountsRouteImport } from './routes/api/accounts'
 import { Route as AppWebhooksRouteImport } from './routes/_app/webhooks'
@@ -105,6 +106,11 @@ const ApiGithubIssuesRoute = ApiGithubIssuesRouteImport.update({
 const ApiEmailsRoute = ApiEmailsRouteImport.update({
   id: '/api/emails',
   path: '/api/emails',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDraftRoute = ApiDraftRouteImport.update({
+  id: '/api/draft',
+  path: '/api/draft',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiContactsRoute = ApiContactsRouteImport.update({
@@ -194,6 +200,7 @@ export interface FileRoutesByFullPath {
   '/webhooks': typeof AppWebhooksRoute
   '/api/accounts': typeof ApiAccountsRoute
   '/api/contacts': typeof ApiContactsRoute
+  '/api/draft': typeof ApiDraftRoute
   '/api/emails': typeof ApiEmailsRoute
   '/api/github-issues': typeof ApiGithubIssuesRoute
   '/api/image-proxy': typeof ApiImageProxyRoute
@@ -222,6 +229,7 @@ export interface FileRoutesByTo {
   '/webhooks': typeof AppWebhooksRoute
   '/api/accounts': typeof ApiAccountsRoute
   '/api/contacts': typeof ApiContactsRoute
+  '/api/draft': typeof ApiDraftRoute
   '/api/emails': typeof ApiEmailsRoute
   '/api/github-issues': typeof ApiGithubIssuesRoute
   '/api/image-proxy': typeof ApiImageProxyRoute
@@ -253,6 +261,7 @@ export interface FileRoutesById {
   '/_app/webhooks': typeof AppWebhooksRoute
   '/api/accounts': typeof ApiAccountsRoute
   '/api/contacts': typeof ApiContactsRoute
+  '/api/draft': typeof ApiDraftRoute
   '/api/emails': typeof ApiEmailsRoute
   '/api/github-issues': typeof ApiGithubIssuesRoute
   '/api/image-proxy': typeof ApiImageProxyRoute
@@ -285,6 +294,7 @@ export interface FileRouteTypes {
     | '/webhooks'
     | '/api/accounts'
     | '/api/contacts'
+    | '/api/draft'
     | '/api/emails'
     | '/api/github-issues'
     | '/api/image-proxy'
@@ -313,6 +323,7 @@ export interface FileRouteTypes {
     | '/webhooks'
     | '/api/accounts'
     | '/api/contacts'
+    | '/api/draft'
     | '/api/emails'
     | '/api/github-issues'
     | '/api/image-proxy'
@@ -343,6 +354,7 @@ export interface FileRouteTypes {
     | '/_app/webhooks'
     | '/api/accounts'
     | '/api/contacts'
+    | '/api/draft'
     | '/api/emails'
     | '/api/github-issues'
     | '/api/image-proxy'
@@ -364,6 +376,7 @@ export interface RootRouteChildren {
   SignInRoute: typeof SignInRoute
   ApiAccountsRoute: typeof ApiAccountsRoute
   ApiContactsRoute: typeof ApiContactsRoute
+  ApiDraftRoute: typeof ApiDraftRoute
   ApiEmailsRoute: typeof ApiEmailsRoute
   ApiGithubIssuesRoute: typeof ApiGithubIssuesRoute
   ApiImageProxyRoute: typeof ApiImageProxyRoute
@@ -475,6 +488,13 @@ declare module '@tanstack/react-router' {
       path: '/api/emails'
       fullPath: '/api/emails'
       preLoaderRoute: typeof ApiEmailsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/draft': {
+      id: '/api/draft'
+      path: '/api/draft'
+      fullPath: '/api/draft'
+      preLoaderRoute: typeof ApiDraftRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/contacts': {
@@ -616,6 +636,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignInRoute: SignInRoute,
   ApiAccountsRoute: ApiAccountsRoute,
   ApiContactsRoute: ApiContactsRoute,
+  ApiDraftRoute: ApiDraftRoute,
   ApiEmailsRoute: ApiEmailsRoute,
   ApiGithubIssuesRoute: ApiGithubIssuesRoute,
   ApiImageProxyRoute: ApiImageProxyRoute,

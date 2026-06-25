@@ -485,25 +485,24 @@ export async function getRawEmail(
 /** Send a message from the token's own address (messages.send). Pass `html`
  *  for rich text (sent as multipart/alternative with a plain-text fallback);
  *  pass inReplyTo/references/threadId to thread it as a real reply. */
-export async function sendEmail(
+type OutgoingMessage = {
+  to: string;
+  cc?: string;
+  bcc?: string;
+  subject: string;
+  body: string;
+  html?: string;
+  inReplyTo?: string;
+  references?: string;
+  threadId?: string;
+  attachments?: { filename: string; mimeType: string; contentBase64: string }[];
+};
+
+/** Build the raw base64url MIME for a message — shared by send + draft save. */
+async function buildRawMessage(
   accessToken: string,
-  options: {
-    to: string;
-    cc?: string;
-    bcc?: string;
-    subject: string;
-    body: string;
-    html?: string;
-    inReplyTo?: string;
-    references?: string;
-    threadId?: string;
-    attachments?: {
-      filename: string;
-      mimeType: string;
-      contentBase64: string;
-    }[];
-  },
-): Promise<void> {
+  options: OutgoingMessage,
+): Promise<string> {
   const from = await getEmailAddress(accessToken);
   if (!from) throw new Error("Could not resolve sender address");
 
@@ -603,17 +602,46 @@ export async function sendEmail(
     mime = lines.join("\r\n");
   }
 
-  const payload: { raw: string; threadId?: string } = {
-    raw: Buffer.from(mime).toString("base64url"),
-  };
-  if (options.threadId) payload.threadId = options.threadId;
+  return Buffer.from(mime).toString("base64url");
+}
 
+/** Send a message: build the raw MIME, then hand it to Gmail. */
+export async function sendEmail(
+  accessToken: string,
+  options: OutgoingMessage,
+): Promise<void> {
+  const raw = await buildRawMessage(accessToken, options);
+  const payload: { raw: string; threadId?: string } = { raw };
+  if (options.threadId) payload.threadId = options.threadId;
   const res = await gmailFetch(accessToken, "/messages/send", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error(`Gmail send failed (${res.status})`);
+}
+
+/** Create or update a Gmail draft (drafts.create / drafts.update). Returns the
+ *  draft + message ids so later autosaves UPDATE the same draft, and so the
+ *  composer can trash it by message id when the draft is sent or discarded. */
+export async function saveGmailDraft(
+  accessToken: string,
+  options: OutgoingMessage & { draftId?: string },
+): Promise<{ id: string; messageId: string }> {
+  const raw = await buildRawMessage(accessToken, options);
+  const message: { raw: string; threadId?: string } = { raw };
+  if (options.threadId) message.threadId = options.threadId;
+  const path = options.draftId ? `/drafts/${options.draftId}` : "/drafts";
+  const res = await gmailFetch(accessToken, path, {
+    method: options.draftId ? "PUT" : "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(
+      options.draftId ? { id: options.draftId, message } : { message },
+    ),
+  });
+  if (!res.ok) throw new Error(`Gmail draft save failed (${res.status})`);
+  const data = (await res.json()) as { id: string; message?: { id: string } };
+  return { id: data.id, messageId: data.message?.id ?? "" };
 }
 
 export type MessageAction = "archive" | "trash" | "star" | "unstar";

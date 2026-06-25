@@ -431,12 +431,41 @@ export async function sendNewEmail(options: {
 export async function saveDraft(opts: {
   accountId: string;
   id?: string;
+  /** Existing Gmail draft id — updates that draft instead of creating a new one. */
+  draftId?: string;
   to: string;
+  cc?: string;
+  bcc?: string;
   subject: string;
   html: string;
-}): Promise<string | null> {
-  if (isTestAccount(opts.accountId)) return upsertTestDraft(opts);
-  return null;
+  threadId?: string;
+}): Promise<{ draftId: string; messageId: string } | null> {
+  if (isTestAccount(opts.accountId)) {
+    const id = upsertTestDraft(opts);
+    return { draftId: id, messageId: id };
+  }
+  try {
+    const res = await fetchJson<{ id: string; messageId: string }>(
+      "/api/draft",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          accountId: opts.accountId,
+          draftId: opts.draftId,
+          to: opts.to,
+          cc: opts.cc,
+          bcc: opts.bcc,
+          subject: opts.subject,
+          html: opts.html,
+          threadId: opts.threadId,
+        }),
+      },
+    );
+    return { draftId: res.id, messageId: res.messageId };
+  } catch {
+    return null;
+  }
 }
 
 /** Delete a draft so it leaves the Drafts folder. Demo: drop from the store.

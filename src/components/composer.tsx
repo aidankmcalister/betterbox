@@ -144,6 +144,12 @@ export function Composer({
   const sendTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Guardrails gate the first Send click; a second click ("Send anyway") sends.
   const [confirmSend, setConfirmSend] = useState(false);
+  // Autosave: the Gmail draft created/updated this session (fresh composes), and
+  // a status for the footer indicator.
+  const autosaveRef = useRef<{ draftId: string; messageId: string } | null>(null);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">(
+    "idle",
+  );
 
   // From: an explicit pick (fromId) wins; otherwise the configured default
   // send-from account, then the primary inbox, then the first sendable one.
@@ -222,6 +228,49 @@ export function Composer({
       ? appendSignature(emailSafeBody, accountSig.body)
       : emailSafeBody;
 
+  // Debounced autosave to Gmail Drafts. Fresh composes only — editing an
+  // existing draft is skipped (we don't resolve its Gmail draft id, so a save
+  // would create a duplicate). draftId tracks the created draft so later saves
+  // UPDATE it instead of piling up.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: from is captured via accountId; queryClient/saveDraft are stable.
+  useEffect(() => {
+    const has =
+      to.trim().length > 0 || subject.trim().length > 0 || body.length > 0;
+    if (!open || !from || draft || !has) return;
+    const accountId = from.accountId;
+    const timer = setTimeout(() => {
+      setSaveStatus("saving");
+      void saveDraft({
+        accountId,
+        draftId: autosaveRef.current?.draftId,
+        to: to.trim(),
+        cc: cc.trim() || undefined,
+        bcc: bcc.trim() || undefined,
+        subject,
+        html: outgoingHtml,
+      }).then((res) => {
+        if (res) {
+          autosaveRef.current = res;
+          setSaveStatus("saved");
+          queryClient.invalidateQueries({ queryKey: ["emails", accountId] });
+        } else {
+          setSaveStatus("idle");
+        }
+      });
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [
+    open,
+    from?.accountId,
+    draft?.emailId,
+    to,
+    cc,
+    bcc,
+    subject,
+    body,
+    outgoingHtml,
+  ]);
+
   if (!open) return null;
 
   // Require at least one well-formed address (comma-separated allowed) before
@@ -264,6 +313,8 @@ export function Composer({
       clearTimeout(sendTimerRef.current);
       sendTimerRef.current = null;
     }
+    autosaveRef.current = null;
+    setSaveStatus("idle");
     setSignatureSkipped(false);
     onOpenChange(false);
   };
@@ -272,11 +323,18 @@ export function Composer({
   // being edited). Real Gmail draft persistence isn't wired yet, so saveDraft
   // is a no-op for real accounts — only test accounts actually save here.
   const close = () => {
-    if (from && hasContent) {
+    // Editing an existing real draft is skipped (no Gmail draft id → would
+    // duplicate); fresh composes + test accounts persist.
+    const skipExisting =
+      draft != null && from != null && !isTestAccount(from.accountId);
+    if (from && hasContent && !skipExisting) {
       void saveDraft({
         accountId: from.accountId,
         id: draft?.emailId,
+        draftId: autosaveRef.current?.draftId,
         to: to.trim(),
+        cc: cc.trim() || undefined,
+        bcc: bcc.trim() || undefined,
         subject,
         html: outgoingHtml,
       }).then(() => refreshDrafts(from.accountId));
@@ -288,11 +346,20 @@ export function Composer({
   // Discard throws the message away — and removes the draft if we were editing
   // one (so it doesn't linger in the Drafts folder).
   const discard = () => {
-    if (draft && from) {
-      void deleteDraft(from.accountId, draft.emailId).then(() =>
-        refreshDrafts(from.accountId),
-      );
-      if (isTestAccount(from.accountId)) toast("Draft discarded");
+    if (from) {
+      // Remove the draft being edited and/or the one autosave created this session.
+      if (draft) {
+        void deleteDraft(from.accountId, draft.emailId).then(() =>
+          refreshDrafts(from.accountId),
+        );
+      }
+      if (autosaveRef.current) {
+        void deleteDraft(from.accountId, autosaveRef.current.messageId).then(
+          () => refreshDrafts(from.accountId),
+        );
+      }
+      if ((draft || autosaveRef.current) && isTestAccount(from.accountId))
+        toast("Draft discarded");
     }
     reset();
   };
@@ -354,6 +421,14 @@ export function Composer({
       // A sent draft leaves the Drafts folder.
       if (draft) {
         await deleteDraft(from.accountId, draft.emailId);
+        refreshDrafts(from.accountId);
+      }
+      // The draft autosave created is a copy of this now-sent message — trash it.
+      if (autosaveRef.current) {
+        await deleteDraft(from.accountId, autosaveRef.current.messageId).catch(
+          () => {},
+        );
+        autosaveRef.current = null;
         refreshDrafts(from.accountId);
       }
       if (sandbox) {
@@ -687,6 +762,11 @@ export function Composer({
           <Kbd>⌘</Kbd>
           <Kbd>↵</Kbd>
         </KbdGroup>
+        {saveStatus !== "idle" && !error && (
+          <span className="hidden font-mono text-[11px] text-muted-foreground/55 sm:inline">
+            {saveStatus === "saving" ? "Saving…" : "Saved to drafts"}
+          </span>
+        )}
         {!error && ((to.trim().length > 0 && !recipientsValid) || !ccValid) && (
           <span className="min-w-0 truncate font-mono text-[11px] text-muted-foreground/70">
             Enter a valid email address
