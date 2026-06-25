@@ -750,8 +750,9 @@ function GithubIssuesPane({
 }) {
   const beginHeaderDrag = useTileDrag();
   const { data: session } = useSession();
-  const query = useGithubIssuesQuery(!!session);
-  const live = query.data?.linked;
+  const { demoMode } = useSettings();
+  const query = useGithubIssuesQuery(!!session && !demoMode);
+  const live = !demoMode && query.data?.linked;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -770,17 +771,19 @@ function GithubIssuesPane({
             live
           </span>
         )}
-        <Hint label="Refresh">
-          <button
-            type="button"
-            onClick={() => query.refetch()}
-            className="inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground/70 hover:bg-muted hover:text-foreground"
-          >
-            <RefreshCwIcon
-              className={cn("size-3.5", query.isFetching && "animate-spin")}
-            />
-          </button>
-        </Hint>
+        {!demoMode && (
+          <Hint label="Refresh">
+            <button
+              type="button"
+              onClick={() => query.refetch()}
+              className="inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground/70 hover:bg-muted hover:text-foreground"
+            >
+              <RefreshCwIcon
+                className={cn("size-3.5", query.isFetching && "animate-spin")}
+              />
+            </button>
+          </Hint>
+        )}
         <Hint label="Close panel">
           <button
             type="button"
@@ -792,7 +795,7 @@ function GithubIssuesPane({
         </Hint>
       </div>
       <div className="min-h-0 flex-1 overflow-hidden">
-        <GithubIssuesPage signedIn={!!session} />
+        <GithubIssuesPage signedIn={!!session} demo={demoMode} />
       </div>
     </div>
   );

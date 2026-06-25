@@ -1,8 +1,11 @@
 import { useMemo, useState } from "react";
 import { MessageSquareIcon } from "lucide-react";
+import { toast } from "sonner";
 
 import { linkGithub } from "@/lib/auth-client";
 import { useGithubIssuesQuery, type GithubIssue } from "@/lib/github-queries";
+import { GithubMark } from "@/components/github-mark";
+import demoIssues from "@/data/demo-issues.json";
 import { cn } from "@/lib/utils";
 import {
   ConnectState,
@@ -46,14 +49,25 @@ function IssueRow({
   issue,
   now,
   wide,
+  demo,
 }: {
   issue: GithubIssue;
   now: number;
   wide: boolean;
+  demo: boolean;
 }) {
   const status = issueStatus(issue);
+  const onClick = demo
+    ? (e: React.MouseEvent) => {
+        e.preventDefault();
+        toast("Opens on GitHub", {
+          icon: <GithubMark className="size-4" />,
+          description: `In the live app, ${issue.repo} #${issue.num} opens on github.com — sealed in this demo.`,
+        });
+      }
+    : undefined;
   return (
-    <SpineRow spine={issueSpine(issue)} href={issue.url}>
+    <SpineRow spine={issueSpine(issue)} href={issue.url} onClick={onClick}>
       {wide ? (
         <div className="flex h-8 items-center gap-[10px] px-[11px]">
           <span className="max-w-[150px] shrink-0 truncate font-mono text-[11px] text-muted-foreground">
@@ -121,34 +135,60 @@ type FilterId = "all" | "assigned" | "opened";
 const matches = (i: GithubIssue, f: FilterId) =>
   f === "all" ? true : f === "assigned" ? i.assignedToYou : !i.assignedToYou;
 
-export function GithubIssuesPage({ signedIn = false }: { signedIn?: boolean }) {
+type DemoIssue = Omit<GithubIssue, "url" | "updated" | "author"> & {
+  minutesAgo: number;
+};
+
+function makeDemoIssues(): GithubIssue[] {
+  const now = Date.now();
+  return (demoIssues as unknown as DemoIssue[]).map(
+    ({ minutesAgo, ...rec }) => ({
+      ...rec,
+      author: "you",
+      url: "#",
+      updated: new Date(now - minutesAgo * 60_000).toISOString(),
+    }),
+  );
+}
+
+export function GithubIssuesPage({
+  signedIn = false,
+  demo = false,
+}: {
+  signedIn?: boolean;
+  /** Demo mode: render seeded issues, no API / connect / loading. */
+  demo?: boolean;
+}) {
   const [filter, setFilter] = useState<FilterId>("all");
   const [ref, width] = usePanelWidth();
   const wide = width >= WIDE_AT;
-  const query = useGithubIssuesQuery(signedIn);
+  const query = useGithubIssuesQuery(signedIn && !demo);
   // biome-ignore lint/correctness/useExhaustiveDependencies: refresh the "now" baseline only when fresh data lands.
   const now = useMemo(() => Date.now(), [query.dataUpdatedAt]);
+  const demoIssueList = useMemo(() => (demo ? makeDemoIssues() : []), [demo]);
 
-  if (query.isLoading) return <PanelSkeleton />;
-  if (query.data && !query.data.linked) {
-    return (
-      <ConnectState
-        blurb="Link your GitHub account to BetterBox (no new account, just a sign-in) and the issues assigned to you, or that you opened, show up here."
-        onConnect={linkGithub}
-      />
-    );
-  }
-  if (query.isError || query.data?.error) {
-    return (
-      <ErrorState
-        title="Couldn’t load issues"
-        message={query.data?.error ?? String(query.error)}
-        onRetry={() => query.refetch()}
-      />
-    );
+  if (!demo) {
+    if (query.isLoading) return <PanelSkeleton />;
+    if (query.data && !query.data.linked) {
+      return (
+        <ConnectState
+          blurb="Link your GitHub account to BetterBox (no new account, just a sign-in) and the issues assigned to you, or that you opened, show up here."
+          onConnect={linkGithub}
+        />
+      );
+    }
+    if (query.isError || query.data?.error) {
+      return (
+        <ErrorState
+          title="Couldn’t load issues"
+          message={query.data?.error ?? String(query.error)}
+          onRetry={() => query.refetch()}
+        />
+      );
+    }
   }
 
-  const issues = query.data?.issues ?? [];
+  const issues = demo ? demoIssueList : (query.data?.issues ?? []);
   const nAssigned = issues.filter((i) => i.assignedToYou).length;
   const nOpened = issues.length - nAssigned;
   const rows = issues.filter((i) => matches(i, filter));
@@ -180,7 +220,13 @@ export function GithubIssuesPage({ signedIn = false }: { signedIn?: boolean }) {
         ) : (
           <>
             {rows.map((issue) => (
-              <IssueRow key={issue.id} issue={issue} now={now} wide={wide} />
+              <IssueRow
+                key={issue.id}
+                issue={issue}
+                now={now}
+                wide={wide}
+                demo={demo}
+              />
             ))}
             <GithubFooter />
           </>

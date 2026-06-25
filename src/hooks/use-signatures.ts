@@ -1,4 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
+import { useSettings } from "@/hooks/use-settings";
+import { isTestAccount } from "@/lib/test-account";
 
 export type Signature = { id: string; name: string; body: string };
 
@@ -10,6 +12,13 @@ export type SignaturesData = {
 
 export const signaturesQueryKey = ["signatures"] as const;
 
+/** Seeded signature for demo mode (assigned to both demo accounts) so the
+ *  composer never surfaces the real user's signature during a recording. */
+const DEMO_SIGNATURES: SignaturesData = {
+  signatures: [{ id: "demo-sig", name: "Default", body: "Best,\nAidan" }],
+  assignments: { "test-1": "demo-sig", "test-2": "demo-sig" },
+};
+
 async function fetchSignatures(): Promise<SignaturesData> {
   const res = await fetch("/api/signatures");
   if (!res.ok) return { signatures: [], assignments: {} };
@@ -17,9 +26,10 @@ async function fetchSignatures(): Promise<SignaturesData> {
 }
 
 export function useSignaturesQuery(enabled = true) {
+  const demo = useSettings().demoMode;
   return useQuery({
-    queryKey: signaturesQueryKey,
-    queryFn: fetchSignatures,
+    queryKey: demo ? (["signatures", "demo"] as const) : signaturesQueryKey,
+    queryFn: demo ? async () => DEMO_SIGNATURES : fetchSignatures,
     enabled,
     staleTime: 60_000,
   });
@@ -46,7 +56,8 @@ export function useGmailSignatureQuery(
       const data = (await res.json()) as { signature?: string };
       return data.signature ?? "";
     },
-    enabled: enabled && !!accountId,
+    // Demo/test accounts have no Gmail to read — skip the real API round-trip.
+    enabled: enabled && !!accountId && !isTestAccount(accountId ?? ""),
     staleTime: 5 * 60_000,
   });
 }

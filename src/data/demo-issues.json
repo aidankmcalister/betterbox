@@ -1,0 +1,63 @@
+[
+  {
+    "id": "di1",
+    "repo": "acme/web",
+    "num": 412,
+    "title": "Dark mode flashes white on first paint",
+    "state": "open",
+    "assignedToYou": true,
+    "labels": [
+      { "name": "bug", "color": "d73a4a" },
+      { "name": "ui", "color": "5319e7" }
+    ],
+    "comments": 6,
+    "minutesAgo": 22
+  },
+  {
+    "id": "di2",
+    "repo": "acme/api",
+    "num": 233,
+    "title": "Rate limit webhook retries with exponential backoff",
+    "state": "open",
+    "assignedToYou": true,
+    "labels": [{ "name": "enhancement", "color": "a2eeef" }],
+    "comments": 3,
+    "minutesAgo": 95
+  },
+  {
+    "id": "di3",
+    "repo": "acme/web",
+    "num": 408,
+    "title": "Add keyboard shortcuts to the command palette",
+    "state": "open",
+    "assignedToYou": false,
+    "labels": [{ "name": "good first issue", "color": "7057ff" }],
+    "comments": 1,
+    "minutesAgo": 240
+  },
+  {
+    "id": "di4",
+    "repo": "acme/mobile",
+    "num": 77,
+    "title": "Crash on launch when offline (iOS 17)",
+    "state": "open",
+    "assignedToYou": false,
+    "labels": [
+      { "name": "bug", "color": "d73a4a" },
+      { "name": "ios", "color": "0e8a16" }
+    ],
+    "comments": 12,
+    "minutesAgo": 600
+  },
+  {
+    "id": "di5",
+    "repo": "acme/api",
+    "num": 219,
+    "title": "Document the new pagination cursors",
+    "state": "closed",
+    "assignedToYou": false,
+    "labels": [{ "name": "docs", "color": "0075ca" }],
+    "comments": 2,
+    "minutesAgo": 1440
+  }
+]
