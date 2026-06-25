@@ -1655,34 +1655,239 @@ function SnippetsPage() {
   );
 }
 
+// ── Signatures (Direction A — inline accordion, matching Snippets) ──────────
+
+type SignatureDraft = { name: string; body: string };
+
+function signaturePreview(body: string): string {
+  return (
+    body.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() ||
+    "Empty signature"
+  );
+}
+
+function SignatureEditor({
+  draft,
+  onChange,
+  onSave,
+  onCancel,
+  saving,
+  error,
+}: {
+  draft: SignatureDraft;
+  onChange: (patch: Partial<SignatureDraft>) => void;
+  onSave: () => void;
+  onCancel: () => void;
+  saving: boolean;
+  error: string | null;
+}) {
+  const canSave = draft.name.trim().length > 0 && draft.body.trim().length > 0;
+  return (
+    <div className="border-t bg-muted/40 px-3.5 pt-3.5 pb-4">
+      <div className="mb-3 flex items-center gap-3">
+        <span className="font-mono text-[10.5px] font-medium tracking-[0.5px] text-muted-foreground/60 uppercase">
+          Name
+        </span>
+        <Input
+          value={draft.name}
+          onChange={(e) => onChange({ name: e.target.value })}
+          placeholder="Default"
+          className="h-8 w-52 bg-background"
+        />
+      </div>
+      <Textarea
+        value={draft.body}
+        onChange={(e) => onChange({ body: e.target.value })}
+        placeholder={"Best,\nAidan"}
+        rows={4}
+        className="bg-background"
+      />
+      {error && <p className="mt-2 text-[12px] text-destructive">{error}</p>}
+      <div className="mt-4 flex items-center justify-end gap-2">
+        <Button variant="ghost" size="sm" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button size="sm" disabled={!canSave || saving} onClick={onSave}>
+          {saving ? "Saving…" : "Save signature"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function SignatureRow({
+  signature,
+  isOpen,
+  draft,
+  onOpen,
+  onChange,
+  onSave,
+  onCancel,
+  saving,
+  error,
+  onDelete,
+}: {
+  signature: Signature;
+  isOpen: boolean;
+  draft: SignatureDraft;
+  onOpen: () => void;
+  onChange: (patch: Partial<SignatureDraft>) => void;
+  onSave: () => void;
+  onCancel: () => void;
+  saving: boolean;
+  error: string | null;
+  onDelete: () => void;
+}) {
+  return (
+    <div
+      className={cn(
+        "group overflow-hidden rounded-lg border transition-colors",
+        isOpen ? "border-input bg-muted/40" : "border-border",
+      )}
+    >
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: the per-row Edit button is the keyboard control; the row click is a pointer convenience. */}
+      <div
+        onClick={() => !isOpen && onOpen()}
+        className={cn(
+          "flex h-11 items-center gap-3 px-3 pr-2",
+          !isOpen && "cursor-pointer hover:bg-muted/40",
+        )}
+      >
+        <span className="shrink-0 text-[13px] font-medium text-foreground">
+          {signature.name}
+        </span>
+        <span className="min-w-0 flex-1 truncate text-[12.5px] text-muted-foreground/70">
+          {signaturePreview(signature.body)}
+        </span>
+        <div
+          className={cn(
+            "flex shrink-0 items-center gap-0.5 transition-opacity",
+            isOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+          )}
+        >
+          {!isOpen && (
+            <Hint label="Edit">
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={`Edit ${signature.name}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpen();
+                }}
+              >
+                <Pencil />
+              </Button>
+            </Hint>
+          )}
+          <Hint label="Delete">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={`Delete ${signature.name}`}
+              className="hover:text-label-red"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+            >
+              <Trash2 />
+            </Button>
+          </Hint>
+          {isOpen && (
+            <Hint label="Collapse">
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Collapse"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onCancel();
+                }}
+              >
+                <ChevronUpIcon />
+              </Button>
+            </Hint>
+          )}
+        </div>
+      </div>
+      {isOpen && (
+        <SignatureEditor
+          draft={draft}
+          onChange={onChange}
+          onSave={onSave}
+          onCancel={onCancel}
+          saving={saving}
+          error={error}
+        />
+      )}
+    </div>
+  );
+}
+
+function SignatureEmptyState({ onNew }: { onNew: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-3.5 px-6 py-14 text-center">
+      <span className="inline-flex size-11 items-center justify-center rounded-xl border bg-muted text-muted-foreground">
+        <SignatureIcon className="size-5" />
+      </span>
+      <div className="max-w-[340px]">
+        <div className="text-[15px] font-semibold text-foreground">
+          No signatures yet
+        </div>
+        <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted-foreground">
+          A sign-off appended to your messages. Create one, then assign it to any
+          of your connected accounts below.
+        </p>
+      </div>
+      <Button size="sm" className="gap-1.5" onClick={onNew}>
+        <PlusIcon />
+        New signature
+      </Button>
+    </div>
+  );
+}
+
+const NEW_SIGNATURE = "__new__";
+
 function SignaturesPage({ accounts }: { accounts: Account[] }) {
   const queryClient = useQueryClient();
   const { data, isLoading } = useSignaturesQuery(true);
   const signatures = data?.signatures ?? [];
   const assignments = data?.assignments ?? {};
 
-  const [name, setName] = useState("");
-  const [body, setBody] = useState("");
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<SignatureDraft>({ name: "", body: "" });
   const [error, setError] = useState<string | null>(null);
 
-  const reset = () => {
-    setEditingId(null);
-    setName("");
-    setBody("");
+  const close = () => {
+    setOpenId(null);
     setError(null);
   };
+  const openExisting = (s: Signature) => {
+    setOpenId(s.id);
+    setDraft({ name: s.name, body: s.body });
+    setError(null);
+  };
+  const openNew = () => {
+    setOpenId(NEW_SIGNATURE);
+    setDraft({ name: "", body: "" });
+    setError(null);
+  };
+  const patchDraft = (patch: Partial<SignatureDraft>) =>
+    setDraft((d) => ({ ...d, ...patch }));
 
   const save = useMutation({
     mutationFn: async () => {
+      const isNew = openId === NEW_SIGNATURE;
       const res = await fetch("/api/signatures", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          op: editingId ? "update" : "create",
-          id: editingId ?? undefined,
-          name,
-          body,
+          op: isNew ? "create" : "update",
+          id: isNew ? undefined : openId,
+          name: draft.name.trim(),
+          body: draft.body,
         }),
       });
       const d = (await res.json().catch(() => ({}))) as { error?: string };
@@ -1690,7 +1895,7 @@ function SignaturesPage({ accounts }: { accounts: Account[] }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: signaturesQueryKey });
-      reset();
+      close();
     },
     onError: (e: Error) => setError(e.message),
   });
@@ -1703,9 +1908,9 @@ function SignaturesPage({ accounts }: { accounts: Account[] }) {
         body: JSON.stringify({ op: "delete", id }),
       });
     },
-    onSuccess: () => {
+    onSuccess: (_d, id) => {
       queryClient.invalidateQueries({ queryKey: signaturesQueryKey });
-      if (editingId) reset();
+      if (openId === id) close();
     },
   });
 
@@ -1724,166 +1929,146 @@ function SignaturesPage({ accounts }: { accounts: Account[] }) {
       queryClient.invalidateQueries({ queryKey: signaturesQueryKey }),
   });
 
-  const startEdit = (s: Signature) => {
-    setEditingId(s.id);
-    setName(s.name);
-    setBody(s.body);
-    setError(null);
-  };
-
-  const canSave = name.trim().length > 0 && body.trim().length > 0;
-
   return (
     <Page
       title="Signatures"
-      description="Append a signature to messages, assigned per account"
+      description="A sign-off appended to your messages, assigned per account"
     >
-      <PageSection title="Your signatures">
-        {isLoading ? (
-          <span className="font-mono text-xs text-muted-foreground/60">…</span>
-        ) : signatures.length === 0 ? (
-          <p className="text-[13px] text-muted-foreground">
-            No signatures yet. Add one below.
-          </p>
-        ) : (
-          <div className="flex flex-col gap-1">
-            {signatures.map((s) => (
-              <div
-                key={s.id}
-                className="flex items-center gap-3 rounded-lg border px-3 py-2"
-              >
-                <span className="shrink-0 text-[13px] font-medium text-foreground">
-                  {s.name}
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-2.5">
+          {isLoading ? (
+            <span className="font-mono text-xs text-muted-foreground/60">…</span>
+          ) : signatures.length === 0 && openId !== NEW_SIGNATURE ? (
+            <SignatureEmptyState onNew={openNew} />
+          ) : (
+            <>
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-[10.5px] font-medium tracking-[0.5px] text-muted-foreground/60 uppercase">
+                  Your signatures
                 </span>
-                <span className="min-w-0 flex-1 truncate text-[12.5px] text-muted-foreground">
-                  {s.body}
-                </span>
-                <Hint label="Edit">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={`Edit ${s.name}`}
-                    onClick={() => startEdit(s)}
-                  >
-                    <Pencil />
-                  </Button>
-                </Hint>
-                <Hint label="Delete">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={`Delete ${s.name}`}
-                    disabled={remove.isPending}
-                    onClick={() => remove.mutate(s.id)}
-                  >
-                    <Trash2 />
-                  </Button>
-                </Hint>
+                <Button size="sm" className="gap-1.5" onClick={openNew}>
+                  <PlusIcon />
+                  New signature
+                </Button>
               </div>
-            ))}
-          </div>
-        )}
-      </PageSection>
-
-      <PageSection title={editingId ? "Edit signature" : "Add signature"}>
-        <div className="flex flex-col gap-3">
-          <Field label="Name">
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Default"
-              className="w-48"
-            />
-          </Field>
-          <Textarea
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            placeholder={"Best,\nAidan"}
-            rows={3}
-          />
-          {error && <p className="text-[12px] text-destructive">{error}</p>}
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              disabled={!canSave || save.isPending}
-              onClick={() => save.mutate()}
-            >
-              {save.isPending
-                ? "Saving…"
-                : editingId
-                  ? "Save changes"
-                  : "Add signature"}
-            </Button>
-            {editingId && (
-              <Button variant="ghost" size="sm" onClick={reset}>
-                Cancel
-              </Button>
-            )}
-          </div>
-        </div>
-      </PageSection>
-
-      <PageSection title="Per-account assignment">
-        {accounts.length === 0 ? (
-          <p className="text-[13px] text-muted-foreground">
-            No connected accounts.
-          </p>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {accounts.map((account) => {
-              const currentId = assignments[account.accountId] ?? null;
-              const current = signatures.find((s) => s.id === currentId);
-              return (
-                <Field key={account.accountId} label={account.email}>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      render={
-                        <Button variant="outline" size="sm" className="w-40" />
-                      }
-                    >
-                      <span className="flex-1 truncate text-left">
-                        {current ? current.name : "None"}
+              <div className="flex flex-col gap-2">
+                {openId === NEW_SIGNATURE && (
+                  <div className="overflow-hidden rounded-lg border border-input bg-muted/40">
+                    <div className="flex h-11 items-center gap-3 px-3">
+                      <span className="text-[13px] font-medium text-foreground">
+                        {draft.name || "Untitled"}
                       </span>
-                      <ChevronDownIcon />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-44">
-                      <DropdownMenuItem
-                        onClick={() =>
-                          assign.mutate({
-                            accountId: account.accountId,
-                            signatureId: null,
-                          })
+                      <span className="text-[12.5px] text-muted-foreground/60">
+                        New signature
+                      </span>
+                    </div>
+                    <SignatureEditor
+                      draft={draft}
+                      onChange={patchDraft}
+                      onSave={() => save.mutate()}
+                      onCancel={close}
+                      saving={save.isPending}
+                      error={error}
+                    />
+                  </div>
+                )}
+                {signatures.map((s) => (
+                  <SignatureRow
+                    key={s.id}
+                    signature={s}
+                    isOpen={openId === s.id}
+                    draft={draft}
+                    onOpen={() => openExisting(s)}
+                    onChange={patchDraft}
+                    onSave={() => save.mutate()}
+                    onCancel={close}
+                    saving={save.isPending}
+                    error={error}
+                    onDelete={() => remove.mutate(s.id)}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-2.5">
+          <span className="font-mono text-[10.5px] font-medium tracking-[0.5px] text-muted-foreground/60 uppercase">
+            Assigned per account
+          </span>
+          {accounts.length === 0 ? (
+            <p className="text-[13px] text-muted-foreground">
+              No connected accounts.
+            </p>
+          ) : (
+            <div className="flex flex-col gap-1.5">
+              {accounts.map((account) => {
+                const currentId = assignments[account.accountId] ?? null;
+                const current = signatures.find((s) => s.id === currentId);
+                return (
+                  <div
+                    key={account.accountId}
+                    className="flex items-center gap-3 rounded-lg border px-3 py-2"
+                  >
+                    <span className="min-w-0 flex-1 truncate font-mono text-[12.5px] text-muted-foreground">
+                      {account.email}
+                    </span>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        render={
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-40 shrink-0"
+                          />
                         }
                       >
-                        <span className="text-[13px]">None</span>
-                        {!currentId && (
-                          <CheckIcon className="ml-auto size-3.5 shrink-0 text-primary" />
-                        )}
-                      </DropdownMenuItem>
-                      {signatures.map((s) => (
+                        <span className="flex-1 truncate text-left">
+                          {current ? current.name : "None"}
+                        </span>
+                        <ChevronDownIcon className="text-muted-foreground/60" />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-44">
                         <DropdownMenuItem
-                          key={s.id}
                           onClick={() =>
                             assign.mutate({
                               accountId: account.accountId,
-                              signatureId: s.id,
+                              signatureId: null,
                             })
                           }
                         >
-                          <span className="truncate text-[13px]">{s.name}</span>
-                          {currentId === s.id && (
+                          <span className="text-[13px]">None</span>
+                          {!currentId && (
                             <CheckIcon className="ml-auto size-3.5 shrink-0 text-primary" />
                           )}
                         </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </Field>
-              );
-            })}
-          </div>
-        )}
-      </PageSection>
+                        {signatures.map((s) => (
+                          <DropdownMenuItem
+                            key={s.id}
+                            onClick={() =>
+                              assign.mutate({
+                                accountId: account.accountId,
+                                signatureId: s.id,
+                              })
+                            }
+                          >
+                            <span className="truncate text-[13px]">
+                              {s.name}
+                            </span>
+                            {currentId === s.id && (
+                              <CheckIcon className="ml-auto size-3.5 shrink-0 text-primary" />
+                            )}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
     </Page>
   );
 }
