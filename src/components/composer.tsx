@@ -533,7 +533,10 @@ export function Composer({
         inPane
           ? "h-full w-full"
           : // Full-screen on phones; the floating bottom-right popout on sm+.
-            "fixed inset-0 z-50 w-full rounded-none border-0 sm:inset-auto sm:right-5 sm:bottom-5 sm:z-40 sm:w-[520px] sm:max-w-[calc(100vw-2.5rem)] sm:rounded-xl sm:border sm:border-input sm:shadow-2xl",
+            // Soft blurred halo fading out from the edges so the popout lifts off
+            // the busy inbox behind it — a faint light glow (reads on dark) over a
+            // deep ambient shadow (reads on light).
+            "fixed inset-0 z-50 w-full rounded-none border-0 sm:inset-auto sm:right-5 sm:bottom-5 sm:z-40 sm:w-[520px] sm:max-w-[calc(100vw-2.5rem)] sm:rounded-xl sm:border sm:border-input sm:shadow-[0_24px_70px_-16px_rgba(0,0,0,0.7),0_0_46px_-4px_rgba(255,255,255,0.1)]",
       )}
     >
       <header
