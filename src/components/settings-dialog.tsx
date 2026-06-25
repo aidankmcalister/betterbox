@@ -1637,7 +1637,15 @@ function SignatureEditor({
   const canSave = draft.name.trim().length > 0 && draft.body.trim().length > 0;
   return (
     <div className="border-t bg-muted/40 px-3 py-3">
-      <div className="mb-2.5 flex items-center gap-2.5">
+      <Textarea
+        value={draft.body}
+        onChange={(e) => onChange({ body: e.target.value })}
+        placeholder={"Best,\nAidan"}
+        rows={3}
+        className="bg-background text-[12.5px]"
+      />
+      {error && <p className="mt-2 text-[12px] text-destructive">{error}</p>}
+      <div className="mt-3 flex items-center gap-2.5">
         <span className="font-mono text-[10px] font-medium tracking-[0.5px] text-muted-foreground/60 uppercase">
           Name
         </span>
@@ -1647,22 +1655,14 @@ function SignatureEditor({
           placeholder="Default"
           className="h-7 w-44 bg-background text-[12.5px]"
         />
-      </div>
-      <Textarea
-        value={draft.body}
-        onChange={(e) => onChange({ body: e.target.value })}
-        placeholder={"Best,\nAidan"}
-        rows={3}
-        className="bg-background text-[12.5px]"
-      />
-      {error && <p className="mt-2 text-[12px] text-destructive">{error}</p>}
-      <div className="mt-3 flex items-center justify-end gap-2">
-        <Button variant="ghost" size="sm" onClick={onCancel}>
-          Cancel
-        </Button>
-        <Button size="sm" disabled={!canSave || saving} onClick={onSave}>
-          {saving ? "Saving…" : "Save signature"}
-        </Button>
+        <div className="ml-auto flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button size="sm" disabled={!canSave || saving} onClick={onSave}>
+            {saving ? "Saving…" : "Save signature"}
+          </Button>
+        </div>
       </div>
     </div>
   );
