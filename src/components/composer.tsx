@@ -31,6 +31,7 @@ import {
 import { isTestAccount } from "@/lib/test-account";
 import { AccountDot } from "@/components/account-dot";
 import { RichTextEditor } from "@/components/rich-text-editor";
+import { serializeEmailHtml, type EmailNode } from "@/lib/email/serialize";
 import { useSnippetMap } from "@/hooks/use-snippets";
 import {
   appendSignature,
@@ -129,6 +130,10 @@ export function Composer({
   // Files staged for this message, read to base64 in the browser.
   const [files, setFiles] = useState<StagedFile[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // The editor's live document model (TipTap JSON), serialized to email-safe
+  // HTML on send/preview. Re-emitted by the editor on mount, so it survives the
+  // composer remounting between the board pane and the popout.
+  const [bodyDoc, setBodyDoc] = useState<EmailNode | null>(null);
 
   // From: an explicit pick (fromId) wins; otherwise the configured default
   // send-from account, then the primary inbox, then the first sendable one.
@@ -159,6 +164,16 @@ export function Composer({
     accountSig && !signatureSkipped
       ? appendSignature(body, accountSig.body)
       : body;
+  // Send + preview go through the email-safe serializer (TipTap doc → table-based,
+  // inlined, send-safe HTML). Drafts keep the raw editor HTML above, since the
+  // editor has no table nodes to parse the serialized form back into. Falls back
+  // to the raw body only if the editor hasn't emitted a doc yet (never on a
+  // user-initiated send — the editor emits on mount).
+  const emailSafeBody = bodyDoc ? serializeEmailHtml(bodyDoc) : body;
+  const emailSafeHtml =
+    accountSig && !signatureSkipped
+      ? appendSignature(emailSafeBody, accountSig.body)
+      : emailSafeBody;
 
   if (!open) return null;
 
@@ -192,6 +207,7 @@ export function Composer({
     setSending(false);
     setPreview(false);
     setFiles([]);
+    setBodyDoc(null);
     setSignatureSkipped(false);
     onOpenChange(false);
   };
@@ -267,7 +283,7 @@ export function Composer({
         cc: cc.trim() || undefined,
         subject,
         body: "",
-        html: outgoingHtml,
+        html: emailSafeHtml,
         inReplyTo: reply?.inReplyTo,
         references: reply?.references,
         threadId: reply?.threadId,
@@ -452,11 +468,12 @@ export function Composer({
         )}
       >
         {preview ? (
-          <PreviewBody html={outgoingHtml} minHeight={inPane ? 320 : 200} />
+          <PreviewBody html={emailSafeHtml} minHeight={inPane ? 320 : 200} />
         ) : (
           <RichTextEditor
             value={body}
             onChange={(next) => onContentChange({ body: next })}
+            onDocChange={setBodyDoc}
             snippets={snippets}
             placeholder="Write your message…"
             minHeight={inPane ? 320 : 200}

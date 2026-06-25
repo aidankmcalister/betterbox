@@ -20,6 +20,7 @@ import { Hint } from "@/components/ui/tooltip";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { cn } from "@/lib/utils";
 import { SlashCommand } from "@/components/editor-slash-commands";
+import type { EmailNode } from "@/lib/email/serialize";
 
 /**
  * Reusable rich-text editor for compose + reply. Tiptap (ProseMirror) under the
@@ -30,6 +31,7 @@ import { SlashCommand } from "@/components/editor-slash-commands";
 export function RichTextEditor({
   value,
   onChange,
+  onDocChange,
   placeholder = "Write something…",
   onSubmit,
   autoFocus = false,
@@ -39,6 +41,9 @@ export function RichTextEditor({
 }: {
   value: string;
   onChange: (html: string) => void;
+  /** The editor's document model (TipTap JSON) — what the email-safe serializer
+   *  consumes on send. Emitted on create, edit, and external value sync. */
+  onDocChange?: (doc: EmailNode) => void;
   placeholder?: string;
   /** Cmd/Ctrl+Enter handler (e.g. send). */
   onSubmit?: () => void;
@@ -91,8 +96,12 @@ export function RichTextEditor({
         return false;
       },
     },
+    onCreate: ({ editor }) => {
+      onDocChange?.(editor.getJSON() as EmailNode);
+    },
     onUpdate: ({ editor }) => {
       onChange(editor.isEmpty ? "" : editor.getHTML());
+      onDocChange?.(editor.getJSON() as EmailNode);
     },
   });
 
@@ -106,8 +115,9 @@ export function RichTextEditor({
     const current = editor.isEmpty ? "" : editor.getHTML();
     if (value !== current) {
       editor.commands.setContent(value || "", { emitUpdate: false });
+      onDocChange?.(editor.getJSON() as EmailNode);
     }
-  }, [value, editor]);
+  }, [value, editor, onDocChange]);
 
   if (!editor) return null;
 
