@@ -2,6 +2,7 @@ import {
   forwardRef,
   useEffect,
   useImperativeHandle,
+  useRef,
   useState,
 } from "react";
 import { Extension, type Editor, type Range } from "@tiptap/core";
@@ -27,6 +28,13 @@ import {
 
 import { cn } from "@/lib/utils";
 import { insertSnippet } from "@/components/editor-fill-fields";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 
 /**
  * Notion-style `/` command menu for the composer. A single registry backs it:
@@ -166,14 +174,40 @@ function filterCommands(
 
 type SlashMenuRef = { onKeyDown: (props: SuggestionKeyDownProps) => boolean };
 
+const GROUPS: SlashCommand["group"][] = ["Basic blocks", "Snippets"];
+
 const SlashMenuList = forwardRef<
   SlashMenuRef,
   { items: SlashCommand[]; command: (item: SlashCommand) => void }
 >(({ items, command }, ref) => {
-  const [selected, setSelected] = useState(0);
+  // The editor keeps focus, so cmdk can't read the keys itself — Tiptap's
+  // suggestion keymap drives cmdk's selection via the controlled `value`, and
+  // cmdk handles the highlight + scrolling the active item into view.
+  const [value, setValue] = useState(items[0]?.id ?? "");
+  const listRef = useRef<HTMLDivElement>(null);
 
   // Reset the highlight whenever the filtered set changes.
-  useEffect(() => setSelected(0), [items]);
+  useEffect(() => setValue(items[0]?.id ?? ""), [items]);
+  // Keep the selected row visible. Run after cmdk's own scroll + layout (rAF)
+  // and target the row by id so timing on cmdk's data-selected never matters.
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => {
+      if (!value) return;
+      listRef.current
+        ?.querySelector(`[data-cmd-id="${CSS.escape(value)}"]`)
+        ?.scrollIntoView({ block: "nearest" });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [value]);
+
+  const move = (delta: number) => {
+    const i = Math.max(
+      0,
+      items.findIndex((c) => c.id === value),
+    );
+    const next = items[Math.min(items.length - 1, Math.max(0, i + delta))];
+    if (next) setValue(next.id);
+  };
 
   useImperativeHandle(
     ref,
@@ -181,78 +215,84 @@ const SlashMenuList = forwardRef<
       onKeyDown: ({ event }) => {
         if (items.length === 0) return false;
         if (event.key === "ArrowDown") {
-          setSelected((s) => Math.min(s + 1, items.length - 1));
+          move(1);
           return true;
         }
         if (event.key === "ArrowUp") {
-          setSelected((s) => Math.max(s - 1, 0));
+          move(-1);
           return true;
         }
         if (event.key === "Enter" || event.key === "Tab") {
-          const item = items[selected];
+          const item = items.find((c) => c.id === value);
           if (item) command(item);
           return true;
         }
         return false;
       },
     }),
-    [items, selected, command],
+    [items, value, command],
   );
 
-  if (items.length === 0) {
-    return (
-      <div className="w-72 max-w-[calc(100vw-1rem)] rounded-lg border bg-popover p-2 text-[12px] text-muted-foreground shadow-xl ring-1 ring-foreground/10">
-        No matches
-      </div>
-    );
-  }
-
   return (
-    <div className="max-h-72 w-72 max-w-[calc(100vw-1rem)] overflow-y-auto rounded-lg border bg-popover p-1 shadow-xl ring-1 ring-foreground/10">
-      {items.map((item, i) => {
-        const showHeader = i === 0 || items[i - 1].group !== item.group;
-        const Icon = item.icon;
-        return (
-          <div key={item.id}>
-            {showHeader && (
-              <div className="px-1.5 pt-1.5 pb-0.5 font-mono text-[9.5px] font-medium tracking-[0.5px] text-muted-foreground/60 uppercase">
-                {item.group}
-              </div>
-            )}
-            <button
-              type="button"
-              // The editor keeps focus; prevent the mousedown from stealing it.
-              onMouseDown={(e) => e.preventDefault()}
-              onMouseEnter={() => setSelected(i)}
-              onClick={() => command(item)}
-              className={cn(
-                "flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left",
-                i === selected && "bg-accent text-accent-foreground",
-              )}
+    <Command
+      shouldFilter={false}
+      value={value}
+      onValueChange={setValue}
+      // The editor keeps focus — don't let a click in the menu blur it (which
+      // would close the popup before onSelect fires).
+      onMouseDown={(e) => e.preventDefault()}
+      className="h-auto w-72 max-w-[calc(100vw-1rem)] border shadow-xl ring-1 ring-foreground/10"
+    >
+      <CommandList ref={listRef}>
+        <CommandEmpty className="px-2 py-3 text-left text-[12px] text-muted-foreground">
+          No matches
+        </CommandEmpty>
+        {GROUPS.map((group) => {
+          const groupItems = items.filter((c) => c.group === group);
+          if (groupItems.length === 0) return null;
+          return (
+            <CommandGroup
+              key={group}
+              heading={group}
+              className="**:[[cmdk-group-heading]]:px-1.5 **:[[cmdk-group-heading]]:pt-1.5 **:[[cmdk-group-heading]]:pb-0.5 **:[[cmdk-group-heading]]:font-mono **:[[cmdk-group-heading]]:text-[9.5px] **:[[cmdk-group-heading]]:tracking-[0.5px] **:[[cmdk-group-heading]]:text-muted-foreground/60 **:[[cmdk-group-heading]]:uppercase"
             >
-              <span className="flex size-5 shrink-0 items-center justify-center rounded-[5px] border bg-background text-muted-foreground [&_svg]:size-3">
-                <Icon />
-              </span>
-              <span className="min-w-0 flex-1 leading-tight">
-                <span
-                  className={cn(
-                    "block truncate text-[12.5px] text-foreground",
-                    item.group === "Snippets" && "font-mono text-primary",
-                  )}
-                >
-                  {item.title}
-                </span>
-                {item.subtitle && (
-                  <span className="block truncate text-[11px] text-muted-foreground/80">
-                    {item.subtitle}
-                  </span>
-                )}
-              </span>
-            </button>
-          </div>
-        );
-      })}
-    </div>
+              {groupItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <CommandItem
+                    key={item.id}
+                    value={item.id}
+                    data-cmd-id={item.id}
+                    onSelect={() => command(item)}
+                    className="gap-2 px-1.5 py-1"
+                  >
+                    <span className="flex size-5 shrink-0 items-center justify-center rounded-[5px] border bg-background text-muted-foreground [&_svg]:size-3">
+                      <Icon />
+                    </span>
+                    <span className="min-w-0 flex-1 leading-tight">
+                      <span
+                        className={cn(
+                          "block truncate text-[12.5px] text-foreground",
+                          item.group === "Snippets" &&
+                            "font-mono text-primary",
+                        )}
+                      >
+                        {item.title}
+                      </span>
+                      {item.subtitle && (
+                        <span className="block truncate text-[11px] text-muted-foreground/80">
+                          {item.subtitle}
+                        </span>
+                      )}
+                    </span>
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+          );
+        })}
+      </CommandList>
+    </Command>
   );
 });
 SlashMenuList.displayName = "SlashMenuList";
