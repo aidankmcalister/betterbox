@@ -25,6 +25,32 @@ export function useSignaturesQuery(enabled = true) {
   });
 }
 
+export const gmailSignatureQueryKey = (accountId?: string, email?: string) =>
+  ["gmail-signature", accountId, email] as const;
+
+/** The account's native Gmail signature HTML (set in Gmail Settings, images and
+ *  all). Empty string when unset or the settings scope isn't granted yet. */
+export function useGmailSignatureQuery(
+  accountId: string | undefined,
+  email: string | undefined,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: gmailSignatureQueryKey(accountId, email),
+    queryFn: async (): Promise<string> => {
+      const params = new URLSearchParams();
+      if (accountId) params.set("accountId", accountId);
+      if (email) params.set("email", email);
+      const res = await fetch(`/api/gmail-signature?${params}`);
+      if (!res.ok) return "";
+      const data = (await res.json()) as { signature?: string };
+      return data.signature ?? "";
+    },
+    enabled: enabled && !!accountId,
+    staleTime: 5 * 60_000,
+  });
+}
+
 /** Plain-text signature → a single HTML paragraph, line breaks preserved and
  *  HTML-escaped so user text can't inject markup. */
 function signatureToHtml(text: string): string {
@@ -44,6 +70,20 @@ export function appendSignature(bodyHtml: string, sigText: string): string {
     "",
   );
   const sig = signatureToHtml(sigText);
+  return trimmed.trim() === "" ? sig : `${trimmed}<p></p>${sig}`;
+}
+
+/** Append an already-HTML signature (e.g. the native Gmail one) with exactly one
+ *  blank line above it. The signature HTML is Gmail-authored, so it's email-safe
+ *  as-is — no escaping or serializing. Trailing empty paragraphs are trimmed
+ *  first; an empty message yields just the signature. */
+export function appendSignatureHtml(bodyHtml: string, sigHtml: string): string {
+  const sig = sigHtml.trim();
+  const trimmed = bodyHtml.replace(
+    /(?:<p>(?:\s|&nbsp;|<br\s*\/?>)*<\/p>\s*)+$/gi,
+    "",
+  );
+  if (!sig) return trimmed;
   return trimmed.trim() === "" ? sig : `${trimmed}<p></p>${sig}`;
 }
 

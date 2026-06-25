@@ -77,7 +77,9 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useSnippetMap } from "@/hooks/use-snippets";
 import {
   appendSignature,
+  appendSignatureHtml,
   resolveAccountSignature,
+  useGmailSignatureQuery,
   useSignaturesQuery,
 } from "@/hooks/use-signatures";
 import { Composer, type ComposerContent } from "@/components/composer";
@@ -949,16 +951,23 @@ function ReaderPane({
   // Signature: shown as a read-only block below the reply editor and appended to
   // the outgoing HTML on send — unless removed for this reply.
   const sigData = useSignaturesQuery(replyOpen).data;
-  const accountSig = resolveAccountSignature(sigData, accountId);
+  const dbSig = resolveAccountSignature(sigData, accountId);
+  const replyEmail = accounts.find((a) => a.accountId === accountId)?.email;
+  const gmailSig =
+    useGmailSignatureQuery(accountId, replyEmail, replyOpen).data ?? "";
+  const useGmailSig = gmailSig.length > 0;
   const [signatureSkipped, setSignatureSkipped] = useState(false);
   useEffect(() => {
     if (replyOpen) setSignatureSkipped(false);
   }, [replyOpen]);
-  const showSignature = accountSig !== null && !signatureSkipped;
-  const replyOutgoingHtml =
-    accountSig && !signatureSkipped
-      ? appendSignature(replyBody, accountSig.body)
-      : replyBody;
+  const showSignature = (useGmailSig || dbSig !== null) && !signatureSkipped;
+  const replyOutgoingHtml = !showSignature
+    ? replyBody
+    : useGmailSig
+      ? appendSignatureHtml(replyBody, gmailSig)
+      : dbSig
+        ? appendSignature(replyBody, dbSig.body)
+        : replyBody;
   const [replySent, setReplySent] = useState(false);
   const replyRef = useRef<HTMLDivElement>(null);
 
@@ -1398,7 +1407,7 @@ function ReaderPane({
                     autoFocus
                     minHeight={120}
                   />
-                  {showSignature && accountSig && (
+                  {showSignature && (
                     <div className="mt-2 border-t pt-2">
                       <div className="mb-1 flex items-center justify-between">
                         <span className="font-mono text-[10px] tracking-[0.5px] text-muted-foreground/60 uppercase">
@@ -1413,9 +1422,15 @@ function ReaderPane({
                           <XIcon className="size-3.5" />
                         </button>
                       </div>
-                      <div className="whitespace-pre-line text-[13px] leading-[1.6] text-muted-foreground">
-                        {accountSig.body}
-                      </div>
+                      {useGmailSig ? (
+                        <div className="overflow-hidden rounded-md border">
+                          <HtmlBody html={gmailSig} accountId={accountId} />
+                        </div>
+                      ) : (
+                        <div className="whitespace-pre-line text-[13px] leading-[1.6] text-muted-foreground">
+                          {dbSig?.body}
+                        </div>
+                      )}
                     </div>
                   )}
                   <div className="mt-2 flex items-center gap-2">

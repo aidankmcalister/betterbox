@@ -91,6 +91,39 @@ export async function getEmailAddress(accessToken: string): Promise<string> {
   return emailAddress ?? "";
 }
 
+/**
+ * The account's native Gmail signature HTML (the one set in Gmail Settings,
+ * images and all). Gmail doesn't auto-append it to API sends, so we read it via
+ * the sendAs settings and append it ourselves. Prefers the send-as identity
+ * matching `email`, else the default/primary one. Empty string when unset.
+ * Needs the gmail.settings.basic scope.
+ */
+export async function getGmailSignature(
+  accessToken: string,
+  email?: string,
+): Promise<string> {
+  const res = await gmailFetch(accessToken, "/settings/sendAs");
+  if (!res.ok) return "";
+  const { sendAs } = (await res.json()) as {
+    sendAs?: {
+      sendAsEmail?: string;
+      signature?: string;
+      isPrimary?: boolean;
+      isDefault?: boolean;
+    }[];
+  };
+  if (!sendAs?.length) return "";
+  const match =
+    (email &&
+      sendAs.find(
+        (s) => s.sendAsEmail?.toLowerCase() === email.toLowerCase(),
+      )) ||
+    sendAs.find((s) => s.isDefault) ||
+    sendAs.find((s) => s.isPrimary) ||
+    sendAs[0];
+  return match?.signature?.trim() ?? "";
+}
+
 export async function getInboxUnread(accessToken: string): Promise<number> {
   const res = await gmailFetch(accessToken, "/labels/INBOX");
   if (!res.ok) return 0;

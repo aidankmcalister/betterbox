@@ -26,7 +26,12 @@ export const auth = betterAuth({
       clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
       accessType: "offline",
       prompt: "select_account consent",
-      scope: ["https://www.googleapis.com/auth/gmail.modify"],
+      scope: [
+        "https://www.googleapis.com/auth/gmail.modify",
+        // Read the account's native Gmail signature (per send-as identity),
+        // images and all — we mirror it instead of building our own.
+        "https://www.googleapis.com/auth/gmail.settings.basic",
+      ],
     },
     github: {
       clientId: process.env.GITHUB_CLIENT_ID as string,

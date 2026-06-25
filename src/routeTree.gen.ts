@@ -21,6 +21,7 @@ import { Route as ApiPullRequestsRouteImport } from './routes/api/pull-requests'
 import { Route as ApiMessageRouteImport } from './routes/api/message'
 import { Route as ApiLabelsRouteImport } from './routes/api/labels'
 import { Route as ApiImageProxyRouteImport } from './routes/api/image-proxy'
+import { Route as ApiGmailSignatureRouteImport } from './routes/api/gmail-signature'
 import { Route as ApiGithubIssuesRouteImport } from './routes/api/github-issues'
 import { Route as ApiEmailsRouteImport } from './routes/api/emails'
 import { Route as ApiDraftRouteImport } from './routes/api/draft'
@@ -96,6 +97,11 @@ const ApiLabelsRoute = ApiLabelsRouteImport.update({
 const ApiImageProxyRoute = ApiImageProxyRouteImport.update({
   id: '/api/image-proxy',
   path: '/api/image-proxy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiGmailSignatureRoute = ApiGmailSignatureRouteImport.update({
+  id: '/api/gmail-signature',
+  path: '/api/gmail-signature',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiGithubIssuesRoute = ApiGithubIssuesRouteImport.update({
@@ -203,6 +209,7 @@ export interface FileRoutesByFullPath {
   '/api/draft': typeof ApiDraftRoute
   '/api/emails': typeof ApiEmailsRoute
   '/api/github-issues': typeof ApiGithubIssuesRoute
+  '/api/gmail-signature': typeof ApiGmailSignatureRoute
   '/api/image-proxy': typeof ApiImageProxyRoute
   '/api/labels': typeof ApiLabelsRoute
   '/api/message': typeof ApiMessageRoute
@@ -232,6 +239,7 @@ export interface FileRoutesByTo {
   '/api/draft': typeof ApiDraftRoute
   '/api/emails': typeof ApiEmailsRoute
   '/api/github-issues': typeof ApiGithubIssuesRoute
+  '/api/gmail-signature': typeof ApiGmailSignatureRoute
   '/api/image-proxy': typeof ApiImageProxyRoute
   '/api/labels': typeof ApiLabelsRoute
   '/api/message': typeof ApiMessageRoute
@@ -264,6 +272,7 @@ export interface FileRoutesById {
   '/api/draft': typeof ApiDraftRoute
   '/api/emails': typeof ApiEmailsRoute
   '/api/github-issues': typeof ApiGithubIssuesRoute
+  '/api/gmail-signature': typeof ApiGmailSignatureRoute
   '/api/image-proxy': typeof ApiImageProxyRoute
   '/api/labels': typeof ApiLabelsRoute
   '/api/message': typeof ApiMessageRoute
@@ -297,6 +306,7 @@ export interface FileRouteTypes {
     | '/api/draft'
     | '/api/emails'
     | '/api/github-issues'
+    | '/api/gmail-signature'
     | '/api/image-proxy'
     | '/api/labels'
     | '/api/message'
@@ -326,6 +336,7 @@ export interface FileRouteTypes {
     | '/api/draft'
     | '/api/emails'
     | '/api/github-issues'
+    | '/api/gmail-signature'
     | '/api/image-proxy'
     | '/api/labels'
     | '/api/message'
@@ -357,6 +368,7 @@ export interface FileRouteTypes {
     | '/api/draft'
     | '/api/emails'
     | '/api/github-issues'
+    | '/api/gmail-signature'
     | '/api/image-proxy'
     | '/api/labels'
     | '/api/message'
@@ -379,6 +391,7 @@ export interface RootRouteChildren {
   ApiDraftRoute: typeof ApiDraftRoute
   ApiEmailsRoute: typeof ApiEmailsRoute
   ApiGithubIssuesRoute: typeof ApiGithubIssuesRoute
+  ApiGmailSignatureRoute: typeof ApiGmailSignatureRoute
   ApiImageProxyRoute: typeof ApiImageProxyRoute
   ApiLabelsRoute: typeof ApiLabelsRoute
   ApiMessageRoute: typeof ApiMessageRoute
@@ -474,6 +487,13 @@ declare module '@tanstack/react-router' {
       path: '/api/image-proxy'
       fullPath: '/api/image-proxy'
       preLoaderRoute: typeof ApiImageProxyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/gmail-signature': {
+      id: '/api/gmail-signature'
+      path: '/api/gmail-signature'
+      fullPath: '/api/gmail-signature'
+      preLoaderRoute: typeof ApiGmailSignatureRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/github-issues': {
@@ -639,6 +659,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiDraftRoute: ApiDraftRoute,
   ApiEmailsRoute: ApiEmailsRoute,
   ApiGithubIssuesRoute: ApiGithubIssuesRoute,
+  ApiGmailSignatureRoute: ApiGmailSignatureRoute,
   ApiImageProxyRoute: ApiImageProxyRoute,
   ApiLabelsRoute: ApiLabelsRoute,
   ApiMessageRoute: ApiMessageRoute,

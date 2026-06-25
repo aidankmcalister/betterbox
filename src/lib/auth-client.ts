@@ -16,7 +16,10 @@ export const signInWithGithub = () =>
 export const linkGoogle = () =>
   authClient.linkSocial({
     provider: "google",
-    scopes: ["https://www.googleapis.com/auth/gmail.modify"],
+    scopes: [
+      "https://www.googleapis.com/auth/gmail.modify",
+      "https://www.googleapis.com/auth/gmail.settings.basic",
+    ],
   });
 
 // Link a GitHub account to the signed-in user (not a new account) so the Pull

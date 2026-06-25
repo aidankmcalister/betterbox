@@ -39,9 +39,12 @@ import { countFillFields } from "@/components/editor-fill-fields";
 import { useSnippetMap } from "@/hooks/use-snippets";
 import {
   appendSignature,
+  appendSignatureHtml,
   resolveAccountSignature,
+  useGmailSignatureQuery,
   useSignaturesQuery,
 } from "@/hooks/use-signatures";
+import { HtmlBody } from "@/components/html-body";
 import { Button } from "@/components/ui/button";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { Hint } from "@/components/ui/tooltip";
@@ -208,27 +211,34 @@ export function Composer({
   // can't be edited) and appended to the outgoing HTML at send/draft — unless the
   // user removes it for this message. The skip resets when the From account
   // changes, since that changes the signature.
+  // The account's native Gmail signature (rich + images) is the source of truth
+  // when set; a BetterBox DB signature is only a fallback for accounts without
+  // one. The Gmail HTML is Gmail-authored, so it's email-safe as-is.
   const sigData = useSignaturesQuery(open).data;
-  const accountSig = open
-    ? resolveAccountSignature(sigData, from?.accountId)
-    : null;
+  const dbSig = open ? resolveAccountSignature(sigData, from?.accountId) : null;
+  const gmailSig =
+    useGmailSignatureQuery(from?.accountId, from?.email, open).data ?? "";
+  const useGmailSig = gmailSig.length > 0;
+
   const [signatureSkipped, setSignatureSkipped] = useState(false);
   useEffect(() => setSignatureSkipped(false), [from?.accountId]);
-  const showSignature = accountSig !== null && !signatureSkipped;
-  const outgoingHtml =
-    accountSig && !signatureSkipped
-      ? appendSignature(body, accountSig.body)
-      : body;
+  const showSignature = (useGmailSig || dbSig !== null) && !signatureSkipped;
+
+  const appendSig = (html: string) =>
+    useGmailSig
+      ? appendSignatureHtml(html, gmailSig)
+      : dbSig
+        ? appendSignature(html, dbSig.body)
+        : html;
+
+  const outgoingHtml = showSignature ? appendSig(body) : body;
   // Send + preview go through the email-safe serializer (TipTap doc → table-based,
   // inlined, send-safe HTML). Drafts keep the raw editor HTML above, since the
   // editor has no table nodes to parse the serialized form back into. Falls back
   // to the raw body only if the editor hasn't emitted a doc yet (never on a
   // user-initiated send — the editor emits on mount).
   const emailSafeBody = bodyDoc ? serializeEmailHtml(bodyDoc) : body;
-  const emailSafeHtml =
-    accountSig && !signatureSkipped
-      ? appendSignature(emailSafeBody, accountSig.body)
-      : emailSafeBody;
+  const emailSafeHtml = showSignature ? appendSig(emailSafeBody) : emailSafeBody;
 
   // Debounced autosave to Gmail Drafts. Fresh composes only — editing an
   // existing draft is skipped (we don't resolve its Gmail draft id, so a save
@@ -707,7 +717,7 @@ export function Composer({
         )}
       </div>
 
-      {!preview && showSignature && accountSig && (
+      {!preview && showSignature && (
         <div className="border-t px-3.5 py-2">
           <div className="mb-1 flex items-center justify-between">
             <span className="font-mono text-[10px] tracking-[0.5px] text-muted-foreground/60 uppercase">
@@ -722,9 +732,17 @@ export function Composer({
               <XIcon className="size-3.5" />
             </button>
           </div>
-          <div className="whitespace-pre-line text-[13px] leading-[1.6] text-muted-foreground">
-            {accountSig.body}
-          </div>
+          {useGmailSig ? (
+            // Render the Gmail signature as it'll actually send — on a white
+            // canvas, images proxied — via the shared email renderer.
+            <div className="overflow-hidden rounded-md border">
+              <HtmlBody html={gmailSig} accountId={from?.accountId} />
+            </div>
+          ) : (
+            <div className="whitespace-pre-line text-[13px] leading-[1.6] text-muted-foreground">
+              {dbSig?.body}
+            </div>
+          )}
         </div>
       )}
 
