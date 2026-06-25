@@ -47,6 +47,7 @@ export function RichTextEditor({
   onSubmit,
   autoFocus = false,
   minHeight = 120,
+  compact = false,
   className,
   snippets,
   variables,
@@ -63,6 +64,8 @@ export function RichTextEditor({
   onSubmit?: () => void;
   autoFocus?: boolean;
   minHeight?: number;
+  /** Denser toolbar + body for tight contexts (e.g. the settings snippet editor). */
+  compact?: boolean;
   className?: string;
   /** trigger → text map; typing a trigger + space expands it inline. */
   snippets?: Record<string, string>;
@@ -107,7 +110,10 @@ export function RichTextEditor({
       transformPastedHTML: (html) => sanitizePastedHtml(html),
       attributes: {
         class: cn(
-          "tiptap prose-email max-w-none px-3.5 py-3 text-[13px] leading-[1.6] text-foreground outline-none",
+          "tiptap prose-email max-w-none text-foreground outline-none",
+          compact
+            ? "px-3 py-2 text-[12.5px] leading-[1.55]"
+            : "px-3.5 py-3 text-[13px] leading-[1.6]",
         ),
         style: `min-height:${minHeight}px`,
       },
@@ -163,7 +169,7 @@ export function RichTextEditor({
         className,
       )}
     >
-      <Toolbar editor={editor} />
+      <Toolbar editor={editor} compact={compact} />
       {/* flex-1 so the editable surface fills the box's height when the parent
           gives it one (compose pane / full-screen mobile composer). */}
       <EditorContent
@@ -174,7 +180,7 @@ export function RichTextEditor({
   );
 }
 
-function Toolbar({ editor }: { editor: Editor }) {
+function Toolbar({ editor, compact }: { editor: Editor; compact?: boolean }) {
   const setLink = () => {
     const prev = editor.getAttributes("link").href as string | undefined;
     const url = window.prompt("Link URL", prev ?? "https://");
@@ -187,7 +193,12 @@ function Toolbar({ editor }: { editor: Editor }) {
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-0.5 border-b px-1.5 py-1">
+    <div
+      className={cn(
+        "flex flex-wrap items-center gap-0.5 border-b px-1.5 py-1",
+        compact && "px-1 py-0.5 [&_button>svg]:size-3.5 [&_button]:size-6",
+      )}
+    >
       <Btn
         label="Bold"
         keys={["⌘", "B"]}

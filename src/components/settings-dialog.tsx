@@ -1255,9 +1255,9 @@ function SnippetEditor({
   const canSave = draft.trigger.trim().length > 1 && !triggerError && !bodyEmpty;
 
   return (
-    <div className="border-t bg-muted/40 px-3 pt-3 pb-3.5">
-      <div className="mb-3 flex items-center gap-3">
-        <span className="font-mono text-[10.5px] font-medium tracking-[0.5px] text-muted-foreground/60 uppercase">
+    <div className="border-t bg-muted/40 px-3 py-3">
+      <div className="mb-2.5 flex items-center gap-2.5">
+        <span className="font-mono text-[10px] font-medium tracking-[0.5px] text-muted-foreground/60 uppercase">
           Trigger
         </span>
         <input
@@ -1271,36 +1271,34 @@ function SnippetEditor({
           spellCheck={false}
           autoComplete="off"
           className={cn(
-            "h-8 w-52 rounded-md border bg-background px-2.5 font-mono text-[13.5px] outline-none focus:border-ring/60",
+            "h-7 w-40 rounded-md border bg-background px-2 font-mono text-[12.5px] outline-none focus:border-ring/60",
             triggerError && "border-label-red/55",
           )}
         />
-        <span
-          className={cn(
-            "font-mono text-[10.5px]",
-            triggerError ? "text-label-red" : "text-muted-foreground/60",
-          )}
-        >
-          {triggerError ?? "type this in the composer to expand"}
-        </span>
-      </div>
-      <div className="mb-2 flex justify-end">
-        <InsertFieldMenu
-          onInsert={(t) => editor?.chain().focus().insertContent(t).run()}
-        />
+        {triggerError && (
+          <span className="font-mono text-[10px] text-label-red">
+            {triggerError}
+          </span>
+        )}
+        <div className="ml-auto">
+          <InsertFieldMenu
+            onInsert={(t) => editor?.chain().focus().insertContent(t).run()}
+          />
+        </div>
       </div>
       <RichTextEditor
         value={draft.text}
         onChange={(text) => onChange({ text })}
         onEditorReady={setEditor}
-        placeholder="Write the reply — bold, code, lists, and insert a field for fill-ins…"
-        minHeight={120}
+        placeholder="Write the reply — insert a field for fill-ins…"
+        minHeight={84}
+        compact
       />
-      <div className="mt-3.5">
+      <div className="mt-2.5">
         <SnippetPreview html={draft.text} />
       </div>
       {error && <p className="mt-2 text-[12px] text-destructive">{error}</p>}
-      <div className="mt-4 flex items-center justify-end gap-2">
+      <div className="mt-3 flex items-center justify-end gap-2">
         <Button variant="ghost" size="sm" onClick={onCancel}>
           Cancel
         </Button>
@@ -1638,27 +1636,27 @@ function SignatureEditor({
 }) {
   const canSave = draft.name.trim().length > 0 && draft.body.trim().length > 0;
   return (
-    <div className="border-t bg-muted/40 px-3 pt-3 pb-3.5">
-      <div className="mb-3 flex items-center gap-3">
-        <span className="font-mono text-[10.5px] font-medium tracking-[0.5px] text-muted-foreground/60 uppercase">
+    <div className="border-t bg-muted/40 px-3 py-3">
+      <div className="mb-2.5 flex items-center gap-2.5">
+        <span className="font-mono text-[10px] font-medium tracking-[0.5px] text-muted-foreground/60 uppercase">
           Name
         </span>
         <Input
           value={draft.name}
           onChange={(e) => onChange({ name: e.target.value })}
           placeholder="Default"
-          className="h-8 w-52 bg-background"
+          className="h-7 w-44 bg-background text-[12.5px]"
         />
       </div>
       <Textarea
         value={draft.body}
         onChange={(e) => onChange({ body: e.target.value })}
         placeholder={"Best,\nAidan"}
-        rows={4}
-        className="bg-background"
+        rows={3}
+        className="bg-background text-[12.5px]"
       />
       {error && <p className="mt-2 text-[12px] text-destructive">{error}</p>}
-      <div className="mt-4 flex items-center justify-end gap-2">
+      <div className="mt-3 flex items-center justify-end gap-2">
         <Button variant="ghost" size="sm" onClick={onCancel}>
           Cancel
         </Button>
