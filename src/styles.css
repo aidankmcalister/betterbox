@@ -376,6 +376,7 @@ body.bm-dragging {
    (dashed outline, text cursor) so it reads as "type here", not an error. The
    current stop (selected) fills solid with the accent. */
 .tiptap .fill-field {
+  position: relative;
   border-radius: 5px;
   border: 1px dashed color-mix(in oklab, var(--primary) 45%, transparent);
   background: color-mix(in oklab, var(--primary) 7%, transparent);
@@ -392,22 +393,32 @@ body.bm-dragging {
   background: color-mix(in oklab, var(--primary) 16%, transparent);
   border-color: color-mix(in oklab, var(--primary) 70%, transparent);
 }
-/* Recipient variables (first_name, …) that haven't resolved yet — blue
-   "auto-fill", matching the snippet-settings legend, so it reads as "this fills
-   from the recipient" rather than a blank you type. */
-.tiptap .fill-field.fill-field--var {
-  border-color: color-mix(in oklab, var(--color-label-blue) 50%, transparent);
-  background: color-mix(in oklab, var(--color-label-blue) 9%, transparent);
-  color: color-mix(in oklab, var(--color-label-blue) 78%, var(--foreground));
-}
-.tiptap .fill-field.fill-field--var:hover {
-  background: color-mix(in oklab, var(--color-label-blue) 18%, transparent);
-  border-color: color-mix(in oklab, var(--color-label-blue) 70%, transparent);
-}
-.tiptap .fill-field.fill-field--var.ProseMirror-selectednode {
-  border-color: var(--color-label-blue);
-  background: var(--color-label-blue);
-  color: #fff;
+/* Hover tooltip explaining the blank needs manual entry (and why). Red-accented
+   because an unfilled field blocks send — matches the composer's red notice.
+   Rendered below the chip to avoid clipping at the top of the editor. */
+.tiptap .fill-field[data-tip]:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  top: calc(100% + 7px);
+  left: 0;
+  z-index: 30;
+  width: max-content;
+  max-width: 250px;
+  padding: 7px 9px;
+  border-radius: 7px;
+  background: color-mix(in oklab, var(--color-label-red) 12%, var(--popover));
+  border: 1px solid color-mix(in oklab, var(--color-label-red) 55%, transparent);
+  color: var(--popover-foreground);
+  font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.45;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: normal;
+  cursor: default;
+  box-shadow: 0 10px 30px -10px rgb(0 0 0 / 0.55);
+  pointer-events: none;
 }
 .tiptap .fill-field.ProseMirror-selectednode {
   border-style: solid;

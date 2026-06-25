@@ -68,18 +68,18 @@ export const FillField = Node.create({
 
   renderHTML({ node, HTMLAttributes }) {
     const label = String(node.attrs.label ?? "");
-    // A recipient variable that hasn't resolved yet (no To: address) vs a manual
-    // fill-in. Blue "auto-fill" matches the snippet-settings legend; orange is
-    // "you type this." The blue one fills itself the moment you add the To:.
+    // The chip is always orange (a blank to fill); the hover tooltip explains
+    // *why* it's manual. A recipient variable that hasn't resolved yet gets the
+    // "this normally auto-fills" explanation; a custom field gets the basics.
     const isVar = VARIABLE_KEYS.has(label.toLowerCase());
     return [
       "span",
       mergeAttributes(HTMLAttributes, {
         "data-fill-field": "",
-        class: isVar ? "fill-field fill-field--var" : "fill-field",
-        title: isVar
-          ? "Auto-fills from the recipient — add them to the To: line"
-          : "Type to fill this in · Tab jumps to the next field",
+        class: "fill-field",
+        "data-tip": isVar
+          ? "Needs manual entry. This normally auto-fills from the recipient's name — there isn't one yet, so add them to the To: line (and it fills itself) or type it here."
+          : "Needs manual entry before you can send. Type your value, then Tab to the next field.",
       }),
       humanizeFillLabel(label),
     ];
