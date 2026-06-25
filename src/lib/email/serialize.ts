@@ -44,6 +44,12 @@ const CODE_BG = "#f6f8fa";
 
 const HEADING_SIZE: Record<number, number> = { 1: 24, 2: 20, 3: 16 };
 
+/** A snippet token → human label for a fill field ("first_name" → "First name"). */
+export function humanizeFillLabel(label: string): string {
+  const s = label.replace(/[_-]+/g, " ").trim();
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+}
+
 /** Escape text for HTML body content. */
 export function escapeHtml(value: string): string {
   return value
@@ -257,10 +263,12 @@ function renderNode(node: EmailNode): string {
     case "hardBreak":
       return "<br>";
     case "fillField":
-      // An unfilled snippet tab-stop — emit the label as plain text so it's
-      // visible (a Phase 3 guardrail warns before sending one).
+      // An unfilled snippet tab-stop — emit the humanized label as plain text so
+      // it's readable (a Phase 3 guardrail warns before sending one).
       return escapeHtml(
-        typeof node.attrs?.label === "string" ? node.attrs.label : "",
+        humanizeFillLabel(
+          typeof node.attrs?.label === "string" ? node.attrs.label : "",
+        ),
       );
     case "paragraph": {
       const inner = renderInline(node);

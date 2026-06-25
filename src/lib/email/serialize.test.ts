@@ -2,10 +2,20 @@ import { describe, expect, test } from "bun:test";
 
 import {
   escapeHtml,
+  humanizeFillLabel,
   safeHref,
   serializeEmailHtml,
   type EmailNode,
 } from "@/lib/email/serialize";
+
+describe("humanizeFillLabel", () => {
+  test("snake/kebab tokens become a readable label", () => {
+    expect(humanizeFillLabel("first_name")).toBe("First name");
+    expect(humanizeFillLabel("topic")).toBe("Topic");
+    expect(humanizeFillLabel("due-date")).toBe("Due date");
+    expect(humanizeFillLabel("")).toBe("");
+  });
+});
 
 /** Wrap inline/block nodes in a doc so we serialize the way the editor emits. */
 const doc = (...content: EmailNode[]): EmailNode => ({ type: "doc", content });
@@ -196,11 +206,13 @@ describe("serializeEmailHtml — blocks", () => {
     ).toContain("a<br>b");
   });
 
-  test("an unfilled fill field serializes to its label as plain text", () => {
+  test("an unfilled fill field serializes to its humanized label as text", () => {
     const html = serializeEmailHtml(
-      doc(para(text("Hi "), { type: "fillField", attrs: { label: "name" } })),
+      doc(
+        para(text("Hi "), { type: "fillField", attrs: { label: "first_name" } }),
+      ),
     );
-    expect(html).toContain("Hi name");
+    expect(html).toContain("Hi First name");
     expect(html).not.toContain("fill-field");
     expect(html).not.toContain("data-fill-field");
   });

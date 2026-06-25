@@ -1,6 +1,7 @@
-import { Node } from "@tiptap/core";
+import { Node, mergeAttributes } from "@tiptap/core";
 import type { Editor, JSONContent } from "@tiptap/core";
-import type { EmailNode } from "@/lib/email/serialize";
+import { toast } from "sonner";
+import { humanizeFillLabel, type EmailNode } from "@/lib/email/serialize";
 
 /** Count unfilled fill-field tab-stops remaining in a document (for the send
  *  guardrail). Pure walk over the TipTap JSON. */
@@ -31,18 +32,30 @@ export const FillField = Node.create({
   selectable: true,
 
   addAttributes() {
-    return { label: { default: "" } };
+    // The raw token rides in data-label so a saved draft round-trips; the
+    // visible text is the humanized label.
+    return {
+      label: {
+        default: "",
+        parseHTML: (el) => el.getAttribute("data-label") ?? el.textContent ?? "",
+        renderHTML: (attrs) => ({ "data-label": attrs.label }),
+      },
+    };
   },
 
   parseHTML() {
     return [{ tag: "span[data-fill-field]" }];
   },
 
-  renderHTML({ node }) {
+  renderHTML({ node, HTMLAttributes }) {
     return [
       "span",
-      { "data-fill-field": "", class: "fill-field" },
-      `${node.attrs.label}`,
+      mergeAttributes(HTMLAttributes, {
+        "data-fill-field": "",
+        class: "fill-field",
+        title: "Type to fill this in · Tab jumps to the next field",
+      }),
+      humanizeFillLabel(String(node.attrs.label ?? "")),
     ];
   },
 
@@ -143,9 +156,15 @@ export function insertSnippet(
 
   if (hasField) {
     editor.chain().focus().deleteRange(range).insertContent(content).run();
-    if (!selectFirstFillField(editor, start)) {
-      editor.chain().focus().run();
-    }
+    selectFirstFillField(editor, start);
+    const count = content.filter((c) => c.type === "fillField").length;
+    // Tell the user what those highlighted chips are + how to fill them.
+    toast("Fill in the highlighted fields", {
+      description:
+        count > 1
+          ? "Type to replace the selected one, then Tab to the next."
+          : "Type to replace it.",
+    });
     return;
   }
 
