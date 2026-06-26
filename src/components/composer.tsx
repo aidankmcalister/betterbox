@@ -41,7 +41,10 @@ import { RichTextEditor } from "@/components/rich-text-editor";
 import { serializeEmailHtml, type EmailNode } from "@/lib/email/serialize";
 import { checkGuardrails } from "@/lib/email/guardrails";
 import { countFillFields } from "@/components/editor-fill-fields";
-import { useSnippetMap } from "@/hooks/use-snippets";
+import { useSnippetMap, snippetsQueryKey } from "@/hooks/use-snippets";
+import { DOMSerializer } from "@tiptap/pm/model";
+import type { Editor } from "@tiptap/react";
+import { BookmarkPlusIcon } from "lucide-react";
 import {
   appendSignature,
   appendSignatureHtml,
@@ -183,6 +186,12 @@ export function Composer({
   // HTML on send/preview. Re-emitted by the editor on mount, so it survives the
   // composer remounting between the board pane and the popout.
   const [bodyDoc, setBodyDoc] = useState<EmailNode | null>(null);
+  // The editor instance + the screen rect of the current text selection — drives
+  // the "save as snippet" bubble that floats over a highlighted passage.
+  const [editorInstance, setEditorInstance] = useState<Editor | null>(null);
+  const [snipRect, setSnipRect] = useState<{ left: number; top: number } | null>(
+    null,
+  );
   // Undo-send: the dispatch is delayed by a cancel window; this holds the timer.
   const sendTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Guardrails gate the first Send click; a second click ("Send anyway") sends.
@@ -371,6 +380,30 @@ export function Composer({
     });
   }, [open, draft, to, cc, bcc, subject, body]);
 
+  // Show the "save as snippet" bubble while a non-empty passage is selected in
+  // the editor. Positioned from the live DOM selection rect; cleared on collapse
+  // or blur (the bubble itself preventDefaults mousedown so clicking it keeps the
+  // selection alive).
+  useEffect(() => {
+    const ed = editorInstance;
+    if (!ed) return;
+    const sync = () => {
+      if (ed.state.selection.empty || !ed.isFocused) return setSnipRect(null);
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed || !sel.rangeCount) return setSnipRect(null);
+      const r = sel.getRangeAt(0).getBoundingClientRect();
+      if (r.width < 1 && r.height < 1) return setSnipRect(null);
+      setSnipRect({ left: r.left + r.width / 2, top: r.top });
+    };
+    const clear = () => setSnipRect(null);
+    ed.on("selectionUpdate", sync);
+    ed.on("blur", clear);
+    return () => {
+      ed.off("selectionUpdate", sync);
+      ed.off("blur", clear);
+    };
+  }, [editorInstance]);
+
   if (!open) return null;
 
   const restoreBuffer = () => {
@@ -391,6 +424,50 @@ export function Composer({
   const dismissRecovery = () => {
     setRecovered(null);
     void clearDraftBuffer();
+  };
+
+  // Save the highlighted passage as a reusable snippet. Captures the selection's
+  // HTML (formatting preserved) before the prompt steals focus.
+  const saveAsSnippet = () => {
+    const ed = editorInstance;
+    if (!ed) return;
+    const { from: selFrom, to: selTo } = ed.state.selection;
+    if (selFrom === selTo) return;
+    const tmp = document.createElement("div");
+    tmp.appendChild(
+      DOMSerializer.fromSchema(ed.schema).serializeFragment(
+        ed.state.selection.content().content,
+      ),
+    );
+    const html = tmp.innerHTML;
+    setSnipRect(null);
+    if (from && isTestAccount(from.accountId)) {
+      toast("Saved to snippets", {
+        description: "This is a demo — nothing was written.",
+      });
+      return;
+    }
+    const raw = window.prompt("Snippet trigger (e.g. /intro)");
+    const trigger = raw?.trim();
+    if (!trigger) return;
+    void fetch("/api/snippets", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        op: "create",
+        trigger: trigger.startsWith("/") ? trigger : `/${trigger}`,
+        text: html,
+      }),
+    })
+      .then((r) => r.json().catch(() => ({})))
+      .then((d: { error?: string }) => {
+        if (d.error) {
+          toast.error(d.error);
+        } else {
+          toast.success("Saved to snippets");
+          queryClient.invalidateQueries({ queryKey: snippetsQueryKey });
+        }
+      });
   };
 
   // Require at least one well-formed address (comma-separated allowed) before
@@ -654,16 +731,27 @@ export function Composer({
         if (event.key === "Escape" && !sending) close();
       }}
       className={cn(
-        "flex flex-col overflow-hidden bg-secondary",
+        // `relative` (not a filter/transform) so fixed children — the slash menu,
+        // popovers, the snippet bubble — still anchor to the viewport. The frost
+        // lives on a behind-content layer below, NOT on this element, because
+        // backdrop-filter here would trap those fixed descendants + clip them.
+        "relative flex flex-col overflow-hidden bg-secondary",
         inPane
           ? "h-full w-full"
           : // Full-screen on phones; the floating bottom-right popout on sm+.
-            // Frosted glass on the popout: a translucent card that blurs only what
-            // sits directly behind it, so the inbox stays sharp and the popout
-            // floats above it (deep ambient shadow does the lifting).
-            "fixed inset-0 z-50 w-full rounded-none border-0 sm:inset-auto sm:right-5 sm:bottom-5 sm:z-40 sm:w-[520px] sm:max-w-[calc(100vw-2.5rem)] sm:rounded-xl sm:border sm:border-input sm:bg-secondary/80 sm:shadow-[0_32px_90px_-20px_rgba(0,0,0,0.7)] sm:backdrop-blur-2xl sm:backdrop-saturate-150",
+            "fixed inset-0 z-50 w-full rounded-none border-0 sm:inset-auto sm:right-5 sm:bottom-5 sm:z-40 sm:w-[520px] sm:max-w-[calc(100vw-2.5rem)] sm:rounded-xl sm:border sm:border-input sm:bg-transparent sm:shadow-[0_32px_90px_-20px_rgba(0,0,0,0.7)]",
       )}
     >
+      {/* Frosted-glass layer: blurs only what's directly behind the popout so the
+          inbox stays sharp. A childless sibling, so its backdrop-filter never
+          becomes a containing block for the composer's fixed/positioned UI. */}
+      {!inPane && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 -z-10 hidden bg-secondary/80 backdrop-blur-2xl backdrop-saturate-150 sm:block"
+        />
+      )}
+
       <header
         onPointerDown={onHeaderPointerDown}
         className={cn(
@@ -874,6 +962,7 @@ export function Composer({
             value={body}
             onChange={(next) => onContentChange({ body: next })}
             onDocChange={setBodyDoc}
+            onEditorReady={setEditorInstance}
             snippets={snippets}
             variables={variables}
             placeholder="Write your message…"
@@ -1012,6 +1101,25 @@ export function Composer({
           />
         </span>
       </footer>
+
+      {snipRect && !preview && (
+        // Floating over a text selection. preventDefault on mousedown keeps the
+        // selection from collapsing before the click lands.
+        <div
+          className="fixed z-[60] -translate-x-1/2 -translate-y-full"
+          style={{ left: snipRect.left, top: snipRect.top - 10 }}
+          onMouseDown={(event) => event.preventDefault()}
+        >
+          <button
+            type="button"
+            onClick={saveAsSnippet}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-input bg-popover px-2.5 py-1.5 text-[12px] text-foreground shadow-xl ring-1 ring-foreground/10 transition-colors hover:bg-muted"
+          >
+            <BookmarkPlusIcon className="size-3.5 text-muted-foreground" />
+            Save as snippet
+          </button>
+        </div>
+      )}
     </section>
   );
 }
