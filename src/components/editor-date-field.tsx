@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Node, mergeAttributes } from "@tiptap/core";
 import {
   NodeViewWrapper,
@@ -18,9 +18,19 @@ import { formatDateShort, parseIsoDate, toIsoDate } from "@/lib/dates";
  * serializes to a friendly long date on send. Unfilled date fields block send
  * like the other fill fields.
  */
-function DateFieldView({ node, updateAttributes, editor }: NodeViewProps) {
+function DateFieldView({
+  node,
+  updateAttributes,
+  editor,
+  selected: nodeSelected,
+}: NodeViewProps) {
   const value = String(node.attrs.value ?? "");
   const [open, setOpen] = useState(false);
+  // Tab/expansion lands the selection on an empty date field — open the picker
+  // so it's fillable from the keyboard, not only by clicking the chip.
+  useEffect(() => {
+    if (nodeSelected && !value && editor.isEditable) setOpen(true);
+  }, [nodeSelected, value, editor.isEditable]);
   const selected = value ? (parseIsoDate(value) ?? undefined) : undefined;
   const filled = !!selected;
   const label = filled ? formatDateShort(value) : "pick a date";

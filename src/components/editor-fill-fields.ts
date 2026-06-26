@@ -93,11 +93,20 @@ export const FillField = Node.create({
   },
 });
 
-/** Positions of every fill field in the document, in order. */
+/** A node that still needs the user's input before send: a fill-field, or a
+ *  date-field with no date picked yet. Tab cycles through these. */
+function isUnfilledField(node: { type: { name: string }; attrs: { value?: unknown } }): boolean {
+  return (
+    node.type.name === "fillField" ||
+    (node.type.name === "dateField" && !node.attrs.value)
+  );
+}
+
+/** Positions of every unfilled field in the document, in order. */
 function fillFieldPositions(editor: Editor): number[] {
   const out: number[] = [];
   editor.state.doc.descendants((node, pos) => {
-    if (node.type.name === "fillField") out.push(pos);
+    if (isUnfilledField(node)) out.push(pos);
   });
   return out;
 }
@@ -156,11 +165,11 @@ function snippetToContent(
   return { content, cursorIndex };
 }
 
-/** Select the first fill field at or after `start`, if any. */
+/** Select the first unfilled field at or after `start`, if any. */
 function selectFirstFillField(editor: Editor, start: number): boolean {
   let target = -1;
   editor.state.doc.descendants((node, pos) => {
-    if (target === -1 && pos >= start && node.type.name === "fillField") {
+    if (target === -1 && pos >= start && isUnfilledField(node)) {
       target = pos;
     }
   });
@@ -200,13 +209,15 @@ export function insertSnippet(
   }
 
   const { content, cursorIndex } = snippetToContent(text, variables);
-  const hasField = content.some((c) => c.type === "fillField");
+  const isField = (c: JSONContent) =>
+    c.type === "fillField" || c.type === "dateField";
+  const hasField = content.some(isField);
   const start = range.from;
 
   if (hasField) {
     editor.chain().focus().deleteRange(range).insertContent(content).run();
     selectFirstFillField(editor, start);
-    const count = content.filter((c) => c.type === "fillField").length;
+    const count = content.filter(isField).length;
     // Tell the user what those highlighted chips are + how to fill them.
     toast("Fill in the highlighted fields", {
       description:
