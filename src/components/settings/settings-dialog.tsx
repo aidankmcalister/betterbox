@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -79,6 +79,11 @@ import type { Editor } from "@tiptap/react";
 import DOMPurify from "dompurify";
 import { escapeHtml } from "@/lib/email/serialize";
 import { VARIABLE_KEYS, PREVIEW_CONTACT } from "@/lib/snippet-tokens";
+import {
+  suggestVariable,
+  type SuggestedKind,
+  type VariableSuggestion,
+} from "@/lib/variable-detect";
 import {
   activeSnippetsQueryKey,
   saveSnippet,
@@ -1331,6 +1336,60 @@ function SnippetEditor({
   const canSave =
     draft.trigger.trim().length > 1 && !triggerError && !bodyEmpty;
 
+  // "Convert to variable" bubble over a text selection. Coords are offset by the
+  // dialog box so the fixed bubble resolves against its transform.
+  const [convert, setConvert] = useState<{
+    left: number;
+    top: number;
+    from: number;
+    to: number;
+    suggestion: VariableSuggestion;
+  } | null>(null);
+  const menuOpenRef = useRef(false);
+  useEffect(() => {
+    if (!editor) return;
+    const sync = () => {
+      if (menuOpenRef.current) return;
+      const { from, to, empty } = editor.state.selection;
+      if (empty || !editor.isFocused) return setConvert(null);
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed || !sel.rangeCount) return setConvert(null);
+      const r = sel.getRangeAt(0).getBoundingClientRect();
+      if (r.width < 1 && r.height < 1) return setConvert(null);
+      const text = editor.state.doc.textBetween(from, to, " ").trim();
+      if (!text) return setConvert(null);
+      const base = document
+        .querySelector('[data-slot="dialog-content"]')
+        ?.getBoundingClientRect();
+      setConvert({
+        left: r.left + r.width / 2 - (base?.left ?? 0),
+        top: r.top - (base?.top ?? 0),
+        from,
+        to,
+        suggestion: suggestVariable(text),
+      });
+    };
+    const clear = () => {
+      if (!menuOpenRef.current) setConvert(null);
+    };
+    editor.on("selectionUpdate", sync);
+    editor.on("blur", clear);
+    return () => {
+      editor.off("selectionUpdate", sync);
+      editor.off("blur", clear);
+    };
+  }, [editor]);
+
+  const applyToken = (token: string) => {
+    if (!editor || !convert) return;
+    editor
+      .chain()
+      .focus()
+      .insertContentAt({ from: convert.from, to: convert.to }, token)
+      .run();
+    setConvert(null);
+  };
+
   return (
     <div className="border-t bg-muted/40 px-3 py-3">
       <div className="mb-2.5 flex flex-wrap items-center gap-x-2.5 gap-y-2">
@@ -1383,7 +1442,85 @@ function SnippetEditor({
           {saving ? "Saving…" : "Save snippet"}
         </Button>
       </div>
+      {convert && (
+        // biome-ignore lint/a11y/noStaticElementInteractions: mousedown only guards the selection; the menu inside is the control.
+        <div
+          className="fixed z-[60] -translate-x-1/2 -translate-y-full"
+          style={{ left: convert.left, top: convert.top - 10 }}
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          <ConvertMenu
+            suggestion={convert.suggestion}
+            onApply={applyToken}
+            onOpenChange={(open) => {
+              menuOpenRef.current = open;
+              if (!open) setConvert(null);
+            }}
+          />
+        </div>
+      )}
     </div>
+  );
+}
+
+const CONVERT_OPTIONS: {
+  kind: SuggestedKind | "last_name";
+  label: string;
+  icon: ComponentType<{ className?: string }>;
+  token: string | null;
+}[] = [
+  { kind: "first_name", label: "First name", icon: CircleUserRound, token: "{{first_name}}" },
+  { kind: "last_name", label: "Last name", icon: CircleUserRound, token: "{{last_name}}" },
+  { kind: "name", label: "Full name", icon: CircleUserRound, token: "{{name}}" },
+  { kind: "email", label: "Email", icon: MailIcon, token: "{{email}}" },
+  { kind: "date", label: "Date", icon: CalendarIcon, token: "{{date}}" },
+  { kind: "custom", label: "Custom fill-in field…", icon: Pencil, token: null },
+];
+
+/** Floating "Convert to variable" menu; replaces the selection with a token. */
+function ConvertMenu({
+  suggestion,
+  onApply,
+  onOpenChange,
+}: {
+  suggestion: VariableSuggestion;
+  onApply: (token: string) => void;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const run = (token: string | null) => {
+    if (token) return onApply(token);
+    const name = window.prompt("Fill-in field name", suggestion.slug);
+    const slug = name?.trim().toLowerCase().replace(/\s+/g, "_");
+    if (slug) onApply(`{{${slug}}}`);
+  };
+  const suggested =
+    CONVERT_OPTIONS.find((o) => o.kind === suggestion.kind) ??
+    CONVERT_OPTIONS[CONVERT_OPTIONS.length - 1];
+  const rest = CONVERT_OPTIONS.filter((o) => o !== suggested);
+  return (
+    <DropdownMenu onOpenChange={onOpenChange}>
+      <DropdownMenuTrigger
+        render={<Button variant="outline" size="sm" className="h-7 gap-1.5 shadow-xl" />}
+      >
+        <SparklesIcon className="text-primary" />
+        Convert to variable
+        <ChevronDownIcon className="text-muted-foreground/60" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="center" className="w-56">
+        <DropdownMenuLabel>Suggested</DropdownMenuLabel>
+        <DropdownMenuItem onClick={() => run(suggested.token)}>
+          <suggested.icon />
+          {suggested.label}
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        {rest.map((o) => (
+          <DropdownMenuItem key={o.kind} onClick={() => run(o.token)}>
+            <o.icon />
+            {o.label}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
