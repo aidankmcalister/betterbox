@@ -1234,12 +1234,13 @@ function InsertFieldMenu({ onInsert }: { onInsert: (token: string) => void }) {
           <Button
             variant="ghost"
             size="sm"
-            className="h-6 gap-1.5 px-1.5 text-[12px] text-muted-foreground hover:text-foreground"
+            title="Insert field"
+            aria-label="Insert field"
+            className="h-7 gap-0.5 px-1.5 text-muted-foreground hover:text-foreground"
           />
         }
       >
         <BracesIcon />
-        Insert field
         <ChevronDownIcon className="text-muted-foreground/60" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52">

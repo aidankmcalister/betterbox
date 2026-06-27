@@ -187,7 +187,7 @@ function ConvertMenu({
   return (
     <DropdownMenu onOpenChange={onOpenChange}>
       <DropdownMenuTrigger
-        render={<Button variant="outline" size="sm" className="h-7 gap-1.5 shadow-xl" />}
+        render={<Button variant="outline" size="sm" className="h-8 gap-1.5 px-2.5 shadow-xl" />}
       >
         <SparklesIcon className="text-primary" />
         Convert to variable
@@ -237,7 +237,7 @@ function TokenMenu({
   return (
     <DropdownMenu onOpenChange={onOpenChange}>
       <DropdownMenuTrigger
-        render={<Button variant="outline" size="sm" className="h-7 gap-1.5 shadow-xl" />}
+        render={<Button variant="outline" size="sm" className="h-8 gap-1.5 px-2.5 shadow-xl" />}
       >
         {humanizeFillLabel(token)}
         <ChevronDownIcon className="text-muted-foreground/60" />
