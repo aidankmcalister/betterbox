@@ -1221,7 +1221,13 @@ function SnippetVariables() {
   );
 }
 
-function InsertFieldMenu({ onInsert }: { onInsert: (token: string) => void }) {
+function InsertFieldMenu({
+  onInsert,
+  hasCursor,
+}: {
+  onInsert: (token: string) => void;
+  hasCursor: boolean;
+}) {
   const custom = () => {
     const name = window.prompt("Fill-in field name (e.g. company)");
     const slug = name?.trim().toLowerCase().replace(/\s+/g, "_");
@@ -1245,6 +1251,9 @@ function InsertFieldMenu({ onInsert }: { onInsert: (token: string) => void }) {
       <DropdownMenuContent align="end" className="w-52">
         <DropdownMenuGroup>
           <DropdownMenuLabel>Auto-fill from recipient</DropdownMenuLabel>
+          <p className="px-1.5 pb-1 text-[11px] leading-snug text-muted-foreground/70">
+            Filled in if the recipient is known, otherwise left blank.
+          </p>
           <DropdownMenuItem onClick={() => onInsert("{{first_name}}")}>
             <CircleUserRound />
             First name
@@ -1271,7 +1280,10 @@ function InsertFieldMenu({ onInsert }: { onInsert: (token: string) => void }) {
           <CalendarIcon />
           Date picker
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onInsert("{{cursor}}")}>
+        <DropdownMenuItem
+          disabled={hasCursor}
+          onClick={() => onInsert("{{cursor}}")}
+        >
           <TextCursorIcon />
           Cursor position
         </DropdownMenuItem>
@@ -1410,6 +1422,7 @@ function SnippetEditor({
         tokenChips
         toolbarEnd={
           <InsertFieldMenu
+            hasCursor={draft.text.includes("{{cursor}}")}
             onInsert={(t) => {
               const m = t.match(/\{\{([a-zA-Z0-9_]+)\}\}/);
               editor

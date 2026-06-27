@@ -5,24 +5,24 @@ import {
 } from "@/components/editor/editor-fill-fields";
 
 describe("snippet token transforms", () => {
-  test("tokensToFieldHtml: every token → fill-field chip, cursor stays text", () => {
+  test("tokensToFieldHtml: fields → fill-field, date → date-field, cursor stays text", () => {
     const html = tokensToFieldHtml(
       "<p>Hi {{first_name}}, on {{date}}. {{topic}} {{cursor}}</p>",
     );
     expect(html).toContain('data-fill-field data-label="first_name"');
     expect(html).toContain('data-fill-field data-label="topic"');
-    expect(html).toContain('data-fill-field data-label="date"');
+    expect(html).toContain("data-date-field");
     expect(html).toContain("{{cursor}}");
   });
 
-  test("tokenNode maps a token to a fill-field node (cursor stays text)", () => {
+  test("tokenNode: date → date picker, fields → fill-field, cursor stays text", () => {
     expect(tokenNode("first_name")).toEqual({
       type: "fillField",
       attrs: { label: "first_name" },
     });
     expect(tokenNode("date")).toEqual({
-      type: "fillField",
-      attrs: { label: "date" },
+      type: "dateField",
+      attrs: { value: "" },
     });
     expect(tokenNode("cursor")).toBe("{{cursor}}");
   });

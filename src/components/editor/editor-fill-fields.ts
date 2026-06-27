@@ -233,12 +233,12 @@ export function insertSnippet(
 
 const FIELD_TOKEN_RE = /\{\{([a-zA-Z0-9_]+)\}\}/g;
 
-/** The editor node a `{{token}}` becomes (cursor stays literal text). In the
- *  snippet editor every token — including `{{date}}` — is an editable fill-field
- *  chip; the real date-picker only appears in the composer when expanded. */
+/** The editor node a `{{token}}` becomes: `{{date}}` is the date picker,
+ *  `{{cursor}}` stays literal text, everything else is a fill-field chip. */
 export function tokenNode(token: string): JSONContent | string {
   const key = token.toLowerCase();
   if (key === "cursor") return "{{cursor}}";
+  if (key === "date") return { type: "dateField", attrs: { value: "" } };
   return { type: "fillField", attrs: { label: key } };
 }
 
@@ -248,6 +248,7 @@ export function tokensToFieldHtml(html: string): string {
   return html.replace(FIELD_TOKEN_RE, (m, raw: string) => {
     const key = raw.toLowerCase();
     if (key === "cursor") return m;
+    if (key === "date") return '<span data-date-field data-value=""></span>';
     return `<span data-fill-field data-label="${escapeHtml(key)}"></span>`;
   });
 }
@@ -258,6 +259,9 @@ export function fieldHtmlToTokens(html: string): string {
   const doc = new DOMParser().parseFromString(`<body>${html}</body>`, "text/html");
   for (const el of doc.querySelectorAll("[data-fill-field]")) {
     el.replaceWith(`{{${el.getAttribute("data-label") ?? ""}}}`);
+  }
+  for (const el of doc.querySelectorAll("[data-date-field]")) {
+    el.replaceWith("{{date}}");
   }
   return doc.body.innerHTML;
 }
