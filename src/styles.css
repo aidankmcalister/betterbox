@@ -400,3 +400,19 @@ body.bm-dragging {
   box-shadow: 0 10px 30px -10px rgb(0 0 0 / 0.55);
   pointer-events: none;
 }
+
+/* Send-attempt cue: the composer scrolls to the first unfilled field and
+   briefly pulses it so you see what's left to fill. */
+@keyframes bb-field-flash {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+  35% {
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary) 55%, transparent);
+  }
+}
+.tiptap.flash-fields .ProseMirror-selectednode {
+  border-radius: 6px;
+  animation: bb-field-flash 0.6s ease 1;
+}

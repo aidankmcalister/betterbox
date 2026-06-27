@@ -10,6 +10,7 @@ import {
   PenLineIcon,
   SendIcon,
   Trash2Icon,
+  TriangleAlertIcon,
   XIcon,
 } from "lucide-react";
 
@@ -40,7 +41,10 @@ import { AccountDot } from "@/components/shell/account-dot";
 import { RichTextEditor } from "@/components/editor/rich-text-editor";
 import { serializeEmailHtml, type EmailNode } from "@/lib/email/serialize";
 import { checkGuardrails } from "@/lib/email/guardrails";
-import { countFillFields } from "@/components/editor/editor-fill-fields";
+import {
+  countFillFields,
+  firstUnfilledFieldPos,
+} from "@/components/editor/editor-fill-fields";
 import { useSnippetMap, openSnippetDraft } from "@/hooks/use-snippets";
 import { DOMSerializer } from "@tiptap/pm/model";
 import { NodeSelection } from "@tiptap/pm/state";
@@ -196,8 +200,10 @@ export function Composer({
   const [haloRect, setHaloRect] = useState<DOMRect | null>(null);
   // Undo-send: the dispatch is delayed by a cancel window; this holds the timer.
   const sendTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Guardrails gate the first Send click; a second click ("Send anyway") sends.
-  const [confirmSend, setConfirmSend] = useState(false);
+  // Soft guardrails surface as a confirm popover above Send (not persistent pills).
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  // True once Send was attempted with a hard blocker — turns on the inline field cues.
+  const [triedSend, setTriedSend] = useState(false);
   // Autosave: the Gmail draft created/updated this session (fresh composes).
   const autosaveRef = useRef<{ draftId: string; messageId: string } | null>(null);
   // Coalesce overlapping autosaves into one in-flight save (see flushAutosave).
@@ -266,9 +272,9 @@ export function Composer({
       attachmentCount: files.length,
     });
   }, [from, subject, body, to, cc, bcc, files.length]);
-  // Any edit that changes the warnings clears the "Send anyway" arming.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: re-arm only when the warning set changes identity.
-  useEffect(() => setConfirmSend(false), [guardrails]);
+  // Any edit that changes the warnings dismisses the open confirm popover.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-evaluate only when the warning set changes identity.
+  useEffect(() => setConfirmOpen(false), [guardrails]);
 
   // Signature: read-only block below the editor (uneditable), appended to outgoing HTML at send/draft
   // unless removed for this message; the skip resets on From change. The native Gmail signature
@@ -490,13 +496,6 @@ export function Composer({
   const recipientsValid = isValidRecipients(to);
   const ccValid = cc.trim().length === 0 || isValidRecipients(cc);
   const bccValid = bcc.trim().length === 0 || isValidRecipients(bcc);
-  const canSend =
-    !sending &&
-    from !== null &&
-    recipientsValid &&
-    ccValid &&
-    bccValid &&
-    unfilledFields === 0;
 
   const hasContent =
     to.trim().length > 0 || subject.trim().length > 0 || body.length > 0;
@@ -524,7 +523,8 @@ export function Composer({
     setPreview(false);
     setFiles([]);
     setBodyDoc(null);
-    setConfirmSend(false);
+    setConfirmOpen(false);
+    setTriedSend(false);
     if (sendTimerRef.current) {
       clearTimeout(sendTimerRef.current);
       sendTimerRef.current = null;
@@ -686,43 +686,41 @@ export function Composer({
     });
   };
 
-  // Send click: gate on guardrails (first click arms "Send anyway"), then start the undo window.
+  // Pull the next blank into view and pulse it, so "what's left" is obvious.
+  const flashFirstUnfilledField = () => {
+    const ed = editorInstance;
+    if (!ed) return;
+    const pos = firstUnfilledFieldPos(ed);
+    if (pos == null) return;
+    ed.chain().focus().setNodeSelection(pos).scrollIntoView().run();
+    const dom = ed.view.dom;
+    dom.classList.add("flash-fields");
+    window.setTimeout(() => dom.classList.remove("flash-fields"), 700);
+  };
+
+  // Hard blockers (bad recipient / unfilled fields) guide you to the field; soft
+  // guardrails (no subject, external recipient…) open a confirm popover above Send.
+  const blocked =
+    !recipientsValid || !ccValid || !bccValid || unfilledFields > 0;
   const send = () => {
-    if (!canSend || !from || sending) return;
-    if (guardrails.length > 0 && !confirmSend) {
-      setConfirmSend(true);
+    if (!from || sending) return;
+    if (blocked) {
+      setTriedSend(true);
+      flashFirstUnfilledField();
+      return;
+    }
+    if (guardrails.length > 0 && !confirmOpen) {
+      setConfirmOpen(true);
       return;
     }
     scheduleSend();
   };
 
-  // One consolidated notices line: send error wins, then hard blockers (must fix), then soft guardrails (warn only).
-  const recipientError =
-    (to.trim().length > 0 && !recipientsValid) || !ccValid || !bccValid;
-  const blockers: string[] = [];
-  if (unfilledFields > 0)
-    blockers.push(
-      `Fill in ${unfilledFields} snippet field${unfilledFields > 1 ? "s" : ""}`,
-    );
-  if (recipientError) blockers.push("Enter a valid email address");
-  // warn = soft (Send anyway) → yellow + triangle. block/error = can't send → red + stop (octagon) icon.
-  const notices: { text: string; tone: "error" | "block" | "warn" }[] = error
-    ? [{ text: error, tone: "error" }]
-    : blockers.length > 0
-      ? blockers.map((text) => ({ text, tone: "block" as const }))
-      : guardrails.map((g) => ({ text: g.message, tone: "warn" as const }));
-
-  // Passive surfacing: soft warnings stay hidden on a fresh, empty open — they appear once writing (or
-  // after a send attempt). Hard blockers and send errors always show. The footer reserves the space either way.
-  const engaged =
-    body.length > 0 ||
-    to.trim().length > 0 ||
-    subject.trim().length > 0 ||
-    cc.trim().length > 0 ||
-    bcc.trim().length > 0;
-  const visibleNotices = notices.filter(
-    (n) => n.tone !== "warn" || engaged || confirmSend,
-  );
+  // Inline cues — the field itself goes red, not a footer pill. To: only after a
+  // send attempt (or once it holds something invalid); cc/bcc whenever invalid.
+  const toInvalid = !recipientsValid && (triedSend || to.trim().length > 0);
+  const ccInvalid = !ccValid;
+  const bccInvalid = !bccValid;
 
   return (
     <>
@@ -755,7 +753,10 @@ export function Composer({
             event.preventDefault();
             void send();
           }
-          if (event.key === "Escape" && !sending) close();
+          if (event.key === "Escape" && !sending) {
+            if (confirmOpen) setConfirmOpen(false);
+            else close();
+          }
         }}
       className={cn(
         "flex flex-col overflow-hidden bg-secondary",
@@ -850,8 +851,10 @@ export function Composer({
         )}
       </div>
 
-      <div className={RECIPIENT_ROW}>
-        <FieldLabel>To</FieldLabel>
+      <div
+        className={cn(RECIPIENT_ROW, toInvalid && "border-b-label-red/70")}
+      >
+        <FieldLabel invalid={toInvalid}>To</FieldLabel>
         <RecipientField
           value={to}
           onChange={(next) => onContentChange({ to: next })}
@@ -882,8 +885,14 @@ export function Composer({
       </div>
 
       {showCc && (
-        <div className={cn("group", RECIPIENT_ROW)}>
-          <FieldLabel>Cc</FieldLabel>
+        <div
+          className={cn(
+            "group",
+            RECIPIENT_ROW,
+            ccInvalid && "border-b-label-red/70",
+          )}
+        >
+          <FieldLabel invalid={ccInvalid}>Cc</FieldLabel>
           <RecipientField
             value={cc}
             onChange={(next) => onContentChange({ cc: next })}
@@ -904,8 +913,14 @@ export function Composer({
       )}
 
       {showBcc && (
-        <div className={cn("group", RECIPIENT_ROW)}>
-          <FieldLabel>Bcc</FieldLabel>
+        <div
+          className={cn(
+            "group",
+            RECIPIENT_ROW,
+            bccInvalid && "border-b-label-red/70",
+          )}
+        >
+          <FieldLabel invalid={bccInvalid}>Bcc</FieldLabel>
           <RecipientField
             value={bcc}
             onChange={(next) => onContentChange({ bcc: next })}
@@ -1049,33 +1064,67 @@ export function Composer({
         className="hidden"
       />
 
-      {/* Fixed-height footer. Validation lives here as chips, so a notice never shifts the body. */}
-      <footer className="flex min-h-[58px] items-center gap-3 border-t px-3.5 pt-[11px] pb-[max(11px,env(safe-area-inset-bottom))] sm:pb-[11px]">
+      {/* Clean footer — hard blockers show on the fields, soft warnings confirm above Send. */}
+      <footer className="relative flex min-h-[58px] items-center gap-3 border-t px-3.5 pt-[11px] pb-[max(11px,env(safe-area-inset-bottom))] sm:pb-[11px]">
+        {confirmOpen && (
+          <>
+            {/* biome-ignore lint/a11y/noStaticElementInteractions: a backdrop that only dismisses the confirm. */}
+            {/* biome-ignore lint/a11y/useKeyWithClickEvents: Escape dismisses it (section keydown). */}
+            <div
+              className="fixed inset-0 z-40"
+              onClick={() => setConfirmOpen(false)}
+            />
+            <div className="absolute bottom-full left-3.5 z-50 mb-2 w-[290px] rounded-lg border border-input bg-popover p-3 text-popover-foreground shadow-xl ring-1 ring-foreground/10">
+              <p className="mb-2 text-[12.5px] font-medium">Send anyway?</p>
+              <ul className="mb-3 space-y-1.5">
+                {guardrails.map((g) => (
+                  <li
+                    key={g.id}
+                    className="flex items-start gap-1.5 text-[12px] text-muted-foreground"
+                  >
+                    <TriangleAlertIcon className="mt-px size-3.5 shrink-0 text-label-yellow" />
+                    {g.message}
+                  </li>
+                ))}
+              </ul>
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setConfirmOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setConfirmOpen(false);
+                    scheduleSend();
+                  }}
+                >
+                  Send anyway
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
         <Button
           size="sm"
           className="shrink-0"
-          disabled={!canSend || sending}
+          disabled={!from || sending || !hasContent}
           onClick={() => send()}
         >
           <SendIcon data-icon="inline-start" />
-          {sending
-            ? "Sending…"
-            : confirmSend && guardrails.length > 0
-              ? "Send anyway"
-              : "Send"}
+          {sending ? "Sending…" : "Send"}
         </Button>
         <KbdGroup className="hidden shrink-0 text-muted-foreground/45 sm:inline-flex">
           <Kbd>⌘</Kbd>
           <Kbd>↵</Kbd>
         </KbdGroup>
 
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
-          {!preview && visibleNotices.length > 0 ? (
-            visibleNotices.map((n) => (
-              <NoticeChip key={n.text} tone={n.tone}>
-                {n.text}
-              </NoticeChip>
-            ))
+        <div className="flex min-w-0 flex-1 items-center">
+          {error ? (
+            <span className="truncate text-[12px] text-label-red">{error}</span>
           ) : saveStatus !== "idle" ? (
             <span className="hidden items-center gap-1.5 font-mono text-[10.5px] text-muted-foreground/45 sm:inline-flex">
               {saveStatus === "saving" ? (
@@ -1179,43 +1228,26 @@ export function plainToHtml(text: string): string {
     .join("<br>");
 }
 
-function FieldLabel({ children }: { children: string }) {
+function FieldLabel({
+  children,
+  invalid,
+}: {
+  children: string;
+  invalid?: boolean;
+}) {
   return (
-    <span className="w-11 shrink-0 text-[12.5px] text-muted-foreground/70">
+    <span
+      className={cn(
+        "w-11 shrink-0 text-[12.5px]",
+        invalid ? "text-label-red" : "text-muted-foreground/70",
+      )}
+    >
       {children}
     </span>
   );
 }
 
 /** Validation pill in the footer (never shifts the body). Yellow = soft warning you can send past; red = hard blocker / send error. */
-function NoticeChip({
-  tone,
-  children,
-}: {
-  tone: "error" | "block" | "warn";
-  children: React.ReactNode;
-}) {
-  const warn = tone === "warn";
-  return (
-    <span
-      className={cn(
-        "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] whitespace-nowrap",
-        warn
-          ? "border-label-yellow/35 bg-label-yellow/[0.1] text-label-yellow"
-          : "border-label-red/40 bg-label-red/[0.1] text-label-red",
-      )}
-    >
-      <span
-        className={cn(
-          "size-[5px] shrink-0 rounded-full",
-          warn ? "bg-label-yellow" : "bg-label-red",
-        )}
-      />
-      {children}
-    </span>
-  );
-}
-
 /** To field with Gmail-style chips + autocomplete. Committed recipients render as bordered pills (echoing
  *  the From box); the trailing token stays editable. Value stays a comma-separated string so send/save/validation are unchanged. */
 function RecipientField({

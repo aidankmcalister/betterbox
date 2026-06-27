@@ -104,6 +104,11 @@ function fillFieldPositions(editor: Editor): number[] {
   return out;
 }
 
+/** Position of the first unfilled fill/date field, or null. */
+export function firstUnfilledFieldPos(editor: Editor): number | null {
+  return fillFieldPositions(editor)[0] ?? null;
+}
+
 /** Move the selection to the next/previous fill field, wrapping. Returns false
  *  when there are none, so Tab keeps its default behavior. */
 function jumpFillField(editor: Editor, dir: 1 | -1): boolean {
