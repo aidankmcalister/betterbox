@@ -1253,7 +1253,7 @@ function InsertFieldMenu({
         <DropdownMenuGroup>
           <DropdownMenuLabel>Auto-fill from recipient</DropdownMenuLabel>
           <p className="px-1.5 pb-1 text-[11px] leading-snug text-muted-foreground/70">
-            Filled in if the recipient is known, otherwise left blank.
+            Filled from the recipient, if known.
           </p>
           <DropdownMenuItem onClick={() => onInsert("{{first_name}}")}>
             <CircleUserRound />
