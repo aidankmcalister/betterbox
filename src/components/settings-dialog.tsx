@@ -8,19 +8,19 @@ import {
   SearchIcon,
   SparklesIcon,
   SquareSlashIcon,
-  Clapperboard,
   CalendarIcon,
   Command,
   Inbox,
   Lock,
   MailIcon,
   Palette,
+  PanelLeft,
   Pencil,
   PlusIcon,
-  Replace,
   Trash2,
   ShieldCheck,
   Signature as SignatureIcon,
+  SquarePen,
   SquareTerminal,
   CircleUserRound,
   TextCursorIcon,
@@ -71,6 +71,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { RichTextEditor } from "@/components/rich-text-editor";
@@ -79,12 +80,17 @@ import DOMPurify from "dompurify";
 import { escapeHtml } from "@/lib/email/serialize";
 import { VARIABLE_KEYS, PREVIEW_CONTACT } from "@/lib/snippet-tokens";
 import {
-  snippetsQueryKey,
+  activeSnippetsQueryKey,
+  saveSnippet,
+  deleteSnippet,
   useSnippetsQuery,
   type Snippet,
 } from "@/hooks/use-snippets";
 import {
-  signaturesQueryKey,
+  activeSignaturesQueryKey,
+  saveSignature,
+  removeSignature,
+  assignSignature,
   useSignaturesQuery,
   type Signature,
 } from "@/hooks/use-signatures";
@@ -102,6 +108,8 @@ type PageId =
   | "accounts"
   | "appearance"
   | "inbox"
+  | "composer"
+  | "sidebar"
   | "snippets"
   | "signatures"
   | "developer"
@@ -119,22 +127,24 @@ type NavGroup = {
 
 const NAV: NavGroup[] = [
   {
-    section: "Account",
-    pages: [{ id: "accounts", label: "Accounts", icon: CircleUserRound }],
-  },
-  {
     section: "General",
     pages: [
       { id: "appearance", label: "Appearance", icon: Palette },
       { id: "inbox", label: "Inbox", icon: Inbox },
+      { id: "composer", label: "Composer", icon: SquarePen },
+      { id: "sidebar", label: "Sidebar", icon: PanelLeft },
     ],
   },
   {
     section: "Composing",
     pages: [
-      { id: "snippets", label: "Snippets", icon: Replace },
+      { id: "snippets", label: "Snippets", icon: SquareSlashIcon },
       { id: "signatures", label: "Signatures", icon: SignatureIcon },
     ],
+  },
+  {
+    section: "Account",
+    pages: [{ id: "accounts", label: "Accounts", icon: CircleUserRound }],
   },
   {
     section: "Advanced",
@@ -145,10 +155,45 @@ const NAV: NavGroup[] = [
   },
 ];
 
-/** Only owners ever see this group (gated on session role, not env). */
+/** Gated on session role, not env — owners only. */
 const OWNER_NAV: NavGroup = {
   section: "Owner",
   pages: [{ id: "owner", label: "Owner tools", icon: Wrench }],
+};
+
+const PAGE_META: Record<PageId, { title: string; description: string }> = {
+  appearance: { title: "Appearance", description: "Choose how BetterBox looks" },
+  inbox: { title: "Inbox", description: "Row content and reading behavior" },
+  composer: {
+    title: "Composer",
+    description: "How new messages open and send",
+  },
+  sidebar: {
+    title: "Sidebar",
+    description: "Choose which items appear in the sidebar",
+  },
+  snippets: {
+    title: "Snippets",
+    description:
+      "Reusable replies you expand by typing a / trigger in the composer",
+  },
+  signatures: {
+    title: "Signatures",
+    description: "A sign-off appended to your messages, assigned per account",
+  },
+  accounts: {
+    title: "Accounts",
+    description: "Connect Google accounts and choose how each is tagged",
+  },
+  developer: { title: "Developer", description: "Raw views and exports" },
+  keyboard: {
+    title: "Keyboard",
+    description: "Everything reachable without the mouse",
+  },
+  owner: {
+    title: "Owner tools",
+    description: "Only visible to owners. Toggles for development affordances",
+  },
 };
 
 export function SettingsDialog({
@@ -161,11 +206,11 @@ export function SettingsDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   accounts: Account[];
-  /** Composer "Save as snippet" handoff — opens the Snippets page with a new snippet pre-filled. */
+  /** Composer "Save as snippet" handoff — opens Snippets pre-filled. */
   snippetDraft?: string | null;
   onSnippetDraftConsumed?: () => void;
 }) {
-  const [page, setPage] = useState<PageId>("accounts");
+  const [page, setPage] = useState<PageId>("appearance");
   const navigate = useNavigate();
 
   // Land on Snippets when the composer hands off a "Save as snippet" body.
@@ -191,20 +236,6 @@ export function SettingsDialog({
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription>BetterBox preferences</DialogDescription>
         </DialogHeader>
-
-        {/* Desktop close — the mobile one lives inside the tab row below. */}
-        <DialogClose
-          render={
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="absolute top-2 right-2 z-10 hidden sm:flex"
-            />
-          }
-        >
-          <XIcon />
-          <span className="sr-only">Close</span>
-        </DialogClose>
 
         {/* Mobile: a scrollable strip of pages (desktop column doesn't fit),
             close button pinned right so tabs never slide under it. */}
@@ -290,20 +321,46 @@ export function SettingsDialog({
           </button>
         </nav>
 
-        <div className="min-w-0 flex-1 overflow-y-auto p-4 sm:p-6">
-          {page === "accounts" && <AccountsPage accounts={accounts} />}
-          {page === "appearance" && <AppearancePage />}
-          {page === "inbox" && <InboxPage />}
-          {page === "snippets" && (
-            <SnippetsPage
-              prefill={snippetDraft}
-              onPrefillConsumed={onSnippetDraftConsumed}
-            />
-          )}
-          {page === "signatures" && <SignaturesPage accounts={accounts} />}
-          {page === "developer" && <DeveloperPage />}
-          {page === "keyboard" && <KeyboardPage />}
-          {page === "owner" && isOwner && <OwnerPage />}
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div className="flex shrink-0 items-start gap-4 border-b px-4 py-4 sm:px-6 sm:py-5">
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg font-semibold tracking-[-0.3px]">
+                {PAGE_META[page].title}
+              </h2>
+              <p className="text-[13px] text-muted-foreground">
+                {PAGE_META[page].description}
+              </p>
+            </div>
+            <DialogClose
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="hidden shrink-0 sm:flex"
+                />
+              }
+            >
+              <XIcon />
+              <span className="sr-only">Close</span>
+            </DialogClose>
+          </div>
+          <div className="min-w-0 flex-1 overflow-y-auto p-4 sm:p-6">
+            {page === "accounts" && <AccountsPage accounts={accounts} />}
+            {page === "appearance" && <AppearancePage />}
+            {page === "inbox" && <InboxPage />}
+            {page === "composer" && <ComposerPage accounts={accounts} />}
+            {page === "sidebar" && <SidebarPage />}
+            {page === "snippets" && (
+              <SnippetsPage
+                prefill={snippetDraft}
+                onPrefillConsumed={onSnippetDraftConsumed}
+              />
+            )}
+            {page === "signatures" && <SignaturesPage accounts={accounts} />}
+            {page === "developer" && <DeveloperPage />}
+            {page === "keyboard" && <KeyboardPage />}
+            {page === "owner" && isOwner && <OwnerPage />}
+          </div>
         </div>
       </DialogContent>
     </Dialog>
@@ -353,9 +410,7 @@ function GithubIntegration() {
   );
 }
 
-/** Disconnect a linked (non-primary) Google account: unlinks it in Better Auth
- *  so its inbox/labels/sending stop showing up. Gmail is untouched and it can be
- *  re-added later. Behind a confirm dialog. */
+/** Unlinks in Better Auth only — Gmail is untouched and can be re-added later. */
 function DisconnectAccountButton({ account }: { account: Account }) {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -434,10 +489,7 @@ function AccountsPage({ accounts }: { accounts: Account[] }) {
   const primaryEmail = session?.user.email;
 
   return (
-    <Page
-      title="Accounts"
-      description="Connect Google accounts and choose how each is tagged"
-    >
+    <Page>
       <PageSection title="Connected accounts">
         <div className="flex flex-col gap-5">
           {accounts.map((account, index) => {
@@ -510,21 +562,44 @@ function AccountsPage({ accounts }: { accounts: Account[] }) {
       <PageSection title="Integrations">
         <GithubIntegration />
       </PageSection>
+    </Page>
+  );
+}
 
-      <PageSection title="Sending">
+function ComposerPage({ accounts }: { accounts: Account[] }) {
+  const { data: session } = useSession();
+  const settings = useSettings();
+  return (
+    <Page>
+      <PageSection title="Composer">
+        <SettingRow
+          label="Composer opens as"
+          description="A floating popout, or a draggable pane in the board"
+        >
+          <SegmentedButtons
+            options={[
+              { value: "popout", label: "Popout" },
+              { value: "pane", label: "Pane" },
+            ]}
+            value={settings.composerMode}
+            onChange={(composerMode) => updateSettings({ composerMode })}
+          />
+        </SettingRow>
         <SettingRow
           label="Default send-from"
           description="Which account the composer starts on for a new message"
         >
-          <SendFromControl accounts={accounts} primaryEmail={primaryEmail} />
+          <SendFromControl
+            accounts={accounts}
+            primaryEmail={session?.user.email}
+          />
         </SettingRow>
       </PageSection>
     </Page>
   );
 }
 
-/** Picks the composer's default From account. "Primary inbox" (null) falls back
- *  to the signed-in address. */
+/** "Primary inbox" (null) falls back to the signed-in address. */
 function SendFromControl({
   accounts,
   primaryEmail,
@@ -601,7 +676,6 @@ function SendFromControl({
 
 const PREVIEW_UNREAD = [true, false, true, false, false];
 
-/** Non-interactive mockup using abstract bars — reflects density/accent/avatars via theme tokens. */
 function InterfacePreview() {
   const { density, accent, inboxAvatars } = useSettings();
   const color = ACCENTS[accent].base;
@@ -701,41 +775,43 @@ function InterfacePreview() {
 
 function AppearancePage() {
   return (
-    <Page title="Appearance" description="Choose how BetterBox looks">
+    <Page>
       <InterfacePreview />
-      <PageSection title="Theme">
-        <div className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
-          <Field label="Theme">
-            <ThemeSegmented />
-          </Field>
-          <Field label="Accent">
-            <AccentDots />
-          </Field>
-        </div>
-      </PageSection>
-      <PageSection title="Display">
-        <div className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
-          <Field label="Density">
-            <DensitySegmented />
-          </Field>
-          <Field label="Clock">
-            <ClockSegmented />
-          </Field>
-        </div>
-      </PageSection>
-      <PageSection title="Sidebar">
-        <SidebarChips />
+      <PageSection title="Appearance">
+        <SettingRow label="Theme">
+          <ThemeSegmented />
+        </SettingRow>
+        <SettingRow
+          label="Accent color"
+          description="Buttons, focus rings, and unread markers"
+        >
+          <AccentDots />
+        </SettingRow>
+        <SettingRow
+          label="Density"
+          description="Comfortable gives each row more breathing room"
+        >
+          <DensitySegmented />
+        </SettingRow>
+        <SettingRow label="Clock">
+          <ClockSegmented />
+        </SettingRow>
       </PageSection>
     </Page>
   );
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+function SidebarPage() {
   return (
-    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-      <span className="text-[13px]">{label}</span>
-      <div className="shrink-0">{children}</div>
-    </div>
+    <Page>
+      <PageSection title="Shown items">
+        <p className="mt-2 mb-3.5 text-[13px] text-muted-foreground">
+          Tap an item to show or hide it in the sidebar. Hidden items stay
+          reachable from the command palette.
+        </p>
+        <SidebarChips />
+      </PageSection>
+    </Page>
   );
 }
 
@@ -872,39 +948,8 @@ function InboxPage() {
   const settings = useSettings();
 
   return (
-    <Page
-      title="Inbox"
-      description="Row content, reading, composing, and layout"
-    >
-      <PageSection title="Rows">
-        <SettingRow
-          label="Show preview"
-          description="The gray line of body text under each subject"
-        >
-          <Switch
-            checked={settings.showPreview}
-            onCheckedChange={(showPreview) => updateSettings({ showPreview })}
-          />
-        </SettingRow>
-        <SettingRow label="Preview font">
-          <SegmentedButtons
-            options={[
-              { value: "sans", label: "Sans" },
-              { value: "mono", label: "Mono" },
-            ]}
-            value={settings.previewFont}
-            onChange={(previewFont) => updateSettings({ previewFont })}
-          />
-        </SettingRow>
-        <SettingRow
-          label="Sender avatars"
-          description="Show each sender's avatar in the message list"
-        >
-          <AvatarsSwitch />
-        </SettingRow>
-      </PageSection>
-
-      <PageSection title="Reading">
+    <Page>
+      <PageSection title="Inbox">
         <SettingRow
           label="Reading pane"
           description="One shared reader, or a separate reader docked per account"
@@ -933,31 +978,30 @@ function InboxPage() {
             onChange={(markRead) => updateSettings({ markRead })}
           />
         </SettingRow>
-      </PageSection>
-
-      <PageSection title="Composer">
         <SettingRow
-          label="Open as"
-          description="A floating popout, or a draggable pane in the board"
+          label="Message preview"
+          description="The gray line of body text under each subject"
         >
-          <SegmentedButtons
-            options={[
-              { value: "popout", label: "Popout" },
-              { value: "pane", label: "Pane" },
-            ]}
-            value={settings.composerMode}
-            onChange={(composerMode) => updateSettings({ composerMode })}
+          <Switch
+            checked={settings.showPreview}
+            onCheckedChange={(showPreview) => updateSettings({ showPreview })}
           />
         </SettingRow>
-      </PageSection>
-
-      <PageSection title="Layout">
+        <SettingRow label="Preview font">
+          <SegmentedButtons
+            options={[
+              { value: "sans", label: "Sans" },
+              { value: "mono", label: "Mono" },
+            ]}
+            value={settings.previewFont}
+            onChange={(previewFont) => updateSettings({ previewFont })}
+          />
+        </SettingRow>
         <SettingRow
-          label="Custom tiles"
-          description="Arrange the inbox tiles by dragging pane headers"
-          soon
+          label="Sender avatars"
+          description="Show each sender's avatar in the message list"
         >
-          <SoonControl label="Custom (tiles)" />
+          <AvatarsSwitch />
         </SettingRow>
       </PageSection>
     </Page>
@@ -968,21 +1012,18 @@ function DeveloperPage() {
   const settings = useSettings();
 
   return (
-    <Page title="Developer" description="Raw views and exports">
-      <PageSection title="Message view">
+    <Page>
+      <PageSection title="Developer">
         <SettingRow
-          label="Open messages in raw view"
-          description="MIME source + headers by default"
+          label="Raw view by default"
+          description="Open messages as MIME source + headers"
         >
           <Switch
             checked={settings.rawByDefault}
             onCheckedChange={(rawByDefault) => updateSettings({ rawByDefault })}
           />
         </SettingRow>
-      </PageSection>
-
-      <PageSection title="Export">
-        <SettingRow label="Default export format">
+        <SettingRow label="Export format">
           <SegmentedButtons
             mono
             options={[
@@ -1004,11 +1045,8 @@ function OwnerPage() {
   const { data: session } = useSession();
 
   return (
-    <Page
-      title="Owner tools"
-      description="Only visible to owners. Toggles for development affordances"
-    >
-      <PageSection title="Access">
+    <Page>
+      <PageSection title="Owner tools">
         <SettingRow
           label="Role"
           description="Granted out-of-band; clients can't set their own role"
@@ -1018,30 +1056,17 @@ function OwnerPage() {
             {session?.user.role ?? "USER"}
           </span>
         </SettingRow>
-      </PageSection>
-
-      <PageSection title="Recording">
-        <div className="flex items-center justify-between gap-6 rounded-lg border border-accent-2/30 bg-accent-2/5 px-3.5 py-3">
-          <div className="flex min-w-0 items-start gap-2.5">
-            <Clapperboard className="mt-0.5 size-4 shrink-0 text-accent-2-hover" />
-            <div className="min-w-0">
-              <p className="text-[13px] font-medium">Demo mode</p>
-              <p className="text-xs text-muted-foreground">
-                Hide real accounts and run on generated mail. Flip it on before
-                recording, off when you’re done.
-              </p>
-            </div>
-          </div>
+        <SettingRow
+          label="Demo mode"
+          description="Hide real accounts and run on generated mail. Flip it on before recording, off when you’re done."
+        >
           <Switch
             checked={settings.demoMode}
             onCheckedChange={(demoMode) => updateSettings({ demoMode })}
           />
-        </div>
-      </PageSection>
-
-      <PageSection title="Development">
+        </SettingRow>
         <SettingRow
-          label="Developer tools"
+          label="Dev tools"
           description="Show the “Add test account” button in the sidebar and command palette"
         >
           <Switch
@@ -1064,7 +1089,7 @@ const SHORTCUTS: { label: string; keys: string[]; soon?: boolean }[] = [
 
 function KeyboardPage() {
   return (
-    <Page title="Keyboard" description="Everything reachable without the mouse">
+    <Page>
       <PageSection title="Shortcuts">
         <div className="flex flex-col gap-3">
           {SHORTCUTS.map((shortcut) => (
@@ -1094,7 +1119,6 @@ function KeyboardPage() {
 
 const TOKEN_RE = /\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g;
 
-/** Resolve tokens for the live preview: variables → sample value, fill fields → chip, cursor → caret. */
 function snippetPreviewHtml(html: string): string {
   return html.replace(TOKEN_RE, (_m, raw: string) => {
     const k = raw.toLowerCase();
@@ -1105,9 +1129,7 @@ function snippetPreviewHtml(html: string): string {
   });
 }
 
-/** One-line preview for a collapsed row, showing the snippet's *shape*: field
- *  names sit in bordered chips, not a resolved sample. Only the open editor's
- *  PREVIEW substitutes a real contact. */
+/** Shows the snippet's *shape* — field names as chips, not a resolved sample. */
 function rowPreviewHtml(html: string): string {
   const plain = html
     .replace(/<[^>]+>/g, " ")
@@ -1130,27 +1152,35 @@ function validateTrigger(value: string, taken: string[]): string | null {
   return null;
 }
 
-/** Compact teaching strip — variables (auto-fill) vs fill-in fields (tab-stops). */
-function TokenLegend() {
+/** Lists only the {{tokens}} the composer actually resolves. */
+function SnippetVariables() {
   return (
-    <div className="flex flex-wrap items-center gap-x-5 gap-y-1 rounded-md border bg-muted/30 px-2.5 py-1.5 text-[11px] text-muted-foreground">
-      <span className="flex items-center gap-2">
-        <span className="rounded border border-label-blue/35 bg-label-blue/[0.13] px-1 py-px font-mono text-[10px] text-label-blue">
-          first_name
-        </span>
-        Variables auto-fill from the recipient
-      </span>
-      <span className="flex items-center gap-2">
-        <span className="rounded border border-primary/35 bg-primary/[0.13] px-1 py-px font-mono text-[10px] text-primary">
-          topic
-        </span>
-        Fill-in fields you Tab through
-      </span>
-    </div>
+    <PageSection title="Variables">
+      <div className="flex flex-col">
+        <div className="flex items-center gap-3 py-1.5">
+          <span className="rounded border border-label-blue/35 bg-label-blue/[0.13] px-1 py-px font-mono text-[11px] text-label-blue">
+            first_name
+          </span>
+          <span className="text-[12.5px] text-muted-foreground">
+            Auto-fills from the recipient — also{" "}
+            <span className="font-mono text-[11px]">last_name</span>,{" "}
+            <span className="font-mono text-[11px]">name</span>,{" "}
+            <span className="font-mono text-[11px]">email</span>.
+          </span>
+        </div>
+        <div className="flex items-center gap-3 py-1.5">
+          <span className="rounded border border-primary/35 bg-primary/[0.13] px-1 py-px font-mono text-[11px] text-primary">
+            topic
+          </span>
+          <span className="text-[12.5px] text-muted-foreground">
+            A fill-in field you Tab through when inserting.
+          </span>
+        </div>
+      </div>
+    </PageSection>
   );
 }
 
-/** Insert-field dropdown — variables, custom fill-in, cursor. */
 function InsertFieldMenu({ onInsert }: { onInsert: (token: string) => void }) {
   const custom = () => {
     const name = window.prompt("Fill-in field name (e.g. company)");
@@ -1204,7 +1234,6 @@ function InsertFieldMenu({ onInsert }: { onInsert: (token: string) => void }) {
   );
 }
 
-/** Live preview of the snippet expanding for a sample recipient. */
 function SnippetPreview({ html }: { html: string }) {
   const clean =
     typeof window === "undefined"
@@ -1235,7 +1264,6 @@ function SnippetPreview({ html }: { html: string }) {
 
 type SnippetDraft = { trigger: string; text: string };
 
-/** The inline editor revealed when a snippet row is open. */
 function SnippetEditor({
   draft,
   onChange,
@@ -1319,8 +1347,7 @@ function SnippetEditor({
   );
 }
 
-/** A snippet as a row inside the shadcn <Accordion>. The trigger is a button,
- *  so Delete is overlaid as a sibling; the editor mounts only when open. */
+/** Trigger is a button, so Delete is overlaid as a sibling, not nested. */
 function SnippetRow({
   snippet,
   isOpen,
@@ -1423,7 +1450,6 @@ function SnippetEmptyState({
   );
 }
 
-/** Loading placeholder shaped like the accordion rows (pulsing trigger/preview bars). Reused by both lists. */
 function RowSkeleton({ rows = 3 }: { rows?: number }) {
   const widths = ["w-44", "w-32", "w-52", "w-36", "w-40"];
   return (
@@ -1453,7 +1479,7 @@ function SnippetsPage({
   prefill,
   onPrefillConsumed,
 }: {
-  /** Body HTML from the composer's "Save as snippet" — opens a new snippet editor pre-filled with it. */
+  /** Composer "Save as snippet" body — opens a new snippet pre-filled. */
   prefill?: string | null;
   onPrefillConsumed?: () => void;
 }) {
@@ -1491,38 +1517,23 @@ function SnippetsPage({
     setDraft((d) => ({ ...d, ...patch }));
 
   const save = useMutation({
-    mutationFn: async () => {
-      const isNew = openId === NEW_SNIPPET;
-      const res = await fetch("/api/snippets", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          op: isNew ? "create" : "update",
-          id: isNew ? undefined : openId,
-          trigger: draft.trigger.trim(),
-          text: draft.text,
-        }),
-      });
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
-      if (!res.ok) throw new Error(data.error ?? "Could not save snippet");
-    },
+    mutationFn: () =>
+      saveSnippet({
+        id: openId === NEW_SNIPPET ? undefined : (openId ?? undefined),
+        trigger: draft.trigger.trim(),
+        text: draft.text,
+      }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: snippetsQueryKey });
+      queryClient.invalidateQueries({ queryKey: activeSnippetsQueryKey() });
       close();
     },
     onError: (e: Error) => setError(e.message),
   });
 
   const remove = useMutation({
-    mutationFn: async (id: string) => {
-      await fetch("/api/snippets", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ op: "delete", id }),
-      });
-    },
+    mutationFn: (id: string) => deleteSnippet(id),
     onSuccess: (_d, id) => {
-      queryClient.invalidateQueries({ queryKey: snippetsQueryKey });
+      queryClient.invalidateQueries({ queryKey: activeSnippetsQueryKey() });
       if (openId === id) close();
     },
   });
@@ -1536,16 +1547,10 @@ function SnippetsPage({
         },
         { trigger: "/ty", text: "<p>Thanks so much, {{first_name}}!</p>" },
       ];
-      for (const d of defaults) {
-        await fetch("/api/snippets", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ op: "create", ...d }),
-        });
-      }
+      for (const d of defaults) await saveSnippet(d);
     },
     onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: snippetsQueryKey }),
+      queryClient.invalidateQueries({ queryKey: activeSnippetsQueryKey() }),
   });
 
   const filtered = useMemo(() => {
@@ -1560,12 +1565,8 @@ function SnippetsPage({
   const taken = snippets.filter((s) => s.id !== openId).map((s) => s.trigger);
 
   return (
-    <Page
-      title="Snippets"
-      description="Reusable replies you expand by typing a / trigger in the composer"
-    >
+    <Page>
       <div className="flex flex-col gap-2.5">
-        <TokenLegend />
         {isLoading ? (
           <RowSkeleton rows={3} />
         ) : snippets.length === 0 ? (
@@ -1660,6 +1661,7 @@ function SnippetsPage({
           </>
         )}
       </div>
+      <SnippetVariables />
     </Page>
   );
 }
@@ -1838,62 +1840,36 @@ function SignaturesPage({ accounts }: { accounts: Account[] }) {
     setDraft((d) => ({ ...d, ...patch }));
 
   const save = useMutation({
-    mutationFn: async () => {
-      const isNew = openId === NEW_SIGNATURE;
-      const res = await fetch("/api/signatures", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          op: isNew ? "create" : "update",
-          id: isNew ? undefined : openId,
-          name: draft.name.trim(),
-          body: draft.body,
-        }),
-      });
-      const d = (await res.json().catch(() => ({}))) as { error?: string };
-      if (!res.ok) throw new Error(d.error ?? "Could not save signature");
-    },
+    mutationFn: () =>
+      saveSignature({
+        id: openId === NEW_SIGNATURE ? undefined : (openId ?? undefined),
+        name: draft.name.trim(),
+        body: draft.body,
+      }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: signaturesQueryKey });
+      queryClient.invalidateQueries({ queryKey: activeSignaturesQueryKey() });
       close();
     },
     onError: (e: Error) => setError(e.message),
   });
 
   const remove = useMutation({
-    mutationFn: async (id: string) => {
-      await fetch("/api/signatures", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ op: "delete", id }),
-      });
-    },
+    mutationFn: (id: string) => removeSignature(id),
     onSuccess: (_d, id) => {
-      queryClient.invalidateQueries({ queryKey: signaturesQueryKey });
+      queryClient.invalidateQueries({ queryKey: activeSignaturesQueryKey() });
       if (openId === id) close();
     },
   });
 
   const assign = useMutation({
-    mutationFn: async (vars: {
-      accountId: string;
-      signatureId: string | null;
-    }) => {
-      await fetch("/api/signatures", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ op: "assign", ...vars }),
-      });
-    },
+    mutationFn: (vars: { accountId: string; signatureId: string | null }) =>
+      assignSignature(vars.accountId, vars.signatureId),
     onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: signaturesQueryKey }),
+      queryClient.invalidateQueries({ queryKey: activeSignaturesQueryKey() }),
   });
 
   return (
-    <Page
-      title="Signatures"
-      description="A sign-off appended to your messages, assigned per account"
-    >
+    <Page>
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
           {signatures.length === 0 && openId !== NEW_SIGNATURE && !isLoading ? (
@@ -2047,36 +2023,28 @@ function SignaturesPage({ accounts }: { accounts: Account[] }) {
   );
 }
 
-function Page({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h2 className="text-lg font-semibold tracking-[-0.3px]">{title}</h2>
-        <p className="text-[13px] text-muted-foreground">{description}</p>
-      </div>
-      {children}
-    </div>
-  );
+function Page({ children }: { children: ReactNode }) {
+  return <div className="flex flex-col">{children}</div>;
 }
 
 function PageSection({
   title,
+  action,
   children,
 }: {
   title: string;
+  action?: ReactNode;
   children: ReactNode;
 }) {
   return (
-    <section className="flex flex-col gap-4">
-      <h3 className="border-b pb-2 text-sm font-semibold">{title}</h3>
+    <section className="mt-6 first:mt-1">
+      <div className="flex items-center gap-4 pb-1">
+        <h3 className="font-mono text-[10.5px] font-medium tracking-[0.7px] text-muted-foreground/60 uppercase">
+          {title}
+        </h3>
+        <span className="h-px flex-1 bg-border" />
+        {action}
+      </div>
       {children}
     </section>
   );
@@ -2090,14 +2058,13 @@ function SettingRow({
 }: {
   label: string;
   description?: string;
-  /** Marks the setting as upcoming — adds a "Soon" tag and dims the row. */
   soon?: boolean;
   children: ReactNode;
 }) {
   return (
     <div
       className={cn(
-        "flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-6",
+        "flex flex-col gap-2 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-6",
         soon && "opacity-60",
       )}
     >
@@ -2115,7 +2082,6 @@ function SettingRow({
   );
 }
 
-/** Small uppercase "Soon" tag for not-yet-wired settings. */
 function SoonTag() {
   return (
     <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[9.5px] font-medium tracking-wide text-muted-foreground/70 uppercase">
@@ -2136,51 +2102,28 @@ function SegmentedButtons<T extends string>({
   mono?: boolean;
 }) {
   return (
-    // biome-ignore lint/a11y/useSemanticElements: a segmented button group; a <fieldset> would impose default form styling.
-    <div role="group" className="flex gap-1">
+    <ToggleGroup
+      value={[value]}
+      onValueChange={(values) => {
+        const next = values[0] as T | undefined;
+        if (next) onChange(next);
+      }}
+      className="gap-0.5 rounded-lg border bg-muted/40 p-0.5"
+    >
       {options.map((option) => (
-        <Hint key={option.value} label={option.disabled ? "Soon" : ""}>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={option.disabled}
-            aria-pressed={value === option.value}
-            onClick={() => onChange(option.value)}
-            className={cn(
-              mono && "font-mono",
-              value === option.value
-                ? "bg-muted text-foreground"
-                : "text-muted-foreground",
-            )}
-          >
-            {option.label}
-          </Button>
-        </Hint>
+        <ToggleGroupItem
+          key={option.value}
+          value={option.value}
+          disabled={option.disabled}
+          className={cn(
+            "h-7 rounded-md px-3 text-[12.5px] data-pressed:bg-background data-pressed:text-foreground data-pressed:shadow-sm",
+            mono && "font-mono text-[11.5px]",
+          )}
+        >
+          {option.label}
+        </ToggleGroupItem>
       ))}
-    </div>
+    </ToggleGroup>
   );
 }
 
-/** A control that exists in the design but isn't wired yet. */
-function SoonControl({
-  label,
-  mono = false,
-}: {
-  label: string;
-  mono?: boolean;
-}) {
-  return (
-    <Hint label="Soon">
-      <Button
-        variant="outline"
-        size="sm"
-        disabled
-        className={cn("max-w-56", mono && "font-mono")}
-      >
-        <span className="truncate">{label}</span>
-        <ChevronDownIcon />
-      </Button>
-    </Hint>
-  );
-}
