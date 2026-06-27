@@ -499,25 +499,22 @@ function AccountsPage({ accounts }: { accounts: Account[] }) {
   return (
     <Page>
       <PageSection title="Connected accounts">
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-2.5">
           {accounts.map((account, index) => {
             const activeIndex =
               (accountColors[account.accountId] ?? index) %
               ACCOUNT_COLORS.length;
+            const isPrimary = account.email === primaryEmail;
             return (
               <div
                 key={account.accountId}
-                className="flex items-center justify-between gap-4"
+                className="flex items-center gap-3 rounded-lg border px-3.5 py-2.5 transition-colors hover:bg-muted/20"
               >
-                <div className="min-w-0">
-                  <p className="truncate font-mono text-[13px]">
-                    {account.email || account.accountId}
-                  </p>
-                  {account.email === primaryEmail && (
-                    <p className="text-xs text-muted-foreground">Primary</p>
-                  )}
-                </div>
-                <div className="flex shrink-0 items-center gap-3">
+                <p className="min-w-0 truncate font-mono text-[13px]">
+                  {account.email || account.accountId}
+                </p>
+                {isPrimary && <Tag>Primary</Tag>}
+                <div className="ml-auto flex shrink-0 items-center gap-3">
                   {/* biome-ignore lint/a11y/useSemanticElements: a visual swatch group; a <fieldset> would impose default form styling in the row. */}
                   <div
                     role="group"
@@ -546,7 +543,7 @@ function AccountsPage({ accounts }: { accounts: Account[] }) {
                       would drop login, so it shows a lock in the disconnect slot
                       (also keeps rows aligned). */}
                   {primaryEmail &&
-                    (account.email === primaryEmail ? (
+                    (isPrimary ? (
                       <Hint label="Primary account — can’t be disconnected">
                         <span className="inline-flex size-7 shrink-0 items-center justify-center text-muted-foreground opacity-70">
                           <Lock className="size-4" />
@@ -569,6 +566,14 @@ function AccountsPage({ accounts }: { accounts: Account[] }) {
 
       <PageSection title="Integrations">
         <GithubIntegration />
+        <div className="opacity-60">
+          <SettingRow
+            label="Linear"
+            description="Pull issues and project updates into your inbox"
+          >
+            <SoonTag />
+          </SettingRow>
+        </div>
       </PageSection>
     </Page>
   );
@@ -2219,12 +2224,17 @@ function SettingRow({
   );
 }
 
-function SoonTag() {
+/** Small mono-caps status pill — PRIMARY, SOON, etc. */
+function Tag({ children }: { children: ReactNode }) {
   return (
-    <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[9.5px] font-medium tracking-wide text-muted-foreground/70 uppercase">
-      Soon
+    <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-[9.5px] font-medium tracking-wide whitespace-nowrap text-muted-foreground/70 uppercase">
+      {children}
     </span>
   );
+}
+
+function SoonTag() {
+  return <Tag>Soon</Tag>;
 }
 
 function SegmentedButtons<T extends string>({
