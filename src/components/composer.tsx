@@ -756,27 +756,14 @@ export function Composer({
           if (event.key === "Escape" && !sending) close();
         }}
       className={cn(
-        // `relative` (not a filter/transform) so fixed children — the slash menu,
-        // popovers, the snippet bubble — still anchor to the viewport. The frost
-        // lives on a behind-content layer below, NOT on this element, because
-        // backdrop-filter here would trap those fixed descendants + clip them.
-        "relative flex flex-col overflow-hidden bg-secondary",
+        "flex flex-col overflow-hidden bg-secondary",
         inPane
           ? "h-full w-full"
-          : // Full-screen on phones; the floating bottom-right popout on sm+.
-            "fixed inset-0 z-50 w-full rounded-none border-0 sm:inset-auto sm:right-5 sm:bottom-5 sm:z-40 sm:w-[520px] sm:max-w-[calc(100vw-2.5rem)] sm:rounded-xl sm:border sm:border-input sm:bg-transparent sm:shadow-[0_32px_90px_-20px_rgba(0,0,0,0.7)]",
+          : // Full-screen on phones; the floating bottom-right popout on sm+. The
+            // soft-edged blur halo behind it (see above) does the lifting.
+            "fixed inset-0 z-50 w-full rounded-none border-0 sm:inset-auto sm:right-5 sm:bottom-5 sm:z-40 sm:w-[520px] sm:max-w-[calc(100vw-2.5rem)] sm:rounded-xl sm:border sm:border-input sm:shadow-[0_32px_90px_-20px_rgba(0,0,0,0.7)]",
       )}
     >
-      {/* Frosted-glass layer: blurs only what's directly behind the popout so the
-          inbox stays sharp. A childless sibling, so its backdrop-filter never
-          becomes a containing block for the composer's fixed/positioned UI. */}
-      {!inPane && (
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 -z-10 hidden bg-secondary/80 backdrop-blur-2xl backdrop-saturate-150 sm:block"
-        />
-      )}
-
       <header
         onPointerDown={onHeaderPointerDown}
         className={cn(
