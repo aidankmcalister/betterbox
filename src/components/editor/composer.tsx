@@ -43,6 +43,7 @@ import { checkGuardrails } from "@/lib/email/guardrails";
 import { countFillFields } from "@/components/editor/editor-fill-fields";
 import { useSnippetMap, openSnippetDraft } from "@/hooks/use-snippets";
 import { DOMSerializer } from "@tiptap/pm/model";
+import { NodeSelection } from "@tiptap/pm/state";
 import type { Editor } from "@tiptap/react";
 import { BookmarkPlusIcon } from "lucide-react";
 import {
@@ -409,6 +410,8 @@ export function Composer({
     if (!ed) return;
     const sync = () => {
       if (ed.state.selection.empty || !ed.isFocused) return setSnipRect(null);
+      // A single selected chip (fill-field/date node) isn't a passage to save.
+      if (ed.state.selection instanceof NodeSelection) return setSnipRect(null);
       const sel = window.getSelection();
       if (!sel || sel.isCollapsed || !sel.rangeCount) return setSnipRect(null);
       const r = sel.getRangeAt(0).getBoundingClientRect();

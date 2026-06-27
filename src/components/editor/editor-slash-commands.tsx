@@ -27,7 +27,10 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import DOMPurify from "dompurify";
+
 import { insertSnippet } from "@/components/editor/editor-fill-fields";
+import { snippetTokenChips } from "@/lib/snippet-preview";
 import {
   Command,
   CommandEmpty,
@@ -291,9 +294,15 @@ const SlashMenuList = forwardRef<
                           {item.title.replace(/^\//, "")}
                         </span>
                         {item.subtitle && (
-                          <span className="min-w-0 flex-1 truncate text-[11.5px] text-muted-foreground/55">
-                            {item.subtitle}
-                          </span>
+                          <span
+                            className="min-w-0 flex-1 truncate text-[11.5px] text-muted-foreground/55"
+                            // biome-ignore lint/security/noDangerouslySetInnerHtml: tokens → chips; all text escaped.
+                            dangerouslySetInnerHTML={{
+                              __html: DOMPurify.sanitize(
+                                snippetTokenChips(item.subtitle),
+                              ),
+                            }}
+                          />
                         )}
                       </span>
                     ) : (

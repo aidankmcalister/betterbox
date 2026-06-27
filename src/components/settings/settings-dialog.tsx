@@ -23,6 +23,7 @@ import {
   SquarePen,
   SquareTerminal,
   CircleUserRound,
+  UserRound,
   TextCursorIcon,
   TriangleAlertIcon,
   Unplug,
@@ -82,6 +83,7 @@ import { escapeHtml } from "@/lib/email/serialize";
 import { VARIABLE_KEYS, PREVIEW_CONTACT } from "@/lib/snippet-tokens";
 import { SnippetTokenBubble } from "@/components/editor/snippet-token-bubble";
 import { FieldNameDialog } from "@/components/editor/field-name-dialog";
+import { snippetRowPreview } from "@/lib/snippet-preview";
 import {
   tokensToFieldHtml,
   fieldHtmlToTokens,
@@ -1142,24 +1144,6 @@ function snippetPreviewHtml(html: string): string {
   });
 }
 
-/** Shows the snippet's *shape* — field names as chips, not a resolved sample. */
-function rowPreviewHtml(html: string): string {
-  const plain = html
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  if (!plain) return "Empty snippet";
-  return escapeHtml(plain).replace(TOKEN_RE, (_m, raw: string) => {
-    const k = raw.toLowerCase();
-    if (k === "cursor") return "";
-    // Muted version of the editor's chip colors: blue = auto-fill variable,
-    // orange = fill-in field.
-    const cls = VARIABLE_KEYS.has(k)
-      ? "border-label-blue/25 bg-label-blue/[0.08] text-label-blue/80"
-      : "border-primary/25 bg-primary/[0.08] text-primary/80";
-    return `<span class="inline-block rounded border ${cls} px-1 font-mono text-[0.85em] leading-[1.45] align-middle">${escapeHtml(raw)}</span>`;
-  });
-}
 
 function validateTrigger(value: string, taken: string[]): string | null {
   const v = value.trim();
@@ -1261,15 +1245,15 @@ function InsertFieldMenu({
             Filled from the recipient, if known.
           </p>
           <DropdownMenuItem onClick={() => onInsert("{{first_name}}")}>
-            <CircleUserRound />
+            <UserRound />
             First name
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => onInsert("{{last_name}}")}>
-            <CircleUserRound />
+            <UserRound />
             Last name
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => onInsert("{{name}}")}>
-            <CircleUserRound />
+            <UserRound />
             Full name
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => onInsert("{{email}}")}>
@@ -1503,13 +1487,13 @@ function SnippetRow({
           {snippet.trigger}
         </span>
         <span
-          className="min-w-0 flex-1 truncate text-[12.5px] text-muted-foreground/70"
+          className="mr-7 min-w-0 flex-1 truncate text-[12.5px] text-muted-foreground/70"
           // biome-ignore lint/security/noDangerouslySetInnerHtml: a sanitized preview of the user's own snippet.
           dangerouslySetInnerHTML={{
             __html:
               typeof window === "undefined"
                 ? ""
-                : DOMPurify.sanitize(rowPreviewHtml(snippet.text)),
+                : DOMPurify.sanitize(snippetRowPreview(snippet.text)),
           }}
         />
       </AccordionTrigger>
@@ -1886,7 +1870,7 @@ function SignatureRow({
         <span className="shrink-0 text-[13px] font-medium text-foreground">
           {signature.name}
         </span>
-        <span className="min-w-0 flex-1 truncate text-[12.5px] font-normal text-muted-foreground/70">
+        <span className="mr-7 min-w-0 flex-1 truncate text-[12.5px] font-normal text-muted-foreground/70">
           {signaturePreview(signature.body)}
         </span>
       </AccordionTrigger>

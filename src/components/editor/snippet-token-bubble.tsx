@@ -4,12 +4,12 @@ import { NodeSelection } from "@tiptap/pm/state";
 import {
   CalendarIcon,
   ChevronDownIcon,
-  CircleUserRound,
   MailIcon,
   Pencil,
   SparklesIcon,
   Trash2,
   Undo2,
+  UserRound,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -43,9 +43,9 @@ type Option = {
 };
 
 const OPTIONS: Option[] = [
-  { kind: "first_name", label: "First name", icon: CircleUserRound, name: "first_name" },
-  { kind: "last_name", label: "Last name", icon: CircleUserRound, name: "last_name" },
-  { kind: "name", label: "Full name", icon: CircleUserRound, name: "name" },
+  { kind: "first_name", label: "First name", icon: UserRound, name: "first_name" },
+  { kind: "last_name", label: "Last name", icon: UserRound, name: "last_name" },
+  { kind: "name", label: "Full name", icon: UserRound, name: "name" },
   { kind: "email", label: "Email", icon: MailIcon, name: "email" },
   { kind: "date", label: "Date", icon: CalendarIcon, name: "date" },
   { kind: "custom", label: "Custom fill-in field…", icon: Pencil, name: null },

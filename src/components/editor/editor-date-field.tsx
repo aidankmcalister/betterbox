@@ -5,12 +5,13 @@ import {
   ReactNodeViewRenderer,
   type NodeViewProps,
 } from "@tiptap/react";
+import { NodeSelection } from "@tiptap/pm/state";
 import { CalendarIcon } from "lucide-react";
 
-import { cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { formatDateShort, parseIsoDate, toIsoDate } from "@/lib/dates";
+import { tokenChipClass } from "@/components/editor/token-chip";
 
 /**
  * `{{date}}` snippet field — an inline atom that, when clicked, opens a
@@ -27,13 +28,21 @@ function DateFieldView({
   const value = String(node.attrs.value ?? "");
   const [open, setOpen] = useState(false);
   // Tab/expansion lands the selection on an empty date field — open the picker
-  // so it's fillable from the keyboard, not only by clicking the chip.
+  // so it's fillable from the keyboard, not only by clicking the chip. Guard on
+  // a real NodeSelection of THIS node: a range like select-all also marks the
+  // node "selected", and opening then would steal focus into the calendar and
+  // break select-all-delete.
   useEffect(() => {
-    if (nodeSelected && !value && editor.isEditable) setOpen(true);
-  }, [nodeSelected, value, editor.isEditable]);
+    if (
+      nodeSelected &&
+      !value &&
+      editor.isEditable &&
+      editor.state.selection instanceof NodeSelection
+    )
+      setOpen(true);
+  }, [nodeSelected, value, editor.isEditable, editor.state.selection]);
   const selected = value ? (parseIsoDate(value) ?? undefined) : undefined;
-  const filled = !!selected;
-  const label = filled ? formatDateShort(value) : "pick a date";
+  const label = selected ? formatDateShort(value) : "Pick a date";
 
   return (
     <NodeViewWrapper as="span" className="inline" contentEditable={false}>
@@ -42,14 +51,9 @@ function DateFieldView({
           disabled={!editor.isEditable}
           // Don't let the click move the editor selection before the popover opens.
           onMouseDown={(e) => e.preventDefault()}
-          className={cn(
-            "mx-px inline-flex cursor-pointer items-center gap-1 rounded border px-1.5 align-[-0.15em] font-mono text-[0.85em] leading-none transition-colors",
-            filled
-              ? "border-primary/35 bg-primary/[0.13] text-primary hover:bg-primary/20"
-              : "border-dashed border-primary/50 bg-primary/[0.07] text-primary/90 hover:bg-primary/15",
-          )}
+          className={tokenChipClass("date", nodeSelected)}
         >
-          <CalendarIcon className="size-[0.95em]" />
+          <CalendarIcon />
           {label}
         </PopoverTrigger>
         <PopoverContent align="start" className="w-auto p-2">
