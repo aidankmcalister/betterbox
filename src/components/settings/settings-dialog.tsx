@@ -24,6 +24,7 @@ import {
   SquareTerminal,
   CircleUserRound,
   TextCursorIcon,
+  TriangleAlertIcon,
   Unplug,
   Wrench,
   XIcon,
@@ -1387,6 +1388,7 @@ function SnippetEditor({
       .trim() === "";
   const canSave =
     draft.trigger.trim().length > 1 && !triggerError && !bodyEmpty;
+  const extraCursors = (draft.text.match(/\{\{cursor\}\}/g) ?? []).length > 1;
 
   return (
     <div className="border-t bg-muted/40 px-3 py-3">
@@ -1438,6 +1440,12 @@ function SnippetEditor({
           />
         }
       />
+      {extraCursors && (
+        <p className="mt-2 flex items-center gap-1.5 text-[11.5px] text-label-orange">
+          <TriangleAlertIcon className="size-3.5 shrink-0" />
+          Only the first cursor position is used — remove the extra one.
+        </p>
+      )}
       <div className="mt-2.5">
         <SnippetPreview html={draft.text} />
       </div>
