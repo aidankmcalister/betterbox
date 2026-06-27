@@ -80,6 +80,7 @@ import DOMPurify from "dompurify";
 import { escapeHtml } from "@/lib/email/serialize";
 import { VARIABLE_KEYS, PREVIEW_CONTACT } from "@/lib/snippet-tokens";
 import { SnippetTokenBubble } from "@/components/editor/snippet-token-bubble";
+import { FieldNameDialog } from "@/components/editor/field-name-dialog";
 import {
   tokensToFieldHtml,
   fieldHtmlToTokens,
@@ -1228,13 +1229,10 @@ function InsertFieldMenu({
   onInsert: (token: string) => void;
   hasCursor: boolean;
 }) {
-  const custom = () => {
-    const name = window.prompt("Fill-in field name (e.g. company)");
-    const slug = name?.trim().toLowerCase().replace(/\s+/g, "_");
-    if (slug) onInsert(`{{${slug}}}`);
-  };
+  const [fieldOpen, setFieldOpen] = useState(false);
   return (
-    <DropdownMenu>
+    <>
+      <DropdownMenu>
       <DropdownMenuTrigger
         render={
           <Button
@@ -1272,7 +1270,7 @@ function InsertFieldMenu({
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={custom}>
+        <DropdownMenuItem onClick={() => setFieldOpen(true)}>
           <Pencil />
           Fill-in field…
         </DropdownMenuItem>
@@ -1288,7 +1286,13 @@ function InsertFieldMenu({
           Cursor position
         </DropdownMenuItem>
       </DropdownMenuContent>
-    </DropdownMenu>
+      </DropdownMenu>
+      <FieldNameDialog
+        open={fieldOpen}
+        onOpenChange={setFieldOpen}
+        onSubmit={(slug) => onInsert(`{{${slug}}}`)}
+      />
+    </>
   );
 }
 

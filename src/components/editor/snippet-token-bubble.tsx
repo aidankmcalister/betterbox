@@ -25,7 +25,10 @@ import {
 import { VARIABLE_KEYS } from "@/lib/snippet-tokens";
 import { humanizeFillLabel } from "@/lib/email/serialize";
 import { tokenNode } from "@/components/editor/editor-fill-fields";
+import { FieldNameDialog } from "@/components/editor/field-name-dialog";
 import { suggestVariable, type VariableSuggestion } from "@/lib/variable-detect";
+
+type Range = { from: number; to: number };
 
 type Bubble =
   | { mode: "convert"; left: number; top: number; from: number; to: number; suggestion: VariableSuggestion }
@@ -48,16 +51,13 @@ const OPTIONS: Option[] = [
   { kind: "custom", label: "Custom fill-in field…", icon: Pencil, name: null },
 ];
 
-function promptName(fallback: string): string | null {
-  const input = window.prompt("Fill-in field name", fallback);
-  const slug = input?.trim().toLowerCase().replace(/\s+/g, "_");
-  return slug || null;
-}
-
 /** Floating menu over the snippet editor's selection: convert a text run into a
  *  token chip, or edit an existing chip. Settings-modal only. */
 export function SnippetTokenBubble({ editor }: { editor: Editor }) {
   const [bubble, setBubble] = useState<Bubble | null>(null);
+  const [customTarget, setCustomTarget] = useState<
+    (Range & { fallback: string }) | null
+  >(null);
   const menuOpenRef = useRef(false);
 
   useEffect(() => {
@@ -112,16 +112,11 @@ export function SnippetTokenBubble({ editor }: { editor: Editor }) {
     };
   }, [editor]);
 
-  if (!bubble) return null;
-
-  const insert = (o: Option, fallback: string) => {
-    const name = o.name ?? promptName(fallback);
-    if (!name) return;
-    editor
-      .chain()
-      .focus()
-      .insertContentAt({ from: bubble.from, to: bubble.to }, tokenNode(name))
-      .run();
+  const insertAt = (range: Range, name: string) =>
+    editor.chain().focus().insertContentAt(range, tokenNode(name)).run();
+  const pick = (o: Option, b: Bubble, fallback: string) => {
+    if (o.name) insertAt({ from: b.from, to: b.to }, o.name);
+    else setCustomTarget({ from: b.from, to: b.to, fallback });
     setBubble(null);
   };
   const onOpenChange = (open: boolean) => {
@@ -130,46 +125,58 @@ export function SnippetTokenBubble({ editor }: { editor: Editor }) {
   };
 
   return (
-    // biome-ignore lint/a11y/noStaticElementInteractions: mousedown only guards the selection; the menu inside is the control.
-    <div
-      className="fixed z-[60] -translate-x-1/2 -translate-y-full"
-      style={{ left: bubble.left, top: bubble.top - 10 }}
-      onMouseDown={(e) => e.preventDefault()}
-    >
-      {bubble.mode === "convert" ? (
-        <ConvertMenu
-          suggestion={bubble.suggestion}
-          onOpenChange={onOpenChange}
-          onPick={(o) => insert(o, bubble.suggestion.slug)}
-        />
-      ) : (
-        <TokenMenu
-          token={bubble.token}
-          onOpenChange={onOpenChange}
-          onPick={(o) => insert(o, bubble.token)}
-          onUnwrap={() => {
-            editor
-              .chain()
-              .focus()
-              .insertContentAt(
-                { from: bubble.from, to: bubble.to },
-                humanizeFillLabel(bubble.token),
-              )
-              .run();
-            setBubble(null);
-          }}
-          onDelete={() => {
-            editor
-              .chain()
-              .focus()
-              .deleteRange({ from: bubble.from, to: bubble.to })
-              .run();
-            setBubble(null);
-          }}
-        />
+    <>
+      {bubble && (
+        // biome-ignore lint/a11y/noStaticElementInteractions: mousedown only guards the selection; the menu inside is the control.
+        <div
+          className="fixed z-[60] -translate-x-1/2 -translate-y-full"
+          style={{ left: bubble.left, top: bubble.top - 10 }}
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          {bubble.mode === "convert" ? (
+            <ConvertMenu
+              suggestion={bubble.suggestion}
+              onOpenChange={onOpenChange}
+              onPick={(o) => pick(o, bubble, bubble.suggestion.slug)}
+            />
+          ) : (
+            <TokenMenu
+              token={bubble.token}
+              onOpenChange={onOpenChange}
+              onPick={(o) => pick(o, bubble, bubble.token)}
+              onUnwrap={() => {
+                insertAtText(editor, bubble, humanizeFillLabel(bubble.token));
+                setBubble(null);
+              }}
+              onDelete={() => {
+                editor
+                  .chain()
+                  .focus()
+                  .deleteRange({ from: bubble.from, to: bubble.to })
+                  .run();
+                setBubble(null);
+              }}
+            />
+          )}
+        </div>
       )}
-    </div>
+      <FieldNameDialog
+        open={!!customTarget}
+        defaultValue={customTarget?.fallback ?? ""}
+        onOpenChange={(open) => {
+          if (!open) setCustomTarget(null);
+        }}
+        onSubmit={(slug) => {
+          if (customTarget) insertAt(customTarget, slug);
+          setCustomTarget(null);
+        }}
+      />
+    </>
   );
+}
+
+function insertAtText(editor: Editor, range: Range, text: string) {
+  editor.chain().focus().insertContentAt(range, text).run();
 }
 
 function ConvertMenu({

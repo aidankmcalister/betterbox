@@ -232,6 +232,7 @@ function Toolbar({
         compact && "px-1 py-0.5 [&_button>svg]:size-3.5 [&_button]:size-6",
       )}
     >
+      <div className="flex min-w-0 flex-wrap items-center gap-0.5">
       <Btn
         label="Bold"
         keys={["⌘", "B"]}
@@ -309,9 +310,8 @@ function Toolbar({
       >
         <Redo2Icon />
       </Btn>
-      {end && (
-        <div className="ml-auto flex items-center pl-1">{end}</div>
-      )}
+      </div>
+      {end && <div className="ml-auto flex items-center pl-1">{end}</div>}
     </div>
   );
 }
