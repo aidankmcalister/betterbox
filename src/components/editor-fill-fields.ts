@@ -8,9 +8,8 @@ import {
 } from "@/lib/email/serialize";
 import { VARIABLE_KEYS } from "@/lib/snippet-tokens";
 
-/** Count unfilled fill-field tab-stops remaining in a document (for the send
- *  guardrail). A `dateField` counts only while it has no date picked. Pure walk
- *  over the TipTap JSON. */
+/** Count unfilled tab-stops remaining (for the send guardrail); a `dateField`
+ *  counts only while no date is picked. Pure walk over the TipTap JSON. */
 export function countFillFields(node: EmailNode | null | undefined): number {
   if (!node) return 0;
   let total =
@@ -23,16 +22,12 @@ export function countFillFields(node: EmailNode | null | undefined): number {
 }
 
 /**
- * Snippet fill-in fields + variables (Composer Phase 2 — BOX-22).
- *
- * Snippet text can carry `{{tokens}}`:
- *   - `{{first_name}}` / known variables → replaced inline from the To: contact.
- *   - `{{cursor}}` → where the caret lands after expansion.
- *   - `{{anything else}}` → a tab-stop "fill field": a highlighted chip you Tab
- *     through and type over. This is the single biggest composer UX upgrade.
- *
- * Fill fields are an inline atom node, so the serializer can map them (to their
- * label as plain text) and Tab can select them as a unit.
+ * Snippet fill-in fields + variables (Composer Phase 2 — BOX-22). `{{tokens}}`:
+ * known variables (`{{first_name}}`) resolve from the To: contact, `{{cursor}}`
+ * sets the post-expansion caret, anything else becomes a tab-stop "fill field"
+ * (a highlighted chip you Tab through and type over). Fill fields are an inline
+ * atom so the serializer can map them to plain-text labels and Tab selects them
+ * as a unit.
  */
 export const FillField = Node.create({
   name: "fillField",
@@ -42,8 +37,8 @@ export const FillField = Node.create({
   selectable: true,
 
   addAttributes() {
-    // The raw token rides in data-label so a saved draft round-trips; the
-    // visible text is the humanized label.
+    // Raw token rides in data-label so saved drafts round-trip; visible text is
+    // the humanized label.
     return {
       label: {
         default: "",
@@ -59,9 +54,8 @@ export const FillField = Node.create({
 
   renderHTML({ node, HTMLAttributes }) {
     const label = String(node.attrs.label ?? "");
-    // The chip is always orange (a blank to fill); the hover tooltip explains
-    // *why* it's manual. A recipient variable that hasn't resolved yet gets the
-    // "this normally auto-fills" explanation; a custom field gets the basics.
+    // Chip is always orange; tooltip explains why it's manual — an unresolved
+    // recipient variable gets the "normally auto-fills" note, a custom field the basics.
     const isVar = VARIABLE_KEYS.has(label.toLowerCase());
     return [
       "span",
@@ -84,8 +78,8 @@ export const FillField = Node.create({
   },
 });
 
-/** A node that still needs the user's input before send: a fill-field, or a
- *  date-field with no date picked yet. Tab cycles through these. */
+/** A node still needing input before send: a fill-field, or a date-field with
+ *  no date picked. Tab cycles through these. */
 function isUnfilledField(node: { type: { name: string }; attrs: { value?: unknown } }): boolean {
   return (
     node.type.name === "fillField" ||
@@ -120,9 +114,8 @@ function jumpFillField(editor: Editor, dir: 1 | -1): boolean {
 const TOKEN = /\{\{([^}]+)\}\}/;
 const SPLIT = /(\{\{[^}]+\}\})/;
 
-/** Turn a snippet string into editor content, resolving known variables and
- *  emitting fill-field nodes for the rest. Returns the content plus the index
- *  of a `{{cursor}}` token (or -1). */
+/** Turn a snippet string into editor content (known variables resolved, the
+ *  rest emitted as fill-field nodes). Returns content + the `{{cursor}}` index (or -1). */
 function snippetToContent(
   text: string,
   variables: Record<string, string>,
@@ -180,9 +173,9 @@ export function insertSnippet(
   text: string,
   variables: Record<string, string>,
 ): void {
-  // Rich snippets are stored as HTML — expand the tokens inside the markup and
-  // let TipTap parse it (the fill-field spans round-trip into FillField nodes,
-  // and the formatting flows through the email-safe serializer on send).
+  // Rich snippets are HTML: expand tokens in the markup and let TipTap parse it
+  // (fill-field spans round-trip into FillField nodes; formatting flows through
+  // the email-safe serializer on send).
   if (/<[a-z][\s\S]*?>/i.test(text)) {
     const html = text.replace(/\{\{([^}]+)\}\}/g, (_m, raw: string) => {
       const token = raw.trim();

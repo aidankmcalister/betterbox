@@ -34,12 +34,10 @@ function rootDomain(domain: string): string {
     : parts.slice(-2).join(".");
 }
 
-// Only show a favicon when it's a real, sharp brand mark — otherwise colored
-// initials. Google's service hands back a tiny (~16px) generic globe when a
-// domain has no favicon, even at sz=128, and it returns 200 (not an error) so
-// onError can't catch it. We preload and measure the natural width instead:
-// anything below this is either the generic globe or too low-res to look good,
-// so it falls back to initials.
+// Show a favicon only when it's a real, sharp brand mark — else colored initials.
+// Google returns a tiny (~16px) generic globe for favicon-less domains even at
+// sz=128, with a 200 (so onError can't catch it). We preload and measure natural
+// width: anything below this is the globe or too low-res, so fall back to initials.
 const MIN_FAVICON_PX = 32;
 
 export function SenderAvatar({
@@ -59,10 +57,9 @@ export function SenderAvatar({
     ? `https://www.google.com/s2/favicons?domain=${root}&sz=128`
     : null;
 
-  // Resolve to a usable favicon only after it loads big enough; until then
-  // (and forever, for generic/missing favicons) we render the initials, so the
-  // globe never flashes. The image is cached by this preload, so swapping it in
-  // is instant.
+  // Use a favicon only once it loads big enough; until then (and forever, for
+  // generic/missing ones) render initials, so the globe never flashes. The
+  // preload caches the image, so swapping it in is instant.
   const [favicon, setFavicon] = useState<string | null>(null);
   useEffect(() => {
     setFavicon(null);
@@ -84,8 +81,8 @@ export function SenderAvatar({
       <img
         src={favicon}
         alt=""
-        // White plate keeps transparent dark logos visible in dark mode; the
-        // mark fills the circle so there's no stray plate showing as a ring.
+        // White plate keeps transparent dark logos visible in dark mode; the mark
+        // fills the circle so no stray plate shows as a ring.
         className={cn(
           "size-9 shrink-0 rounded-full bg-white object-cover",
           className,

@@ -16,11 +16,11 @@ export const MIN_PANE_FRACTION = 0.15;
 /** Dispatch on window to restore the default tile layout (⌘K action). */
 export const RESET_TILE_LAYOUT_EVENT = "bm:reset-tile-layout";
 
-/** Dispatched by ⌘K "Search in …" to run a query in a pane's in-pane search. accountId "all" targets every visible pane. */
+/** ⌘K "Search in …": run a query in a pane's in-pane search. accountId "all" = every visible pane. */
 export const SEARCH_INBOX_EVENT = "bm:search-inbox";
 export type SearchInboxDetail = { accountId: string | "all"; query: string };
 
-/** Reserved id: reader lives as an ordinary pane so it drags/swaps/splits like an inbox; only survives validation while a message is open. */
+/** Reserved id: reader is an ordinary pane (drags/swaps/splits like an inbox); survives validation only while a message is open. */
 export const READER_PANE_ID = "__reader__";
 
 const newSplitId = () => crypto.randomUUID();
@@ -210,8 +210,6 @@ function isLayoutNode(value: unknown): value is LayoutNode {
   return false;
 }
 
-// ── Saved layouts ("workspaces") + current-layout persistence ───────────────
-
 /** localStorage key for the live tile layout (the board persists here). */
 export const TILE_LAYOUT_KEY = "bm.tiles-layout";
 
@@ -227,8 +225,8 @@ export function loadCurrentLayout(): LayoutNode | null {
   }
 }
 
-/** Dispatch on window to apply a specific layout to the board (restore a saved
- *  workspace). The board re-validates it against the current accounts. */
+/** Dispatch on window to apply a layout (restore a saved workspace); the board
+ *  re-validates it against the current accounts. */
 export const APPLY_TILE_LAYOUT_EVENT = "bm:apply-tile-layout";
 export type ApplyTileLayoutDetail = { tree: LayoutNode };
 

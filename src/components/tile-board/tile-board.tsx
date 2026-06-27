@@ -58,9 +58,8 @@ function useBoard(): BoardCtx {
 
 const NOOP_DRAG = () => {};
 
-/** The pane-header drag starter. Returns a no-op when used outside a
- *  <TileBoard> (e.g. the single-column mobile board renders panes directly), so
- *  ReaderPane / PaneHeader / ComposePane can render without a board. */
+/** The pane-header drag starter. No-op outside a <TileBoard> (e.g. the mobile
+ *  single-column board), so ReaderPane/PaneHeader/ComposePane render without one. */
 export function useTileDrag() {
   const ctx = useContext(BoardContext);
   return ctx?.beginHeaderDrag ?? NOOP_DRAG;
@@ -106,9 +105,8 @@ export function TileBoard({
   renderPane: (paneId: string) => ReactNode;
   storage: TileStorage;
   renderDragLabel?: (paneId: string) => ReactNode;
-  /** Per-pane minimum size in the split direction (a CSS size like "340px"), so
-   *  a pane can't be resized small enough to break its content. Falls back to
-   *  MIN_PANE_FRACTION when it returns undefined. */
+  /** Per-pane min size in the split direction (CSS size like "340px") so a pane
+   *  can't shrink enough to break its content. Falls back to MIN_PANE_FRACTION. */
   paneMinSize?: (paneId: string) => string | undefined;
   resetEvent?: string;
   emptyLabel?: string;
@@ -212,9 +210,8 @@ export function TileBoard({
     return () => window.removeEventListener(resetEvent, onReset);
   }, [resetEvent, mutate, paneIdsKey]);
 
-  // Restore a saved workspace (⌘K). Re-validate the saved tree against the
-  // accounts on screen now — dropping panes for unlinked accounts, appending
-  // any new ones — so an old layout never strands or omits a pane.
+  // Restore a saved workspace (⌘K). Re-validate the saved tree against on-screen
+  // accounts — drop unlinked panes, append new ones — so it never strands/omits one.
   // biome-ignore lint/correctness/useExhaustiveDependencies: re-subscribe when the pane set (paneIdsKey) changes; paneIds is read fresh in the handler.
   useEffect(() => {
     const onApply = (event: Event) => {

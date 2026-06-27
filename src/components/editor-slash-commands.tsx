@@ -37,11 +37,9 @@ import {
 } from "@/components/ui/command";
 
 /**
- * Notion-style `/` command menu for the composer. A single registry backs it:
- * built-in formatting commands (`/h1`, `/code`, lists…) plus the user's saved
- * snippets (`/ty` → text). Type `/`, filter, ↑/↓ + Enter to run. This is the
- * backbone — add a new command by pushing onto STATIC_COMMANDS or by surfacing
- * another source the way snippets are surfaced here.
+ * Notion-style `/` command menu for the composer. One registry backs it: built-in
+ * formatting commands (`/h1`, `/code`, lists…) plus saved snippets (`/ty` → text).
+ * Add a command by pushing onto STATIC_COMMANDS or surfacing a source like snippets.
  */
 export type SlashCommand = {
   id: string;
@@ -53,8 +51,7 @@ export type SlashCommand = {
   run: (editor: Editor, range: Range) => void;
 };
 
-/** Built-in formatting commands. Each clears the typed `/query` first, then
- *  applies its block. */
+/** Built-in formatting commands. Each clears the typed `/query`, then applies its block. */
 const STATIC_COMMANDS: SlashCommand[] = [
   {
     id: "h1",
@@ -148,9 +145,9 @@ const STATIC_COMMANDS: SlashCommand[] = [
   },
 ];
 
-/** Turn the user's saved snippets into commands. Each becomes `/trigger` and
- *  inserts its content — resolving `{{variables}}`, `{{cursor}}`, and tab-stop
- *  `{{fields}}` (see insertSnippet). Variables are pulled fresh at run time. */
+/** Saved snippets → commands. Each becomes `/trigger` and inserts its content,
+ *  resolving `{{variables}}`, `{{cursor}}`, and tab-stop `{{fields}}` (see
+ *  insertSnippet). Variables are pulled fresh at run time. */
 function buildSnippetCommands(
   snippets: Record<string, string>,
   getVariables: () => Record<string, string>,
@@ -185,8 +182,6 @@ function filterCommands(
   );
 }
 
-// ── Menu UI ────────────────────────────────────────────────────────────────
-
 type SlashMenuRef = { onKeyDown: (props: SuggestionKeyDownProps) => boolean };
 
 const GROUPS: SlashCommand["group"][] = ["Basic blocks", "Snippets"];
@@ -195,17 +190,15 @@ const SlashMenuList = forwardRef<
   SlashMenuRef,
   { items: SlashCommand[]; command: (item: SlashCommand) => void }
 >(({ items, command }, ref) => {
-  // The editor keeps focus, so cmdk can't read the keys itself — Tiptap's
-  // suggestion keymap drives cmdk's selection via the controlled `value`, and
-  // cmdk handles the highlight + scrolling the active item into view.
+  // The editor keeps focus, so cmdk can't read keys itself — Tiptap's suggestion
+  // keymap drives cmdk's selection via the controlled `value`.
   const [value, setValue] = useState(items[0]?.id ?? "");
   const listRef = useRef<HTMLDivElement>(null);
 
   // Reset the highlight whenever the filtered set changes.
   useEffect(() => setValue(items[0]?.id ?? ""), [items]);
-  // Keep the selected row fully visible. cmdk's own scroll undershoots by a row
-  // here, so we own it: after layout (rAF), nudge scrollTop only as far as
-  // needed to bring the row inside the list with a small margin.
+  // Keep the selected row fully visible. cmdk's own scroll undershoots by a row,
+  // so after layout (rAF) we nudge scrollTop just enough to bring it in-view.
   useEffect(() => {
     const raf = requestAnimationFrame(() => {
       const list = listRef.current;
@@ -263,8 +256,8 @@ const SlashMenuList = forwardRef<
       shouldFilter={false}
       value={value}
       onValueChange={setValue}
-      // The editor keeps focus — don't let a click in the menu blur it (which
-      // would close the popup before onSelect fires).
+      // Editor keeps focus — don't let a menu click blur it (closes the popup
+      // before onSelect fires).
       onMouseDown={(e) => e.preventDefault()}
       className="h-auto w-72 max-w-[calc(100vw-1rem)] border shadow-xl ring-1 ring-foreground/10"
     >
@@ -318,8 +311,6 @@ const SlashMenuList = forwardRef<
 });
 SlashMenuList.displayName = "SlashMenuList";
 
-// ── Positioning + render glue ────────────────────────────────────────────────
-
 function positionMenu(
   el: HTMLElement,
   clientRect?: (() => DOMRect | null) | null,
@@ -356,8 +347,7 @@ function makeRender(): SuggestionOptions<SlashCommand>["render"] {
         });
         const el = component.element as HTMLElement;
         el.style.position = "fixed";
-        // Above the composer dialog (the To-field autocomplete sits at z-50
-        // inside it; this menu mounts to body, so clear the dialog entirely).
+        // Above the composer dialog: it mounts to body, so clear the dialog (z-50) entirely.
         el.style.zIndex = "100";
         document.body.appendChild(el);
         positionMenu(el, props.clientRect);
@@ -382,8 +372,8 @@ function makeRender(): SuggestionOptions<SlashCommand>["render"] {
   };
 }
 
-/** The editor extension. Configure with `getSnippets` so the menu always shows
- *  the user's current snippets without recreating the editor. */
+/** The editor extension. `getSnippets` lets the menu show current snippets
+ *  without recreating the editor. */
 export const SlashCommand = Extension.create<{
   getSnippets: () => Record<string, string>;
   getVariables: () => Record<string, string>;

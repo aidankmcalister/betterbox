@@ -45,15 +45,12 @@ import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/sonner";
 
 export const Route = createFileRoute("/_app")({
-  // Resolve the session in a loader (cached, staleTime: Infinity) rather than
-  // beforeLoad: beforeLoad re-runs on every navigation, so it added a remote-DB
-  // session round-trip to each email open / folder switch (2-5s blank). The
-  // loader resolves once for the first paint and the auth guard; the client
-  // useSession() provides live updates after that.
+  // Resolve session in a cached loader, not beforeLoad (which re-runs every nav,
+  // adding a 2-5s remote-DB round-trip per open/switch). Loader resolves once for
+  // first paint + auth guard; client useSession() gives live updates after.
   loader: async () => {
     const session = await fetchSession();
-    // Self-hosted instances have no marketing layer: an unauthenticated
-    // visitor goes straight to sign-in instead of the landing page.
+    // Self-hosted has no marketing layer: unauthenticated → sign-in, not landing.
     if (IS_SELF_HOSTED && !session) {
       throw redirect({ to: "/sign-in" });
     }
@@ -99,8 +96,8 @@ function AppShell() {
   useApplyAccent();
   const isMobile = useIsMobile();
   const { devTools, demoMode, composerMode } = useSettings();
-  // The server already resolved the session (loader); use it until the
-  // client query settles so the auth branch is correct on the very first paint.
+  // Use the loader's session until the client query settles, so the auth branch
+  // is correct on the very first paint.
   const { session: serverSession } = Route.useLoaderData();
   const { data: clientSession, isPending } = useSession();
   const session = isPending ? serverSession : clientSession;
@@ -112,9 +109,9 @@ function AppShell() {
   const { data: accounts } = useAccountsQuery(!!session);
   const [testAccounts, setTestAccounts] = useState<Account[]>([]);
 
-  // Belt-and-suspenders for a fresh sign-in: the Google OAuth callback lands
-  // here once a session exists. Invalidate ["accounts"] so the freshly linked
-  // primary inbox is always refetched, even if anything cached an empty list.
+  // Fresh sign-in: the OAuth callback lands here once a session exists.
+  // Invalidate ["accounts"] so the linked primary inbox refetches even if
+  // something cached an empty list.
   const signedInUserId = session?.user?.id;
   useEffect(() => {
     if (signedInUserId) {
@@ -132,9 +129,8 @@ function AppShell() {
   const isOwner = session?.user.role === "OWNER";
   const onAddTestAccount = isOwner && devTools ? addTestAccount : undefined;
 
-  /* Gated on demoMode alone — NOT isOwner. The toggle is only reachable from
-     the owner-only settings page, but reading session role here would flip back
-     to real mail for the split second useSession() re-pends (the flicker). */
+  /* Gated on demoMode alone, not isOwner: reading session role here would flip
+     back to real mail for the split second useSession() re-pends. */
   const demoAccounts = useMemo(() => makeDemoAccounts(), []);
   const demo = demoMode;
   const allAccounts = useMemo(() => {
@@ -152,8 +148,8 @@ function AppShell() {
   );
 
   /* The reader is URL state (/email/$id?account=… — deep-linkable, docks as a
-     pane). Settings is just a local overlay: routing it would change the path,
-     reset the folder to inbox, and close the reader, so it stays off the URL. */
+     pane). Settings stays a local overlay: routing it would reset folder to
+     inbox and close the reader. */
   const emailMatch = matchRoute({ to: "/email/$id" });
   const search = location.search as { account?: string; folder?: string };
   const reading: Reading | null =
@@ -161,8 +157,7 @@ function AppShell() {
       ? { accountId: search.account, emailId: emailMatch.id }
       : null;
   const [settingsOpen, setSettingsOpen] = useState(false);
-  // Composer "Save as snippet" hands a captured body here → open Settings on the
-  // Snippets page with it pre-filled.
+  // Composer "Save as snippet" hands a body here → open Settings/Snippets pre-filled.
   const [snippetDraft, setSnippetDraft] = useState<string | null>(null);
   useEffect(() => {
     const onDraft = (event: Event) => {
@@ -219,9 +214,8 @@ function AppShell() {
   const openSettings = useCallback(() => setSettingsOpen(true), []);
 
   const [composeOpen, setComposeOpen] = useState(false);
-  /* The composer's editable fields live here (not in the Composer) so they
-     survive it remounting — switching pane↔popout, or visiting a page where the
-     board/compose pane isn't mounted. */
+  /* Composer fields live here (not in Composer) so they survive remounts:
+     pane↔popout switches, or pages where the compose pane isn't mounted. */
   const [composeContent, setComposeContent] =
     useState<ComposerContent>(EMPTY_COMPOSE);
   const patchComposeContent = useCallback(
@@ -241,8 +235,7 @@ function AppShell() {
   }, []);
   const editDraft = useCallback(
     async (accountId: string, emailId: string) => {
-      // A reply-draft belongs to a thread — open it in the reader (with the
-      // reply at the bottom), not the standalone composer.
+      // A reply-draft belongs to a thread — open it in the reader, not the composer.
       try {
         const full = await fetchFullEmail(accountId, emailId);
         if (isReplyDraft(full)) {
@@ -284,7 +277,7 @@ function AppShell() {
             subject?: string;
             /** Plain text (gets escaped) — used by forward. */
             body?: string;
-            /** Pre-built HTML (used as-is) — used by reply-all's quoted body. */
+            /** Pre-built HTML (used as-is) — reply-all's quoted body. */
             html?: string;
             reply?: ReplyContext;
           }
@@ -314,8 +307,8 @@ function AppShell() {
     [queryClient],
   );
 
-  /* Keyboard: ⌘K palette · G then I → inbox (all accounts) · ⌥1–9 → switch
-     account (⌘1–9 is browser-reserved for tab switching). */
+  /* Keyboard: ⌘K palette · G then I → inbox (all) · ⌥1–9 → switch account
+     (⌥, since ⌘1–9 is browser-reserved for tabs). */
   const lastGPress = useRef(0);
   useEffect(() => {
     const isTyping = (target: EventTarget | null) =>
@@ -354,13 +347,13 @@ function AppShell() {
     return () => document.removeEventListener("keydown", down);
   }, [accountIds, only, toggle, openCompose]);
 
-  // While session is pending render the static shell and skeleton account/user blocks (sidebar never shows up late). `booting` covers session fetch + first accounts load.
+  // `booting` covers session fetch + first accounts load: render the shell with
+  // skeleton account/user blocks so the sidebar never shows up late.
   const booting = isPending || allAccounts === null;
 
   if (!session) {
-    // The loader's auth guard is cached (staleTime), so a client-side sign-out
-    // won't re-trigger it. On self-host there's no landing page — send the
-    // signed-out user to sign-in; hosted falls back to the marketing landing.
+    // The cached loader guard won't re-trigger on client-side sign-out, so
+    // handle it here: self-host → sign-in, hosted → marketing landing.
     if (IS_SELF_HOSTED) return <Navigate to="/sign-in" />;
     return <LandingPage />;
   }
@@ -385,9 +378,8 @@ function AppShell() {
         snippetDraft={snippetDraft}
         onSnippetDraftConsumed={() => setSnippetDraft(null)}
       />
-      {/* Pane mode docks the composer in the board (below). But the board isn't
-          mounted on dev pages, and the mobile board has no room for a compose
-          tile, so fall back to the (full-screen on mobile) popout in both. */}
+      {/* Pane mode docks the composer in the board (below), but the board isn't
+          mounted on dev pages and mobile has no room — fall back to the popout. */}
       {(composerMode === "popout" || onDevPage || isMobile) && (
         <Composer
           open={composeOpen}
@@ -414,8 +406,8 @@ function AppShell() {
         loading={booting}
       />
       <SidebarInset className="h-svh min-w-0">
-        {/* Mobile chrome: a hamburger (opens the sidebar sheet) + quick search
-            and compose. Hidden on md+, where the persistent sidebar is shown. */}
+        {/* Mobile chrome: hamburger (sidebar sheet) + search + compose.
+            Hidden on md+, where the persistent sidebar is shown. */}
         <header className="flex h-[calc(3rem+env(safe-area-inset-top))] shrink-0 items-center gap-1 border-b px-2 pt-[env(safe-area-inset-top)] md:hidden">
           <SidebarTrigger className="size-9" />
           <div className="flex items-center gap-2 pl-1">

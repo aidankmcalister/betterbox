@@ -21,9 +21,9 @@ export type Settings = {
   showPreview: boolean;
   previewFont: PreviewFont;
   accent: AccentId;
-  /** accountId → index into ACCOUNT_COLORS; unset accounts fall back to their position in the accounts list. */
+  /** accountId → ACCOUNT_COLORS index; unset accounts fall back to list position. */
   accountColors: Record<string, number>;
-  /** Gmail label id → index into the tag color palette; client-side only (label name still derives a default color). */
+  /** Gmail label id → tag palette index; client-side only (label name still derives a default). */
   tagColors: Record<string, number>;
   /** Open messages in raw MIME view by default instead of the rendered body. */
   rawByDefault: boolean;
@@ -40,7 +40,7 @@ export type Settings = {
   /** Inbox can never be hidden. */
   hiddenNav: string[];
   devTools: boolean;
-  /** Hides real accounts and runs on demo data — for recording videos without exposing real mail. */
+  /** Hides real accounts, runs on demo data — for recording without exposing real mail. */
   demoMode: boolean;
 };
 
@@ -80,8 +80,8 @@ function load(): Settings {
       showSnippets?: boolean;
       snippetFont?: PreviewFont;
     };
-    // Migrate the renamed email-preview keys (showSnippets/snippetFont →
-    // showPreview/previewFont) so existing local settings carry over.
+    // Migrate renamed preview keys (showSnippets/snippetFont → showPreview/
+    // previewFont) so existing local settings carry over.
     if (parsed.showSnippets !== undefined && parsed.showPreview === undefined) {
       parsed.showPreview = parsed.showSnippets;
     }

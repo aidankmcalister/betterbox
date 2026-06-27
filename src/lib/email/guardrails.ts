@@ -1,10 +1,8 @@
 /**
- * Send guardrails (Composer Phase 3 — BOX-23).
- *
- * Cheap, last-second checks that catch the embarrassing send: no subject, "see
- * attached" with nothing attached, an unfilled snippet field, a surprise blast
+ * Send guardrails (Composer Phase 3 — BOX-23). Cheap last-second checks for the
+ * embarrassing send: no subject, "see attached" with nothing attached, a blast
  * to many people, or mail leaving your work domain. Pure + deterministic so the
- * composer can show them inline and gate the first Send click.
+ * composer shows them inline and gates the first Send click.
  */
 export type Guardrail = { id: string; message: string };
 
@@ -25,7 +23,7 @@ const FREE_PROVIDERS = new Set([
 
 const ATTACH_RE = /\b(attach(ed|ment|ments|ing)?|enclosed|enclosure)\b/i;
 // Bounded segments (RFC caps a part at 254) so a long no-match paste can't
-// backtrack quadratically — this runs on every recipient keystroke.
+// backtrack quadratically — runs on every recipient keystroke.
 const EMAIL_RE = /[^\s,;<>"]{1,256}@[^\s,;<>"]{1,256}\.[^\s,;<>"]{1,256}/g;
 
 /** Pull the email addresses out of a comma/semicolon recipient string. */
@@ -95,7 +93,7 @@ export function checkGuardrails(input: {
 }
 
 /** Whether a recipient is outside the sender's (non-free) domain — drives the
- *  external-recipient badge in the To field. Free-provider senders never flag. */
+ *  To-field external badge. Free-provider senders never flag. */
 export function isExternalRecipient(
   recipientEmail: string,
   fromEmail: string,

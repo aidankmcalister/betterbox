@@ -204,8 +204,6 @@ export async function fetchPullRequests(
   return { login: body.data.viewer.login, prs };
 }
 
-// ── GitHub issues ────────────────────────────────────────────────────────────
-
 export type GithubIssue = {
   id: string;
   repo: string;

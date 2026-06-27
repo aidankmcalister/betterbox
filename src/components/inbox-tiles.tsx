@@ -127,10 +127,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-/** A "bare" HTML email carries no visual styling of its own — no images, tables,
- *  layout, colors, backgrounds, or links. There's nothing to sandbox visually,
- *  so its text renders natively (blending with the dark reader) instead of in
- *  the white email iframe. Anything richer keeps the sandboxed white canvas. */
+/** True for HTML with no visual styling (no images/tables/colors/links): renders
+ *  natively in the dark reader instead of the sandboxed white iframe. */
 function isBareHtml(html: string): boolean {
   return (
     !/<(a|img|table|style|video|audio|iframe|svg|picture|source|hr|blockquote)\b/i.test(
@@ -141,8 +139,8 @@ function isBareHtml(html: string): boolean {
   );
 }
 
-/** Bare HTML → plain text, used only when a bare-HTML email has no separate
- *  plain-text body. Block tags become newlines; basic entities decode. */
+/** Bare HTML → plain text (block tags become newlines, basic entities decode);
+ *  used only when a bare-HTML email has no separate plain-text body. */
 function htmlToPlainText(html: string): string {
   return html
     .replace(/<\s*br\s*\/?>/gi, "\n")
@@ -186,10 +184,9 @@ export type ComposePane = {
 const splitReaderId = (accountId: string) => `${READER_PANE_ID}:${accountId}`;
 
 // ── Panel registry ──────────────────────────────────────────────────────────
-// Non-email integration panels (GitHub PRs, …) you drop onto the board on
-// demand. Each has a stable key; its pane id is `panelPaneId(key)`. Adding a new
-// integration panel is one entry here — getPaneType and the board dispatch never
-// change.
+// Non-email integration panels (GitHub PRs, …) dropped onto the board on demand.
+// Each has a stable key (pane id = `panelPaneId(key)`); adding one is a single
+// entry here — getPaneType and the board dispatch never change.
 const PANEL_PREFIX = "__panel__:";
 export const panelPaneId = (key: string) => `${PANEL_PREFIX}${key}`;
 const panelKeyOf = (paneId: string) => paneId.slice(PANEL_PREFIX.length);
@@ -224,10 +221,9 @@ const PANEL_REGISTRY: Record<string, PanelEntry> = {
 };
 
 // ── Pane-type registry ──────────────────────────────────────────────────────
-// The layout tree stores an opaque pane id; a pane's *type* is derived from the
-// id's shape (getPaneType). Each type maps to how it renders + its drag label.
-// A new pane type (e.g. GitHub PRs) adds a getPaneType branch and a registry
-// entry — the board's dispatch (renderPane/renderDragLabel) never changes.
+// Pane type is derived from the opaque pane id's shape (getPaneType); each type
+// maps to its renderer + drag label. A new type adds a getPaneType branch and a
+// registry entry — the board's dispatch never changes.
 export type PaneType = "email" | "reader" | "composer" | "panel";
 
 function getPaneType(paneId: string): PaneType {
@@ -343,8 +339,8 @@ type TilesCtx = {
   setPaneFolder: (accountId: string, folder: Folder) => void;
   openEmail: (accountId: string, emailId: string) => void;
   getOpenEmail: (accountId: string) => string | null;
-  /* Per-account search lives here (not in the pane) so it survives pane
-     remounts when the layout changes — e.g. docking the reader. Absent = closed. */
+  /* Per-account search lives here (not in the pane) so it survives pane remounts
+     on layout change — e.g. docking the reader. Absent = closed. */
   paneSearch: Record<string, string>;
   openSearch: (accountId: string) => void;
   setSearch: (accountId: string, query: string) => void;
@@ -409,8 +405,7 @@ export function InboxTiles({
   extraPaneIds?: string[];
   /** Remove an open panel from the board — a panel's close button calls this. */
   onClosePanel?: (paneId: string) => void;
-  /** Portal target for row context menus — set in the landing demo so they
-   *  stay inside the scaled box. */
+  /** Portal target for row context menus — set in the landing demo so they stay inside the scaled box. */
   portalContainer?: React.RefObject<HTMLElement | null>;
 }) {
   const scoped = accounts.filter((a) => scopeIds.includes(a.accountId));
@@ -421,13 +416,12 @@ export function InboxTiles({
   const isMobile = useIsMobile();
 
   const [openEmails, setOpenEmails] = useState<Record<string, string>>({});
-  // Mobile is single-column: force the shared reader (one at a time) so opening
-  // a message routes through the URL and overlays full-screen, never a 2nd pane.
+  // Mobile is single-column: force the shared reader so opening a message
+  // overlays full-screen via the URL, never a 2nd pane.
   const split = readerMode === "split" && !isMobile;
 
-  // Per-pane folder: each inbox pane can show a different folder. Falls back to
-  // the global (sidebar/route) folder until the pane's header picker overrides
-  // it — so the sidebar still drives any pane the user hasn't pinned.
+  // Per-pane folder: each pane can show a different folder, falling back to the
+  // global (sidebar/route) folder until its header picker overrides it.
   const [paneFolders, setPaneFolders] = useState<Record<string, Folder>>({});
   const paneFoldersRef = useRef(paneFolders);
   paneFoldersRef.current = paneFolders;
@@ -557,8 +551,7 @@ export function InboxTiles({
 
   const storage: TileStorage = { load: loadStoredTree, save: persistTree };
 
-  // Single dispatch: classify the pane id, then look up its renderer/label in
-  // the registry. No per-type branching lives here anymore.
+  // Single dispatch: classify the pane id, then look up its renderer/label in the registry.
   const paneCtx: PaneRenderCtx = {
     accounts,
     reading,
@@ -595,12 +588,9 @@ export function InboxTiles({
   );
 }
 
-/**
- * Single-column board for phones. Shows one account's inbox at a time (a
- * horizontally-scrollable tab strip switches between them when several are in
- * view), and slides the shared reader in full-screen over the list when a
- * message is open. No drag-to-arrange, no side-by-side panes.
- */
+/** Single-column board for phones: one inbox at a time (a scrollable tab strip
+ *  switches between them), with the shared reader sliding full-screen over the
+ *  list when a message is open. No drag-to-arrange or side-by-side panes. */
 function MobileBoard({
   accounts,
   accountIds,
@@ -677,9 +667,8 @@ function MobileBoard({
 }
 
 /** The composer docked as a board tile — its header doubles as the drag handle. */
-/** GitHub Pull requests as an on-demand board panel — triage-scoped (PRs that
- *  need you), draggable and closable like any pane. Self-contained: reads
- *  session + demo state itself. */
+/** GitHub PRs as an on-demand board panel — triage-scoped (PRs that need you),
+ *  draggable/closable like any pane. Self-contained: reads session + demo state. */
 function PullRequestsPane({
   paneId,
   onClose,
@@ -841,9 +830,8 @@ function AccountPane({ accountId }: { accountId: string }) {
     return () => observer.disconnect();
   }, []);
 
-  /* Search state is owned by the board (persists across remounts). Debounce the
-     fetch locally, seeded from the persisted query so a remount re-queries
-     immediately rather than clearing. */
+  /* Search state lives on the board (persists across remounts); debounce the
+     fetch locally, seeded from it so a remount re-queries instead of clearing. */
   const search = paneSearch[accountId];
   const searchOpen = search !== undefined;
   const [debounced, setDebounced] = useState(search ?? "");
@@ -878,8 +866,7 @@ function parseAddress(from: string): { name: string; address: string } {
   return { name: from, address: from };
 }
 
-/** Split a header address list ("A <a@x>, B <b@y>") into bare addresses,
- *  respecting commas inside a quoted display name. */
+/** Split a header address list into bare addresses, respecting commas inside a quoted display name. */
 function splitAddresses(list: string): string[] {
   if (!list) return [];
   const parts: string[] = [];
@@ -901,8 +888,7 @@ function splitAddresses(list: string): string[] {
 const escapeHtml = (text: string) =>
   text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-/** A quoted-reply body: a blank line to type into, an attribution line, then the
- *  original message in a blockquote. Returned as HTML to seed the rich editor. */
+/** Quoted-reply body (blank line, attribution, original in a blockquote) as HTML to seed the rich editor. */
 function quotedReplyHtml(message: FullEmail): string {
   const who = parseAddress(message.from);
   const attribution = `On ${escapeHtml(message.date)}, ${escapeHtml(
@@ -931,8 +917,7 @@ function ReaderPane({
   const { clock, markRead, rawByDefault } = useSettings();
   const queryClient = useQueryClient();
   const [raw, setRaw] = useState(rawByDefault);
-  // Measure our own width so the action bar can collapse (reply-all/forward fold
-  // into the overflow, the message-id copy goes icon-only) on a narrow pane.
+  // Measure width so the action bar can collapse on a narrow pane (reply-all/forward fold into overflow).
   const paneRef = useRef<HTMLDivElement>(null);
   const [narrow, setNarrow] = useState(false);
   useEffect(() => {
@@ -952,8 +937,7 @@ function ReaderPane({
   const [replyBody, setReplyBody] = useState("");
   const [replySending, setReplySending] = useState(false);
 
-  // Signature: shown as a read-only block below the reply editor and appended to
-  // the outgoing HTML on send — unless removed for this reply.
+  // Signature: read-only block below the reply editor, appended to outgoing HTML on send unless removed.
   const sigData = useSignaturesQuery(replyOpen).data;
   const dbSig = resolveAccountSignature(sigData, accountId);
   const replyEmail = accounts.find((a) => a.accountId === accountId)?.email;
@@ -1061,9 +1045,8 @@ function ReaderPane({
     );
   };
 
-  // Reply to everyone on the thread's latest message: To = original sender +
-  // To recipients, Cc = original Cc, both minus our own address and dupes.
-  // Opens the composer (via the same event forward uses) with threading headers.
+  // Reply-all on the latest message: To = sender + To recipients, Cc = original
+  // Cc (both minus our address and dupes). Opens the composer with threading headers.
   const startReplyAll = () => {
     const target = lastMessage;
     if (!target) return;
@@ -1107,9 +1090,7 @@ function ReaderPane({
     );
   };
 
-  // Build a forward draft from the open message and ask the app shell to open
-  // the composer. Reused by the reader footer button and the start-forward
-  // event (row context menu).
+  // Build a forward draft and open the composer. Used by the footer button and the start-forward event.
   const startForward = () => {
     if (!email) return;
     const fwdBody = `\n\n---- Forwarded message ----\nFrom: ${sender?.name ?? ""} <${sender?.address ?? ""}>\nDate: ${email.date}\nSubject: ${email.subject}\n\n${email.body || email.snippet || ""}`;
@@ -1208,7 +1189,6 @@ function ReaderPane({
         return;
       }
       if (typing(event.target) || event.metaKey || event.ctrlKey) return;
-      // Alt+R -> toggle raw MIME
       if (event.altKey && event.key.toLowerCase() === "r") {
         event.preventDefault();
         setRaw((current) => !current);
@@ -1234,7 +1214,6 @@ function ReaderPane({
       if (!detail) return;
       if (detail.accountId !== accountId) return;
       if (detail.emailId && detail.emailId !== emailId) return;
-      // Open inline reply
       startReply();
     };
     const onStartForward = (e: Event) => {
@@ -1356,7 +1335,6 @@ function ReaderPane({
               narrow ? "px-3 pt-5" : "px-4 pt-5",
             )}
           >
-            {/* Hero — labels then the big subject */}
             <AppliedTags tags={tags} />
             <h1
               className={cn(
@@ -1402,9 +1380,7 @@ function ReaderPane({
                       &lt;{(replySender ?? sender).address}&gt;
                     </span>
                   </div>
-                  {/* Unified surface: transparent, border-0 editor so the body
-                      shares the card with the header/signature/footer — matches
-                      the main composer. */}
+                  {/* Transparent, border-0 editor so the body shares the card with header/signature/footer. */}
                   <RichTextEditor
                     value={replyBody}
                     onChange={setReplyBody}
@@ -1642,7 +1618,6 @@ function ThreadMessage({
 }) {
   const sender = parseAddress(message.from);
 
-  // Collapsed thread message — a compact one-line row.
   if (!expanded) {
     return (
       <button
@@ -1667,11 +1642,9 @@ function ThreadMessage({
     );
   }
 
-  // Expanded — the two-tier sender card, then the email framed as paper.
   return (
     <div>
       <div className="overflow-hidden rounded-xl border bg-card">
-        {/* Tier 1 — logo · name + verified + email · time */}
         <div
           className={cn(
             "flex items-center gap-3",
@@ -1714,7 +1687,6 @@ function ThreadMessage({
             </div>
           </Hint>
         </div>
-        {/* Tier 2 — recipient strip + copy message-id */}
         <div
           className={cn(
             "flex items-center gap-2 border-t bg-secondary py-2.5",
@@ -1741,7 +1713,6 @@ function ThreadMessage({
         </div>
       </div>
 
-      {/* Native email — framed as a floating paper card */}
       <div className="mt-3.5 overflow-hidden rounded-xl border bg-card shadow-lg shadow-black/30">
         {message.bodyHtml && !isBareHtml(message.bodyHtml) ? (
           <HtmlBody
@@ -1905,9 +1876,8 @@ const SEARCH_OPERATORS: { token: string; hint: string }[] = [
   { token: "in:important", hint: "Marked important" },
 ];
 
-/** Per-pane folder switcher in the pane header — changes only this pane's
- *  folder, leaving the other inboxes alone. Renders as a button, so the
- *  pane-header drag (which ignores buttons) won't fire when you open it. */
+/** Per-pane folder switcher in the header — changes only this pane's folder. A
+ *  button, so the pane-header drag (which ignores buttons) won't fire on open. */
 function FolderPicker({
   folder,
   onSelect,
@@ -1989,7 +1959,7 @@ function PaneHeader({
     const insertOperator = (token: string) => {
       const base = search.trim();
       const next = (base ? `${base} ` : "") + token;
-      // Value operators (from:, to:, …) need trailing cursor; complete tokens get a space.
+      // Value operators (from:, to:, …) keep the cursor trailing; complete tokens get a space.
       onSearchChange(token.endsWith(":") ? next : `${next} `);
       searchInputRef.current?.focus();
     };

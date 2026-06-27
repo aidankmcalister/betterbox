@@ -28,16 +28,14 @@ import { DateField } from "@/components/editor-date-field";
 import type { EmailNode } from "@/lib/email/serialize";
 import { sanitizePastedHtml } from "@/lib/email/sanitize-paste";
 
-// Live syntax highlighting that matches the email serializer's output (same
-// lowlight, same token palette in styles.css), so the editor previews the sent
-// code block.
+// Same lowlight + token palette as the email serializer, so the editor previews
+// the sent code block.
 const lowlight = createLowlight(common);
 
 /**
- * Reusable rich-text editor for compose + reply. Tiptap (ProseMirror) under the
- * hood: markdown shortcuts (**bold**, *italic*, `code`, # heading, - list,
- * > quote, 1. list) plus a small toolbar. Emits HTML via onChange; an empty
- * document reports "" so callers can treat it as blank.
+ * Reusable Tiptap rich-text editor for compose + reply: markdown shortcuts
+ * (**bold**, # heading, - list, > quote…) plus a small toolbar. Emits HTML via
+ * onChange; an empty document reports "" so callers can treat it as blank.
  */
 export function RichTextEditor({
   value,
@@ -55,8 +53,8 @@ export function RichTextEditor({
 }: {
   value: string;
   onChange: (html: string) => void;
-  /** The editor's document model (TipTap JSON) — what the email-safe serializer
-   *  consumes on send. Emitted on create, edit, and external value sync. */
+  /** TipTap JSON doc the email-safe serializer consumes on send. Emitted on
+   *  create, edit, and external value sync. */
   onDocChange?: (doc: EmailNode) => void;
   /** Hands the editor instance to the caller (e.g. an "insert field" toolbar). */
   onEditorReady?: (editor: Editor | null) => void;
@@ -79,8 +77,7 @@ export function RichTextEditor({
   variablesRef.current = variables ?? {};
 
   const editor = useEditor({
-    // TanStack Start renders on the server; defer to the client to avoid
-    // hydration mismatches.
+    // Defer to client (TanStack Start SSR) to avoid hydration mismatches.
     immediatelyRender: false,
     extensions: [
       StarterKit.configure({
@@ -107,8 +104,8 @@ export function RichTextEditor({
     content: value || "",
     autofocus: autoFocus ? "end" : false,
     editorProps: {
-      // Clean Docs/Word/Outlook cruft (mso-, <o:p>, foreign classes) out of the
-      // clipboard HTML before ProseMirror parses it into the document.
+      // Strip Docs/Word/Outlook cruft (mso-, <o:p>, foreign classes) from
+      // clipboard HTML before ProseMirror parses it.
       transformPastedHTML: (html) => sanitizePastedHtml(html),
       attributes: {
         class: cn(
@@ -141,11 +138,9 @@ export function RichTextEditor({
     },
   });
 
-  // Keep the editor in sync when the caller resets it (e.g. after sending, or
-  // switching the message being replied to). Only re-sync external changes when
-  // the editor isn't focused: syncing mid-typing replaces the doc and interrupts
-  // input rules (e.g. "# " → heading would silently fail "sometimes"). While
-  // focused the editor is the source of truth; the controlled value catches up.
+  // Sync when the caller resets value (after send, or switching the replied-to
+  // message), but only while unfocused: syncing mid-typing replaces the doc and
+  // breaks input rules. While focused the editor is the source of truth.
   useEffect(() => {
     if (!editor || editor.isFocused) return;
     const current = editor.isEmpty ? "" : editor.getHTML();
@@ -155,10 +150,10 @@ export function RichTextEditor({
     }
   }, [value, editor, onDocChange]);
 
-  // Auto-fill snippet variable fields (first_name, …) the moment the recipient
-  // resolves them to a value — so expanding a snippet *then* adding the To:
-  // address still fills the name in. Custom fill-ins (no matching variable) are
-  // left for you to type. Replaces from the end so earlier positions stay valid.
+  // Auto-fill snippet variable fields (first_name, …) once the recipient resolves
+  // them, so expanding a snippet then adding the To: still fills the name in.
+  // Custom fill-ins (no matching variable) stay for you to type. Replaces from
+  // the end so earlier positions stay valid.
   useEffect(() => {
     if (!editor || !variables) return;
     const hits: { from: number; to: number; text: string }[] = [];
@@ -175,8 +170,7 @@ export function RichTextEditor({
     editor.view.dispatch(tr.setMeta("addToHistory", false));
   }, [editor, variables]);
 
-  // Hand the editor to the caller so it can insert content (the snippets page
-  // uses this for its "insert field" chips).
+  // Hand the editor to the caller for inserting content (snippets page's "insert field" chips).
   useEffect(() => {
     onEditorReady?.(editor ?? null);
     return () => onEditorReady?.(null);
@@ -192,8 +186,8 @@ export function RichTextEditor({
       )}
     >
       <Toolbar editor={editor} compact={compact} />
-      {/* flex-1 so the editable surface fills the box's height when the parent
-          gives it one (compose pane / full-screen mobile composer). */}
+      {/* flex-1 so the editable surface fills the box when the parent sizes it
+          (compose pane / full-screen mobile composer). */}
       <EditorContent
         editor={editor}
         className="min-h-0 flex-1 overflow-y-auto [&_.tiptap]:min-h-full"

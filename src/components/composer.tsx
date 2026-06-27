@@ -67,27 +67,23 @@ const shortName = (email: string) => email.split("@")[0] || email;
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// Shared chrome for the To/Cc/Bcc rows (Cc/Bcc add a leading `group` for their
-// hover-to-reveal remove button).
+// Shared chrome for To/Cc/Bcc rows (Cc/Bcc prepend `group` for hover-to-reveal remove).
 const RECIPIENT_ROW =
   "flex min-h-10 items-center gap-2.5 border-b px-4 py-1.5";
 
-// Feathers all four edges of the blur halo by 30px (intersected) so it fades out
-// instead of ending on a hard rectangle.
+// Feathers all four edges of the blur halo by 30px (intersected) so it fades out instead of a hard rectangle.
 const HALO_FEATHER =
   "linear-gradient(to right, transparent, #000 30px, #000 calc(100% - 30px), transparent), linear-gradient(to bottom, transparent, #000 30px, #000 calc(100% - 30px), transparent)";
 
-/** Threading headers that nest a sent message under an existing conversation
- *  (set by reply / reply-all; null for a fresh compose). */
+/** Threading headers nesting a sent message under a conversation (set by reply/reply-all; null for fresh compose). */
 export type ReplyContext = {
   inReplyTo?: string;
   references?: string;
   threadId?: string;
 };
 
-/** The composer's editable fields. Lifted to the parent (AppShell) so they
- *  persist when the composer remounts — switching pane↔popout, or navigating to
- *  a page where the board (and its compose pane) isn't mounted. */
+/** The composer's editable fields. Lifted to the parent (AppShell) so they survive
+ *  remounts — switching pane↔popout, or navigating off the board. */
 export type ComposerContent = {
   fromId: string | null;
   to: string;
@@ -108,8 +104,7 @@ function isValidRecipients(value: string): boolean {
   return parts.length > 0 && parts.every((part) => EMAIL_RE.test(part));
 }
 
-/** Split a To: entry into its display name + bare email
- *  ("Maya Chen <maya@x>" → { name: "Maya Chen", email: "maya@x" }). */
+/** Split a To: entry into display name + bare email ("Maya Chen <maya@x>" → name/email). */
 function parseToEntry(entry: string): { name: string; email: string } {
   const m = /^\s*(.*?)\s*<([^>]+)>\s*$/.exec(entry);
   if (m) {
@@ -128,8 +123,8 @@ const ROLE_LOCALS = new Set([
   "security", "notifications", "donotreply", "do-not-reply", "mailer",
 ]);
 
-/** Guess a name from an email's local part (maya@x → "Maya", first.last@x →
- *  "First Last"). Empty unless the address looks complete and isn't a role box. */
+/** Guess a name from an email's local part (maya@x → "Maya", first.last@x → "First Last").
+ *  Empty unless the address looks complete and isn't a role box. */
 function nameFromEmail(email: string): string {
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return "";
   const local = email.split("@")[0] ?? "";
@@ -142,12 +137,8 @@ function nameFromEmail(email: string): string {
     .join(" ");
 }
 
-/**
- * Docked composer for a new message (design: fixed bottom-right panel, not a
- * Dialog). Field rows are borderless — plain inputs, label column 44px,
- * mono To / sans Subject (font spec), ⌘↵ sends. Replies happen inline in the
- * reader, not here.
- */
+/** Docked composer for a new message (fixed bottom-right panel, not a Dialog). Borderless field
+ *  rows, 44px label column, mono To / sans Subject, ⌘↵ sends. Replies happen inline in the reader. */
 export function Composer({
   open,
   onOpenChange,
@@ -161,8 +152,7 @@ export function Composer({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   accounts: Account[];
-  /** Editable fields, owned by the parent so they survive the composer
-   *  remounting (e.g. swapping between the board pane and the popout). */
+  /** Editable fields, parent-owned so they survive composer remounts (pane↔popout). */
   content: ComposerContent;
   onContentChange: (patch: Partial<ComposerContent>) => void;
   /** Open an existing draft for editing — the parent seeds `content`. */
@@ -175,8 +165,8 @@ export function Composer({
   const { data: session } = useSession();
   const queryClient = useQueryClient();
   const { defaultSendFrom } = useSettings();
-  // Any inbox with an address can be the From. Test/demo accounts are included
-  // so the picker shows them — sending from one is a sealed no-op (see `send`).
+  // Any inbox with an address can be the From; test/demo accounts show in the picker but
+  // sending from one is a sealed no-op (see `send`).
   const sendable = useMemo(() => accounts.filter((a) => a.email), [accounts]);
 
   const { fromId, to, cc, bcc, subject, body, reply } = content;
@@ -192,12 +182,10 @@ export function Composer({
   // Files staged for this message, read to base64 in the browser.
   const [files, setFiles] = useState<StagedFile[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  // The editor's live document model (TipTap JSON), serialized to email-safe
-  // HTML on send/preview. Re-emitted by the editor on mount, so it survives the
-  // composer remounting between the board pane and the popout.
+  // The editor's live doc model (TipTap JSON), serialized to email-safe HTML on send/preview.
+  // Re-emitted by the editor on mount, so it survives composer remounts (pane↔popout).
   const [bodyDoc, setBodyDoc] = useState<EmailNode | null>(null);
-  // The editor instance + the screen rect of the current text selection — drives
-  // the "save as snippet" bubble that floats over a highlighted passage.
+  // Editor instance + selection's screen rect — drives the "save as snippet" bubble over a highlight.
   const [editorInstance, setEditorInstance] = useState<Editor | null>(null);
   const [snipRect, setSnipRect] = useState<{ left: number; top: number } | null>(
     null,
@@ -209,8 +197,7 @@ export function Composer({
   const sendTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Guardrails gate the first Send click; a second click ("Send anyway") sends.
   const [confirmSend, setConfirmSend] = useState(false);
-  // Autosave: the Gmail draft created/updated this session (fresh composes), and
-  // a status for the footer indicator.
+  // Autosave: the Gmail draft created/updated this session (fresh composes).
   const autosaveRef = useRef<{ draftId: string; messageId: string } | null>(null);
   // Coalesce overlapping autosaves into one in-flight save (see flushAutosave).
   const savingRef = useRef(false);
@@ -227,8 +214,7 @@ export function Composer({
     "idle",
   );
 
-  // From: an explicit pick (fromId) wins; otherwise the configured default
-  // send-from account, then the primary inbox, then the first sendable one.
+  // From: explicit pick (fromId) wins, then default send-from, then primary inbox, then first sendable.
   const from =
     sendable.find((a) => a.accountId === fromId) ??
     sendable.find((a) => a.accountId === defaultSendFrom) ??
@@ -241,11 +227,9 @@ export function Composer({
   // Snippets expand inline in the editor (e.g. "/ty "). Fetched only while open.
   const snippets = useSnippetMap(open);
 
-  // Variables for snippet `{{tokens}}`, resolved from the first To: recipient.
-  // Name priority: a saved contact → a display name typed in To: → a name
-  // guessed from the email's local part (maya@… → "Maya"), so {{first_name}}
-  // resolves for fresh addresses, not just known contacts. Still empty (→ a
-  // fill field) when there's no usable name (e.g. a bare role address).
+  // Variables for snippet `{{tokens}}`, from the first To: recipient. Name priority: saved contact →
+  // display name typed in To: → guess from local part, so {{first_name}} resolves for fresh addresses
+  // too. Empty (→ a fill field) when there's no usable name (e.g. a bare role address).
   const variables = useMemo<Record<string, string>>(() => {
     const firstEntry = to.split(",")[0]?.trim() ?? "";
     const { name: displayName, email } = parseToEntry(firstEntry);
@@ -268,8 +252,7 @@ export function Composer({
 
   // Unfilled snippet tab-stops HARD-BLOCK send — you must fill them first.
   const unfilledFields = countFillFields(bodyDoc);
-  // Soft last-second checks (no subject, "see attached" with nothing attached,
-  // mail leaving a work domain, a big blast) — these warn + gate, not block.
+  // Soft last-second checks (no subject, "see attached" w/ nothing, leaving a work domain, big blast) — warn + gate, not block.
   const guardrails = useMemo(() => {
     if (!from) return [];
     return checkGuardrails({
@@ -286,13 +269,10 @@ export function Composer({
   // biome-ignore lint/correctness/useExhaustiveDependencies: re-arm only when the warning set changes identity.
   useEffect(() => setConfirmSend(false), [guardrails]);
 
-  // Signature: shown as a read-only block below the editor (not inside it, so it
-  // can't be edited) and appended to the outgoing HTML at send/draft — unless the
-  // user removes it for this message. The skip resets when the From account
-  // changes, since that changes the signature.
-  // The account's native Gmail signature (rich + images) is the source of truth
-  // when set; a BetterBox DB signature is only a fallback for accounts without
-  // one. The Gmail HTML is Gmail-authored, so it's email-safe as-is.
+  // Signature: read-only block below the editor (uneditable), appended to outgoing HTML at send/draft
+  // unless removed for this message; the skip resets on From change. The native Gmail signature
+  // (rich + images) is the source of truth when set, with a BetterBox DB signature as fallback. The
+  // Gmail HTML is Gmail-authored, so it's email-safe as-is.
   const sigData = useSignaturesQuery(open).data;
   const dbSig = open ? resolveAccountSignature(sigData, from?.accountId) : null;
   const gmailSig =
@@ -312,18 +292,15 @@ export function Composer({
         : html;
 
   const outgoingHtml = showSignature ? appendSig(body) : body;
-  // Send + preview go through the email-safe serializer (TipTap doc → table-based,
-  // inlined, send-safe HTML). Drafts keep the raw editor HTML above, since the
-  // editor has no table nodes to parse the serialized form back into. Falls back
-  // to the raw body only if the editor hasn't emitted a doc yet (never on a
-  // user-initiated send — the editor emits on mount).
+  // Send + preview go through the email-safe serializer (TipTap doc → table-based, inlined HTML).
+  // Drafts keep the raw editor HTML above (no table nodes to parse it back). Falls back to raw body
+  // only if the editor hasn't emitted a doc yet (never on a user-initiated send — emits on mount).
   const emailSafeBody = bodyDoc ? serializeEmailHtml(bodyDoc) : body;
   const emailSafeHtml = showSignature ? appendSig(emailSafeBody) : emailSafeBody;
 
-  // Save the latest payload to Gmail Drafts, one in flight at a time. A save
-  // requested while one is running is coalesced into a single flush afterward
-  // (using the newest payload), so overlapping debounced saves can't each issue
-  // a drafts.create and duplicate the draft.
+  // Save the latest payload to Gmail Drafts, one in flight at a time. A save requested while one runs
+  // is coalesced into a single later flush (newest payload), so overlapping debounced saves can't each
+  // issue a drafts.create and duplicate the draft.
   const flushAutosave = useCallback(() => {
     const payload = autosavePayloadRef.current;
     if (!payload) return;
@@ -355,9 +332,8 @@ export function Composer({
     );
   }, [queryClient]);
 
-  // Debounced autosave. Fresh composes only — editing an existing draft is
-  // skipped (we don't resolve its Gmail draft id, so a save would duplicate).
-  // Mirrors the latest payload into a ref so the coalesced flush sees it.
+  // Debounced autosave. Fresh composes only — editing an existing draft is skipped (no resolved Gmail
+  // draft id → would duplicate). Mirrors the latest payload into a ref so the coalesced flush sees it.
   // biome-ignore lint/correctness/useExhaustiveDependencies: deps are narrowed to accountId/emailId on purpose — re-arm on an account or draft switch, not on every `from`/`draft` object identity.
   useEffect(() => {
     const has =
@@ -389,9 +365,8 @@ export function Composer({
     flushAutosave,
   ]);
 
-  // Offline backstop: mirror in-progress content to a local IndexedDB buffer,
-  // faster than the 2s Gmail autosave so the freshest content survives a crash
-  // or an offline tab. Fresh composes only; skipped for demo accounts.
+  // Offline backstop: mirror in-progress content to a local IndexedDB buffer, faster than the 2s Gmail
+  // autosave so the freshest content survives a crash/offline tab. Fresh composes only; skips demo accounts.
   // biome-ignore lint/correctness/useExhaustiveDependencies: from is captured via accountId; the buffer fns are stable.
   useEffect(() => {
     const has =
@@ -403,8 +378,7 @@ export function Composer({
     return () => clearTimeout(t);
   }, [open, from?.accountId, draft, fromId, to, cc, bcc, subject, body]);
 
-  // On a fresh, empty compose, offer back any buffer the last session left
-  // behind (i.e. it never committed to Gmail). Checked once per open.
+  // On a fresh, empty compose, offer back any uncommitted buffer the last session left. Checked once per open.
   const [recovered, setRecovered] = useState<BufferedDraft | null>(null);
   const recoveryCheckedRef = useRef(false);
   useEffect(() => {
@@ -428,10 +402,8 @@ export function Composer({
     });
   }, [open, draft, to, cc, bcc, subject, body]);
 
-  // Show the "save as snippet" bubble while a non-empty passage is selected in
-  // the editor. Positioned from the live DOM selection rect; cleared on collapse
-  // or blur (the bubble itself preventDefaults mousedown so clicking it keeps the
-  // selection alive).
+  // Show the "save as snippet" bubble while a non-empty passage is selected. Positioned from the live
+  // DOM selection rect; cleared on collapse/blur (the bubble preventDefaults mousedown to keep the selection).
   useEffect(() => {
     const ed = editorInstance;
     if (!ed) return;
@@ -452,8 +424,7 @@ export function Composer({
     };
   }, [editorInstance]);
 
-  // Measure the popout so a feathered blur halo can sit just behind its edges.
-  // Skipped in pane mode and for the full-screen mobile composer (no halo there).
+  // Measure the popout so a feathered blur halo can sit behind its edges. Skipped in pane mode and full-screen mobile.
   // biome-ignore lint/correctness/useExhaustiveDependencies: re-measure when the composer opens; inPane covers the only other trigger.
   useEffect(() => {
     const el = sectionRef.current;
@@ -494,9 +465,8 @@ export function Composer({
     void clearDraftBuffer();
   };
 
-  // Save the highlighted passage as a reusable snippet: capture the selection's
-  // HTML (formatting preserved) and hand it to Settings → Snippets, which opens
-  // a new snippet pre-filled with it — the trigger gets set in the real editor.
+  // Save the highlighted passage as a reusable snippet: capture the selection's HTML (formatting kept)
+  // and hand it to Settings → Snippets, which opens a new snippet pre-filled (trigger set in the real editor).
   const saveAsSnippet = () => {
     const ed = editorInstance;
     if (!ed) return;
@@ -512,9 +482,8 @@ export function Composer({
     openSnippetDraft(tmp.innerHTML);
   };
 
-  // Require at least one well-formed address (comma-separated allowed) before
-  // Send is enabled — so "d" can't be sent. Cc is optional but, when present,
-  // must be valid too.
+  // Require ≥1 well-formed address (comma-separated allowed) before Send enables, so "d" can't be sent.
+  // Cc/Bcc are optional but must be valid when present.
   const recipientsValid = isValidRecipients(to);
   const ccValid = cc.trim().length === 0 || isValidRecipients(cc);
   const bccValid = bcc.trim().length === 0 || isValidRecipients(bcc);
@@ -563,12 +532,10 @@ export function Composer({
     onOpenChange(false);
   };
 
-  // Closing tries to save the current content as a draft (or update the one
-  // being edited). Real Gmail draft persistence isn't wired yet, so saveDraft
-  // is a no-op for real accounts — only test accounts actually save here.
+  // Closing tries to save the content as a draft (or update the edited one). Real Gmail draft
+  // persistence isn't wired yet, so saveDraft is a no-op for real accounts — only test accounts save here.
   const close = () => {
-    // Editing an existing real draft is skipped (no Gmail draft id → would
-    // duplicate); fresh composes + test accounts persist.
+    // Editing an existing real draft is skipped (no Gmail draft id → would duplicate); fresh composes + test accounts persist.
     const skipExisting =
       draft != null && from != null && !isTestAccount(from.accountId);
     if (from && hasContent && !skipExisting) {
@@ -587,11 +554,10 @@ export function Composer({
     reset();
   };
 
-  // Discard throws the message away — and removes the draft if we were editing
-  // one (so it doesn't linger in the Drafts folder).
+  // Discard throws the message away and removes the draft if we were editing one (so it doesn't linger).
   const discard = () => {
     if (from) {
-      // Remove the draft being edited and/or the one autosave created this session.
+      // Remove the edited draft and/or the one autosave created this session.
       if (draft) {
         void deleteDraft(from.accountId, draft.emailId).then(() =>
           refreshDrafts(from.accountId),
@@ -663,7 +629,6 @@ export function Composer({
           contentBase64: f.base64,
         })),
       });
-      // A sent draft leaves the Drafts folder.
       if (draft) {
         await deleteDraft(from.accountId, draft.emailId);
         refreshDrafts(from.accountId);
@@ -695,8 +660,7 @@ export function Composer({
     }
   };
 
-  // Undo-send: hold the message for a few seconds with a cancel toast before it
-  // actually goes out.
+  // Undo-send: hold the message for a few seconds with a cancel toast before it goes out.
   const UNDO_MS = 5000;
   const scheduleSend = () => {
     setSending(true);
@@ -719,8 +683,7 @@ export function Composer({
     });
   };
 
-  // Send click: gate on guardrails (first click arms "Send anyway"), then start
-  // the undo window.
+  // Send click: gate on guardrails (first click arms "Send anyway"), then start the undo window.
   const send = () => {
     if (!canSend || !from || sending) return;
     if (guardrails.length > 0 && !confirmSend) {
@@ -730,8 +693,7 @@ export function Composer({
     scheduleSend();
   };
 
-  // One consolidated notices line above the footer: a send error wins, then hard
-  // blockers (must fix to send), then the soft guardrails (warn only).
+  // One consolidated notices line: send error wins, then hard blockers (must fix), then soft guardrails (warn only).
   const recipientError =
     (to.trim().length > 0 && !recipientsValid) || !ccValid || !bccValid;
   const blockers: string[] = [];
@@ -740,18 +702,15 @@ export function Composer({
       `Fill in ${unfilledFields} snippet field${unfilledFields > 1 ? "s" : ""}`,
     );
   if (recipientError) blockers.push("Enter a valid email address");
-  // warn = soft (you can still Send anyway) → yellow + triangle. block/error =
-  // can't send → red + a stop (octagon) icon.
+  // warn = soft (Send anyway) → yellow + triangle. block/error = can't send → red + stop (octagon) icon.
   const notices: { text: string; tone: "error" | "block" | "warn" }[] = error
     ? [{ text: error, tone: "error" }]
     : blockers.length > 0
       ? blockers.map((text) => ({ text, tone: "block" as const }))
       : guardrails.map((g) => ({ text: g.message, tone: "warn" as const }));
 
-  // Passive surfacing: soft warnings stay hidden on a fresh, empty open — they
-  // appear once you're actually writing (or after a send attempt). Hard blockers
-  // and send errors always show. Either way the footer reserves the space, so a
-  // notice never shifts the body up.
+  // Passive surfacing: soft warnings stay hidden on a fresh, empty open — they appear once writing (or
+  // after a send attempt). Hard blockers and send errors always show. The footer reserves the space either way.
   const engaged =
     body.length > 0 ||
     to.trim().length > 0 ||
@@ -765,9 +724,8 @@ export function Composer({
   return (
     <>
       {haloRect && (
-        // A feathered backdrop-blur halo hugging the popout's edges and fading
-        // out — softens the hard edge so the card lifts off the inbox. A sibling
-        // (not a child) so it isn't clipped by the section's overflow + rounding.
+        // A feathered backdrop-blur halo hugging + fading past the popout's edges, lifting the card off
+        // the inbox. A sibling (not a child) so it isn't clipped by the section's overflow + rounding.
         <div
           aria-hidden="true"
           className="pointer-events-none fixed z-30 hidden sm:block"
@@ -800,8 +758,7 @@ export function Composer({
         "flex flex-col overflow-hidden bg-secondary",
         inPane
           ? "h-full w-full"
-          : // Full-screen on phones; the floating bottom-right popout on sm+. The
-            // soft-edged blur halo behind it (see above) does the lifting.
+          : // Full-screen on phones; floating bottom-right popout on sm+ (the blur halo above does the lifting).
             "fixed inset-0 z-50 w-full rounded-none border-0 sm:inset-auto sm:right-5 sm:bottom-5 sm:z-40 sm:w-[520px] sm:max-w-[calc(100vw-2.5rem)] sm:rounded-xl sm:border sm:border-input sm:shadow-[0_32px_90px_-20px_rgba(0,0,0,0.7)]",
       )}
     >
@@ -1000,8 +957,7 @@ export function Composer({
 
       <div
         className={cn(
-          // Pane + full-screen mobile: editor grows to fill. Desktop popout
-          // (sm+): content-sized, as before.
+          // Pane + full-screen mobile: editor grows to fill. Desktop popout (sm+): content-sized.
           inPane
             ? "flex min-h-0 flex-1 flex-col"
             : "flex min-h-0 flex-1 flex-col sm:block sm:flex-none",
@@ -1020,10 +976,8 @@ export function Composer({
             variables={variables}
             placeholder="Write your message…"
             minHeight={inPane ? 320 : 200}
-            // The editor fills edge-to-edge in both modes — drop the rounded
-            // border, and go transparent so the body shares the composer's
-            // surface instead of being a darker inset "void" (the cleaned-up
-            // design is one unified surface). The field rows divide it.
+            // Editor fills edge-to-edge in both modes — drop the rounded border and go transparent so
+            // the body shares the composer's surface (one unified surface) instead of a darker inset void.
             className={cn(
               "rounded-none border-0 bg-transparent",
               inPane ? "h-full" : "h-full sm:h-auto",
@@ -1048,8 +1002,7 @@ export function Composer({
             </button>
           </div>
           {useGmailSig ? (
-            // Render the Gmail signature as it'll actually send — on a white
-            // canvas, images proxied — via the shared email renderer.
+            // Render the Gmail signature as it'll send — white canvas, images proxied — via the shared email renderer.
             <div className="overflow-hidden rounded-md border">
               <HtmlBody html={gmailSig} accountId={from?.accountId} />
             </div>
@@ -1093,8 +1046,7 @@ export function Composer({
         className="hidden"
       />
 
-      {/* Fixed-height footer. Validation lives HERE — as chips in the middle —
-          so surfacing a notice never shifts the body. */}
+      {/* Fixed-height footer. Validation lives here as chips, so a notice never shifts the body. */}
       <footer className="flex min-h-[58px] items-center gap-3 border-t px-3.5 pt-[11px] pb-[max(11px,env(safe-area-inset-bottom))] sm:pb-[11px]">
         <Button
           size="sm"
@@ -1156,9 +1108,8 @@ export function Composer({
       </footer>
 
       {snipRect && !preview && (
-        // Floating over a text selection. preventDefault on mousedown keeps the
-        // selection from collapsing before the click lands — a positioning
-        // wrapper, not an interactive control (the button inside is).
+        // Floating over a text selection. mousedown preventDefault keeps the selection from collapsing
+        // before the click lands — a positioning wrapper, not an interactive control (the button inside is).
         // biome-ignore lint/a11y/noStaticElementInteractions: mousedown only guards the selection; the real action is the button.
         <div
           className="fixed z-[60] -translate-x-1/2 -translate-y-full"
@@ -1207,18 +1158,15 @@ function readFileAsBase64(file: File): Promise<StagedFile> {
   });
 }
 
-// Common, sendable attachment types — narrows the file picker so you can't pick
-// something Gmail will reject. (Gmail refuses executables outright.)
+// Common sendable attachment types — narrows the file picker so you can't pick something Gmail rejects (e.g. executables).
 const ACCEPT_FILES =
   "image/*,video/*,audio/*,.pdf,.txt,.csv,.md,.rtf,.json,.xml,.log,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.pages,.numbers,.key,.zip";
 
-// Extensions Gmail won't send — re-checked after selection (the accept filter is
-// only a hint) so a blocked file fails clearly instead of as an opaque send error.
+// Extensions Gmail won't send — re-checked after selection (accept is only a hint) so a blocked file fails clearly, not as an opaque send error.
 const BLOCKED_EXT =
   /\.(ade|adp|apk|appx|bat|cab|chm|cmd|com|cpl|dll|dmg|exe|hta|ins|isp|iso|jar|jse?|lib|lnk|mde|msc|msix?|msp|mst|nsh|pif|ps1|scr|sct|shb|sys|vbe?|vxd|wsc|wsf|wsh)$/i;
 
-/** Escape a plain-text draft and preserve its line breaks so it seeds the rich
- *  editor (which treats its content as HTML) without dropping `<addr>` or runs. */
+/** Escape a plain-text draft and keep its line breaks so it seeds the rich editor (HTML content) without dropping `<addr>` or runs. */
 export function plainToHtml(text: string): string {
   return text
     .replace(/&/g, "&amp;")
@@ -1236,8 +1184,7 @@ function FieldLabel({ children }: { children: string }) {
   );
 }
 
-/** Validation pill shown in the footer (never shifts the body). Yellow = a soft
- *  warning you can still send past; red = a hard blocker / send error. */
+/** Validation pill in the footer (never shifts the body). Yellow = soft warning you can send past; red = hard blocker / send error. */
 function NoticeChip({
   tone,
   children,
@@ -1266,9 +1213,8 @@ function NoticeChip({
   );
 }
 
-/** To field with Gmail-style chips + autocomplete. Committed recipients render
- *  as bordered pills (echoing the From box); the trailing token stays editable.
- *  The value stays a comma-separated string so send/save/validation are unchanged. */
+/** To field with Gmail-style chips + autocomplete. Committed recipients render as bordered pills (echoing
+ *  the From box); the trailing token stays editable. Value stays a comma-separated string so send/save/validation are unchanged. */
 function RecipientField({
   value,
   onChange,
@@ -1282,8 +1228,7 @@ function RecipientField({
   const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Everything before the last comma is committed (chips); the rest is the
-  // token still being typed. A comma in the input naturally promotes a chip.
+  // Everything before the last comma is committed (chips); the rest is the token being typed. A comma promotes a chip.
   const parts = value.split(",");
   const draft = (parts[parts.length - 1] ?? "").replace(/^\s+/, "");
   const chips = parts
@@ -1405,9 +1350,8 @@ function RecipientField({
         placeholder={chips.length ? "" : "name@domain.dev"}
         className={cn(
           "flex-1 bg-transparent font-mono text-[12.5px] outline-none placeholder:text-muted-foreground/60",
-          // A wide chip + a 120px-min input wraps the input to a 2nd line and
-          // makes the row grow tall; once there are chips the input only needs
-          // room to keep typing, so it tucks in beside them.
+          // A wide chip + 120px-min input wraps to a 2nd line and grows the row; once there are chips the
+          // input only needs room to keep typing, so it tucks in beside them.
           chips.length ? "min-w-[3rem]" : "min-w-[120px]",
         )}
       />
@@ -1456,8 +1400,7 @@ function FooterIcon({
 }) {
   return (
     <Hint label={title}>
-      {/* aria-disabled (not `disabled`) so the button still receives hover and
-          the tooltip fires; the click is guarded instead. */}
+      {/* aria-disabled (not `disabled`) so hover + tooltip still fire; the click is guarded instead. */}
       <button
         type="button"
         aria-disabled={disabled}
@@ -1478,9 +1421,8 @@ function FooterIcon({
   );
 }
 
-/** Read-only render of the message body — how the recipient will see it. Uses
- *  the same prose styles as the editor, sanitized (the HTML is our own TipTap
- *  output, but a pasted/typed link could carry a javascript: href). */
+/** Read-only render of the body as the recipient sees it. Same prose styles as the editor, sanitized
+ *  (our own TipTap output, but a pasted/typed link could carry a javascript: href). */
 function PreviewBody({ html, minHeight }: { html: string; minHeight: number }) {
   if (!html) {
     return (
@@ -1493,9 +1435,8 @@ function PreviewBody({ html, minHeight }: { html: string; minHeight: number }) {
     );
   }
   const clean = typeof window === "undefined" ? "" : DOMPurify.sanitize(html);
-  // The serialized email carries email-oriented colors (dark text for a white
-  // background). Render it on a light "paper" canvas — exactly as the recipient
-  // sees it — so its text reads right instead of dim against the dark composer.
+  // The serialized email carries email-oriented colors (dark text for white bg). Render on a light "paper"
+  // canvas as the recipient sees it, so text reads right instead of dim against the dark composer.
   return (
     <div className="p-3" style={{ minHeight }}>
       <div

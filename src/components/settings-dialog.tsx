@@ -161,8 +161,7 @@ export function SettingsDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   accounts: Account[];
-  /** Composer "Save as snippet" handoff — forces the Snippets page open with a
-   *  new snippet pre-filled. */
+  /** Composer "Save as snippet" handoff — opens the Snippets page with a new snippet pre-filled. */
   snippetDraft?: string | null;
   onSnippetDraftConsumed?: () => void;
 }) {
@@ -207,9 +206,8 @@ export function SettingsDialog({
           <span className="sr-only">Close</span>
         </DialogClose>
 
-        {/* Mobile: a scrollable strip of pages (the desktop column doesn't fit),
-            with the close button pinned to the right so tabs never slide under
-            it. */}
+        {/* Mobile: a scrollable strip of pages (desktop column doesn't fit),
+            close button pinned right so tabs never slide under it. */}
         <div className="flex shrink-0 items-center border-b bg-sidebar sm:hidden">
           <nav className="no-scrollbar flex min-w-0 flex-1 items-center gap-1 overflow-x-auto p-2">
             {nav
@@ -355,9 +353,9 @@ function GithubIntegration() {
   );
 }
 
-/** Disconnect a linked (non-primary) Google account from BetterBox. Unlinks it
- *  in Better Auth so its inbox/labels/sending stop showing up; nothing in Gmail
- *  changes and it can be re-added later. Behind a confirm dialog. */
+/** Disconnect a linked (non-primary) Google account: unlinks it in Better Auth
+ *  so its inbox/labels/sending stop showing up. Gmail is untouched and it can be
+ *  re-added later. Behind a confirm dialog. */
 function DisconnectAccountButton({ account }: { account: Account }) {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -484,9 +482,9 @@ function AccountsPage({ accounts }: { accounts: Account[] }) {
                       </Hint>
                     ))}
                   </div>
-                  {/* The primary account is the signed-in identity — disconnecting
-                      it would drop your login, so it shows a lock in the
-                      disconnect slot instead, which also keeps rows aligned. */}
+                  {/* Primary account is the signed-in identity — disconnecting
+                      would drop login, so it shows a lock in the disconnect slot
+                      (also keeps rows aligned). */}
                   {primaryEmail &&
                     (account.email === primaryEmail ? (
                       <Hint label="Primary account — can’t be disconnected">
@@ -525,8 +523,8 @@ function AccountsPage({ accounts }: { accounts: Account[] }) {
   );
 }
 
-/** Picks which connected account the composer defaults its From to. "Primary
- *  inbox" (null) keeps the old behaviour: fall back to the signed-in address. */
+/** Picks the composer's default From account. "Primary inbox" (null) falls back
+ *  to the signed-in address. */
 function SendFromControl({
   accounts,
   primaryEmail,
@@ -536,8 +534,8 @@ function SendFromControl({
 }) {
   const { defaultSendFrom } = useSettings();
   const sendable = accounts.filter((account) => account.email);
-  // The primary account is already represented by "Primary inbox", so it isn't
-  // also listed below — pinning it would behave identically to the default.
+  // Primary account is already "Primary inbox", so it isn't listed below —
+  // pinning it would behave identically to the default.
   const primaryAccount =
     sendable.find((account) => account.email === primaryEmail) ?? null;
   const others = sendable.filter(
@@ -1094,12 +1092,9 @@ function KeyboardPage() {
   );
 }
 
-// ── Snippets (Direction A — inline accordion) ───────────────────────────────
-
 const TOKEN_RE = /\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g;
 
-/** Resolve tokens for the live preview: variables → the sample value, fill
- *  fields → a chip, cursor → a caret. */
+/** Resolve tokens for the live preview: variables → sample value, fill fields → chip, cursor → caret. */
 function snippetPreviewHtml(html: string): string {
   return html.replace(TOKEN_RE, (_m, raw: string) => {
     const k = raw.toLowerCase();
@@ -1110,9 +1105,9 @@ function snippetPreviewHtml(html: string): string {
   });
 }
 
-/** One-line preview for a collapsed row. Shows the snippet's *shape* — field
- *  names sit in subtle bordered chips (like the composer), not a resolved
- *  sample; only the open editor's PREVIEW substitutes a real contact. */
+/** One-line preview for a collapsed row, showing the snippet's *shape*: field
+ *  names sit in bordered chips, not a resolved sample. Only the open editor's
+ *  PREVIEW substitutes a real contact. */
 function rowPreviewHtml(html: string): string {
   const plain = html
     .replace(/<[^>]+>/g, " ")
@@ -1428,8 +1423,7 @@ function SnippetEmptyState({
   );
 }
 
-/** Loading placeholder shaped like the accordion rows — a bordered list of
- *  pulsing trigger/preview bars. Reused by both settings lists. */
+/** Loading placeholder shaped like the accordion rows (pulsing trigger/preview bars). Reused by both lists. */
 function RowSkeleton({ rows = 3 }: { rows?: number }) {
   const widths = ["w-44", "w-32", "w-52", "w-36", "w-40"];
   return (
@@ -1459,8 +1453,7 @@ function SnippetsPage({
   prefill,
   onPrefillConsumed,
 }: {
-  /** Body HTML handed in from the composer's "Save as snippet" — opens a new
-   *  snippet editor pre-filled with it. */
+  /** Body HTML from the composer's "Save as snippet" — opens a new snippet editor pre-filled with it. */
   prefill?: string | null;
   onPrefillConsumed?: () => void;
 }) {
@@ -1670,8 +1663,6 @@ function SnippetsPage({
     </Page>
   );
 }
-
-// ── Signatures (Direction A — inline accordion, matching Snippets) ──────────
 
 type SignatureDraft = { name: string; body: string };
 

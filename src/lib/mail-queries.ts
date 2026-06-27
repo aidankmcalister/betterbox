@@ -68,9 +68,8 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 /**
- * Test/demo accounts otherwise resolve in a single tick, which makes folder
- * switches read as a glitchy flash. A small artificial latency lets the
- * skeleton paint first, so demo mode loads like a real inbox would.
+ * Demo accounts resolve in one tick, making folder switches flash. A small
+ * artificial latency lets the skeleton paint, so demo loads like a real inbox.
  */
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const LIST_LATENCY_MS = 480;
@@ -91,8 +90,8 @@ const DEMO_CONTACTS: Contact[] = [
   { name: "Riley Chen", email: "riley@example.dev" },
 ];
 
-/** People you've emailed before, for compose To autocomplete. Test/demo
- *  accounts return a static set; real accounts hit /api/contacts (Sent). */
+/** People you've emailed, for compose To autocomplete. Demo: static set; real:
+ *  /api/contacts (Sent). */
 export function useContactsQuery(
   accountId: string | undefined,
   enabled: boolean,
@@ -241,8 +240,8 @@ export function useFullEmailQuery(accountId: string, emailId: string | null) {
   });
 }
 
-/** A draft that continues an existing thread (vs. a brand-new message) — opened
- *  in the thread reader rather than the standalone composer. */
+/** A draft continuing an existing thread (vs. a new message) — opened in the
+ *  thread reader rather than the standalone composer. */
 export function isReplyDraft(email: {
   id: string;
   threadId?: string;
@@ -326,8 +325,7 @@ export function useLabelsQuery(accountId: string) {
   return useQuery(labelsQueryOptions(accountId));
 }
 
-/** Labels across several accounts, deduped by name (case-insensitive) — one
- *  entry per distinct name. */
+/** Labels across accounts, deduped by name (case-insensitive). */
 export function useAccountsLabels(accountIds: string[]): Label[] {
   const results = useQueries({ queries: accountIds.map(labelsQueryOptions) });
   const seen = new Set<string>();
@@ -426,8 +424,8 @@ export async function sendNewEmail(options: {
   });
 }
 
-/** Save the composer's current content as a draft. Returns the draft id (demo
- *  only — real Gmail draft persistence isn't wired yet, so it's a no-op there). */
+/** Save composer content as a draft; returns the draft id. Demo-only — real Gmail
+ *  draft persistence isn't wired yet (no-op there). */
 export async function saveDraft(opts: {
   accountId: string;
   id?: string;
@@ -468,9 +466,8 @@ export async function saveDraft(opts: {
   }
 }
 
-/** Delete a draft so it leaves the Drafts folder. Demo: drop from the store.
- *  Real: trash the underlying message (we don't track the Gmail draft id yet,
- *  but trashing removes it from Drafts). */
+/** Delete a draft so it leaves Drafts. Demo: drop from store. Real: trash the
+ *  message (we don't track the Gmail draft id yet, but trashing removes it). */
 export async function deleteDraft(accountId: string, emailId: string) {
   if (isTestAccount(accountId)) {
     deleteTestEmail(emailId);

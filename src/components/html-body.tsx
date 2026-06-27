@@ -2,27 +2,22 @@ import DOMPurify from "dompurify";
 import { useEffect, useRef, useState } from "react";
 
 // DOMPurify needs a real DOM; no-op during SSR.
-//
-// Privacy: remote subresources that would fetch straight from the sender's host
-// (leaking the reader's IP/User-Agent) are routed through our image proxy or
-// stripped. <img> src and inline-style url() (background images) are proxied —
-// the proxy fetches server-side, so the sender only sees our IP. Everything
-// else a sender could embed — external <link> stylesheets, @font-face web fonts,
-// @import, <video>/<audio>/<object>/<embed> — is stripped. (Remote fonts are a
-// tracking vector, so @font-face stays stripped even though it's "just CSS".)
+// Privacy: remote subresources that would leak the reader's IP/User-Agent to the
+// sender's host are proxied (<img> src, inline-style url() backgrounds — fetched
+// server-side so the sender only sees our IP) or stripped (<link> stylesheets,
+// @font-face, @import, <video>/<audio>/<object>/<embed>). Remote fonts are a
+// tracking vector, so @font-face stays stripped even though it's "just CSS".
 
-/** Strip remote fetches out of a <style> block: @import rules and url() values
- *  pointing at http(s)/protocol-relative targets (this is what kills @font-face
- *  and remote background CSS). data:/cid: urls are inline and left intact. */
+/** Strip remote fetches from a <style> block: @import and http(s)/protocol-relative
+ *  url() values (kills @font-face + remote background CSS). data:/cid: left intact. */
 function stripRemoteCss(css: string): string {
   return css
     .replace(/@import\b[^;]*;?/gi, "")
     .replace(/url\(\s*(['"]?)\s*(?:https?:|\/\/)[^)]*\1\s*\)/gi, "url()");
 }
 
-/** Rewrite remote url() values in an inline style attribute through the image
- *  proxy, so background-image (and the `background` shorthand) render without
- *  leaking the reader's IP. Mirrors how <img src> is proxied. */
+/** Proxy remote url() values in an inline style attribute so background-image
+ *  (and `background` shorthand) render without leaking the reader's IP. */
 function proxyCssUrls(css: string): string {
   if (typeof window === "undefined") return css;
   return css.replace(
@@ -42,13 +37,12 @@ function sanitizeEmail(html: string): string {
       if (node.tagName === "IMG") {
         node.removeAttribute("srcset");
         const src = node.getAttribute("src");
-        // Proxy absolute http(s) AND protocol-relative ("//host/…") srcs.
-        // cid: (inline attachment) srcs are left for the parent to resolve in
-        // onLoad, where the message id/account are available.
+        // Proxy absolute http(s) + protocol-relative srcs. cid: (inline attachment)
+        // srcs left for the parent to resolve in onLoad (has message id/account).
         if (src && /^(https?:)?\/\//i.test(src)) {
           const abs = src.startsWith("//") ? `https:${src}` : src;
-          // Absolute origin, not root-relative: inside the srcdoc iframe a
-          // "/api/…" path resolves against about:srcdoc, not the app, and 404s.
+          // Absolute origin, not root-relative: in the srcdoc iframe "/api/…"
+          // resolves against about:srcdoc, not the app, and 404s.
           node.setAttribute(
             "src",
             `${window.location.origin}/api/image-proxy?url=${encodeURIComponent(abs)}`,
@@ -60,13 +54,11 @@ function sanitizeEmail(html: string): string {
         node.setAttribute("target", "_blank");
         node.setAttribute("rel", "noopener noreferrer");
       }
-      // <style> blocks stay stripped — that's what neutralizes @font-face and
-      // remote background CSS (remote fonts are a tracking vector).
+      // <style> remote CSS stripped — neutralizes @font-face + remote background CSS.
       if (node.tagName === "STYLE" && node.textContent) {
         node.textContent = stripRemoteCss(node.textContent);
       }
-      // Inline styles, by contrast, get their remote url() proxied so element
-      // background images still render (privacy-safe, server-side fetch).
+      // Inline styles instead get remote url() proxied so background images render.
       const inlineStyle =
         node.nodeType === 1 ? (node as Element).getAttribute("style") : null;
       if (inlineStyle) {
@@ -77,12 +69,11 @@ function sanitizeEmail(html: string): string {
   }
   return DOMPurify.sanitize(html, {
     WHOLE_DOCUMENT: true,
-    // Inline <style> is kept (scrubbed of remote url() above); the From/layout
-    // styling lives there.
+    // Inline <style> kept (scrubbed above); From/layout styling lives there.
     ADD_TAGS: ["style"],
     ADD_ATTR: ["target"],
-    // Tags/attrs that fetch remote content (and thus leak the reader's IP) — the
-    // image proxy only covers <img>, so block the rest.
+    // Tags/attrs that fetch remote content (leaking the reader's IP). The image
+    // proxy only covers <img>, so block the rest.
     FORBID_TAGS: [
       "link",
       "video",
@@ -98,11 +89,8 @@ function sanitizeEmail(html: string): string {
   });
 }
 
-/**
- * Sandboxed HTML email body. Renders seamlessly into the reader (no visible
- * frame, no inner scrollbars) and auto-sizes to its content height like Gmail.
- * allow-scripts is intentionally omitted so allow-same-origin stays safe.
- */
+/** Sandboxed HTML email body: frameless, no inner scrollbars, auto-sizes to
+ *  content height like Gmail. allow-scripts omitted so allow-same-origin is safe. */
 export function HtmlBody({
   html,
   accountId,
@@ -110,8 +98,8 @@ export function HtmlBody({
   inlineAttachments,
 }: {
   html: string;
-  /** With messageId + inlineAttachments, lets cid: images resolve to the
-   *  Gmail attachment endpoint. Omitted (e.g. demo mail) → cid: left as-is. */
+  /** With messageId + inlineAttachments, resolves cid: images to the Gmail
+   *  attachment endpoint. Omitted (e.g. demo mail) → cid: left as-is. */
   accountId?: string;
   messageId?: string;
   inlineAttachments?: Record<
@@ -131,8 +119,8 @@ export function HtmlBody({
     const idoc = iframe?.contentDocument;
     if (!iframe || !idoc?.body) return;
 
-    // Resolve inline (cid:) images to the Gmail attachment endpoint — these are
-    // real attachments, not URLs, so the image proxy can't reach them.
+    // Resolve cid: images to the Gmail attachment endpoint — real attachments,
+    // not URLs, so the image proxy can't reach them.
     if (accountId && messageId && inlineAttachments) {
       idoc.querySelectorAll("img").forEach((img) => {
         const src = img.getAttribute("src") ?? "";
@@ -152,21 +140,18 @@ export function HtmlBody({
     idoc.head.prepend(base);
     // HTML emails assume a light canvas regardless of the app theme.
     idoc.documentElement.style.colorScheme = "light";
-    // Force the root to auto height so the email's height:100% / min-height
-    // chains don't feed back off the iframe height we set (the cause of the box
-    // growing forever); suppress the horizontal scrollbar and keep wide media
-    // from overflowing the pane width.
+    // Force root to auto height so the email's height:100%/min-height chains don't
+    // feed back off the iframe height we set (box grows forever); kill horizontal
+    // scroll and keep wide media from overflowing the pane.
     const style = idoc.createElement("style");
     style.textContent =
-      // Auto-height + no horizontal scroll (so our ResizeObserver sizing works).
+      // Auto-height + no horizontal scroll (so ResizeObserver sizing works).
       "html,body{height:auto!important;min-height:0!important;margin:0!important;padding:0!important;overflow-x:hidden!important}" +
-      // Breathing room so body text isn't flush to the card edge. Sits inside
-      // the email's own background, so it reads right on white and dark emails.
+      // Breathing room inside the email's own background; reads right on white + dark.
       "body{padding:16px 20px!important}" +
-      // System font base so web-font-reliant emails degrade cleanly (no serif),
-      // antialiased so unstyled body text renders crisp like a native client.
+      // System font base so web-font emails degrade cleanly (no serif); antialiased.
       'body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}' +
-      // Reset for table-based email layouts (most HTML email is built on tables).
+      // Reset for table-based email layouts (most HTML email is tables).
       "table{border-collapse:collapse}" +
       "img,video,table{max-width:100%!important}" +
       "img,video{height:auto}" +
@@ -187,10 +172,9 @@ export function HtmlBody({
     observerRef.current.observe(idoc.body);
     fit();
 
-    // A failed image (dead CDN, proxy reject) otherwise shows a broken-image
-    // icon. The iframe has no allow-scripts, so we can't use an inline onerror —
-    // attach the handler from here (allow-same-origin lets us touch the doc).
-    // Meaningful alt text becomes muted italic text; decorative images vanish.
+    // A failed image (dead CDN, proxy reject) shows a broken-image icon. No
+    // allow-scripts means no inline onerror, so attach the handler from here
+    // (allow-same-origin). Alt text → muted italic; decorative images vanish.
     const handleBroken = (img: HTMLImageElement) => {
       const alt = (img.getAttribute("alt") || "").trim();
       if (alt) {
@@ -214,7 +198,7 @@ export function HtmlBody({
     });
     if (idoc.fonts?.ready) idoc.fonts.ready.then(fit).catch(() => {});
 
-    // iframe swallows wheel events even with no inner scroll; forward to the reader pane.
+    // iframe swallows wheel events with no inner scroll; forward to the reader pane.
     idoc.addEventListener(
       "wheel",
       (event) => {

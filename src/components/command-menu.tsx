@@ -100,7 +100,6 @@ export function CommandMenu({
     if (!next) setSearch("");
   };
 
-  // Run an action and close the palette.
   const run = (action: () => void) => () => {
     action();
     setOpen(false);

@@ -12,8 +12,8 @@ export type SignaturesData = {
 
 export const signaturesQueryKey = ["signatures"] as const;
 
-/** Seeded signature for demo mode (assigned to both demo accounts) so the
- *  composer never surfaces the real user's signature during a recording. */
+/** Seeded demo signature (assigned to both demo accounts) so recordings never
+ *  surface the real user's signature. */
 const DEMO_SIGNATURES: SignaturesData = {
   signatures: [{ id: "demo-sig", name: "Default", body: "Best,\nAidan" }],
   assignments: { "test-1": "demo-sig", "test-2": "demo-sig" },
@@ -39,7 +39,7 @@ export const gmailSignatureQueryKey = (accountId?: string, email?: string) =>
   ["gmail-signature", accountId, email] as const;
 
 /** The account's native Gmail signature HTML (set in Gmail Settings, images and
- *  all). Empty string when unset or the settings scope isn't granted yet. */
+ *  all). Empty when unset or the settings scope isn't granted yet. */
 export function useGmailSignatureQuery(
   accountId: string | undefined,
   email: string | undefined,
@@ -62,8 +62,8 @@ export function useGmailSignatureQuery(
   });
 }
 
-/** Plain-text signature → a single HTML paragraph, line breaks preserved and
- *  HTML-escaped so user text can't inject markup. */
+/** Plain-text signature → one HTML paragraph; line breaks preserved, text escaped
+ *  so it can't inject markup. */
 function signatureToHtml(text: string): string {
   const esc = (s: string) =>
     s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -75,9 +75,8 @@ function signatureToHtml(text: string): string {
 const TRAILING_EMPTY_PARAGRAPHS =
   /(?:<p>(?:\s|&nbsp;|<br\s*\/?>){0,200}<\/p>\s*){1,50}$/gi;
 
-/** Append a signature to message HTML with exactly one blank line above it.
- *  Trailing empty paragraphs in the message are trimmed first; an empty message
- *  yields just the signature (no leading blank). */
+/** Append a signature with exactly one blank line above it. Trailing empty
+ *  paragraphs are trimmed first; an empty message yields just the signature. */
 function joinWithSignature(bodyHtml: string, sigHtml: string): string {
   if (!sigHtml) return bodyHtml.replace(TRAILING_EMPTY_PARAGRAPHS, "");
   const trimmed = bodyHtml.replace(TRAILING_EMPTY_PARAGRAPHS, "");
@@ -88,8 +87,8 @@ export function appendSignature(bodyHtml: string, sigText: string): string {
   return joinWithSignature(bodyHtml, signatureToHtml(sigText));
 }
 
-/** Append an already-HTML signature (e.g. the native Gmail one). It's
- *  Gmail-authored, so it's email-safe as-is — no escaping or serializing. */
+/** Append an already-HTML signature (e.g. native Gmail). Gmail-authored, so
+ *  email-safe as-is — no escaping or serializing. */
 export function appendSignatureHtml(bodyHtml: string, sigHtml: string): string {
   return joinWithSignature(bodyHtml, sigHtml.trim());
 }

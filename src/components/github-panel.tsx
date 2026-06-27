@@ -13,13 +13,11 @@ import { formatCount } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 // Shared chrome for the GitHub board panels (Direction D — "status spine"):
-// mono-forward, terminal-dense, a colored left spine per row, inline stat
-// segments, bracketed mono filter tabs. Used by both the Pull requests and
-// Issues panels so they stay identical.
+// mono-forward, terminal-dense, colored left spine, inline stat segments,
+// bracketed mono filter tabs. Used by both the PR and Issues panels.
 
-/** Below this the row stacks (two-line card); above it collapses to a single
- *  truncating line. The line is flex + truncation (not fixed columns), so it
- *  reads well from a thin tile up to full width. */
+/** Below this the row stacks (two-line card); above it collapses to one
+ *  truncating line. Flex + truncation (not fixed columns) reads thin→full width. */
 export const WIDE_AT = 560;
 
 export function relTime(iso: string, now: number): string {
@@ -30,8 +28,8 @@ export function relTime(iso: string, now: number): string {
   return `${Math.round(m / 1440)}d`;
 }
 
-/** The panel's own width (callback ref so it attaches after the loading state
- *  clears), driving the narrow/wide switch off the pane size not the viewport. */
+/** Panel width (callback ref so it attaches after loading clears), driving the
+ *  narrow/wide switch off pane size not viewport. */
 export function usePanelWidth() {
   const [width, setWidth] = useState(0);
   const observerRef = useRef<ResizeObserver | null>(null);
@@ -51,8 +49,8 @@ export function usePanelWidth() {
   return [ref, width] as const;
 }
 
-/** Inline "N label" stat segments with vertical dividers. `you` segments (the
- *  attention counts — awaiting review / assigned) render in the accent. */
+/** Inline "N label" stat segments with vertical dividers. `you` segments
+ *  (attention counts — awaiting review / assigned) render in the accent. */
 export function StatStrip({
   segs,
 }: {
@@ -84,8 +82,8 @@ export function StatStrip({
   );
 }
 
-/** Filter as a compact shadcn Select (each id equals its label, so the trigger
- *  shows it directly), with the result count on the right. */
+/** Filter as a compact shadcn Select (id equals label, so the trigger shows it
+ *  directly), with the result count on the right. */
 export function FilterSelect<T extends string>({
   items,
   value,
@@ -125,8 +123,8 @@ export function FilterSelect<T extends string>({
   );
 }
 
-/** A row: a 3px colored spine (state/attention) + the body. `spine` is a bg
- *  utility class (bg-primary / bg-label-green / …). */
+/** A row: 3px colored spine (state/attention) + body. `spine` is a bg utility
+ *  class (bg-primary / bg-label-green / …). */
 export function SpineRow({
   spine,
   href,
@@ -177,8 +175,7 @@ export function StatusDot({
   );
 }
 
-/** Diff magnitude as a row of segments — green for the additions share, red for
- *  the rest. Packs change size into a few pixels. */
+/** Diff magnitude as segments — green for the additions share, red for the rest. */
 export function Sparkbar({
   additions,
   deletions,

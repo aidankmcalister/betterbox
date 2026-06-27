@@ -75,10 +75,8 @@ export function RawView({ mime }: { mime: string }) {
 function RawLine({ line, newline }: { line: string; newline: boolean }) {
   let node: ReactNode;
   if (/^--/.test(line)) {
-    // MIME boundary marker
     node = <span className="font-medium text-label-purple">{line}</span>;
   } else if (/^\s/.test(line)) {
-    // Folded continuation of the previous header
     node = <span className="text-muted-foreground/55">{line}</span>;
   } else {
     const header = line.match(/^([A-Za-z][A-Za-z0-9-]*):(.*)$/);

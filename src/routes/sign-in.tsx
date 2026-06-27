@@ -63,7 +63,6 @@ function SignIn() {
   return (
     <main className="flex min-h-svh w-full items-center justify-center bg-canvas px-6 py-8 text-ink">
       <div className="w-full max-w-[440px] rounded-[12px] border border-hairline bg-surface-1 px-7 pt-7 pb-5 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_24px_60px_rgba(0,0,0,0.35)]">
-        {/* BetterBox lockup */}
         <span className="inline-flex items-center gap-2.5">
           <span
             aria-hidden="true"
@@ -87,7 +86,6 @@ function SignIn() {
 
         {googleConfigured ? (
           <>
-            {/* "unverified app" warning */}
             <div
               role="note"
               className="mt-6 flex items-start gap-3 rounded-[8px] border border-[color-mix(in_srgb,var(--color-label-red)_28%,transparent)] bg-[color-mix(in_srgb,var(--color-label-red)_6%,var(--color-surface-1))] px-4 py-3 text-left"
@@ -135,7 +133,6 @@ function SignIn() {
               </div>
             </div>
 
-            {/* Continue with Google */}
             <button
               type="button"
               onClick={onGoogle}

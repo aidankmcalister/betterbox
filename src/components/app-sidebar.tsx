@@ -60,8 +60,7 @@ type NavChild = {
   id: string;
   title: string;
   icon: ComponentType<{ className?: string }>;
-  /** Gmail mailboxes switch the email panes' folder; panel children toggle an
-   *  integration panel on the board; legacy `to` children navigate by route. */
+  /** `folder` switches the mail panes; `panel` toggles a board panel; `to` navigates by route. */
   folder?: Folder;
   panel?: string;
   to?: string;
@@ -80,9 +79,8 @@ type Integration = {
   children: NavChild[];
 };
 
-/** The sidebar, organized by integration. Each integration is a full section
- *  that owns its own views — adding one (or a view to one) is a single entry
- *  here, and it shows up in the sidebar and in Settings → Inbox automatically. */
+/** The sidebar, organized by integration. Adding an integration (or a view to
+ *  one) is a single entry here; it shows up in the sidebar and Settings → Inbox. */
 const INTEGRATIONS: Integration[] = [
   {
     id: "gmail",
@@ -153,17 +151,16 @@ const INTEGRATIONS: Integration[] = [
   },
 ];
 
-/** Navigable route targets — used to tell when a non-mail page is active so the
- *  mailbox items don't also show as selected. */
+/** Navigable route targets — tells when a non-mail page is active so mailbox
+ *  items don't also show selected. */
 const ROUTE_TARGETS = INTEGRATIONS.flatMap((integration) =>
   integration.children
     .filter((child) => child.to && !child.soon)
     .map((child) => child.to as string),
 );
 
-/** Sidebar nav as toggleable items per integration. Settings → Inbox mirrors
- *  this so any view (Issues, Reviews, Assigned to you…) can be shown/hidden.
- *  `fixed` items (Inbox) can't be hidden. */
+/** Sidebar nav as toggleable items per integration. Settings → Inbox mirrors this
+ *  so any view can be shown/hidden; `fixed` items (Inbox) can't. */
 export const NAV_SECTIONS: {
   section: string;
   items: { id: string; title: string; fixed?: boolean }[];
@@ -216,20 +213,17 @@ export function AppSidebar({
   onTogglePanel?: (key: string) => void;
   /** Panel keys currently open on the board, for the active highlight. */
   openPanels?: string[];
-  /** Embedded only (landing demo): open a developer page inside the sandbox
-   *  instead of navigating the real router. */
+  /** Embedded only (landing demo): open a dev page in the sandbox, not the real router. */
   onOpenDevPage?: (id: string) => void;
   /** Embedded only: which developer page is showing, for the active highlight. */
   activeDevId?: string;
   /** Session/accounts still booting — skeleton the account + profile blocks. */
   loading?: boolean;
-  /** Embedded in a fixed-height container (landing demo) — fill the parent
-   *  instead of pinning to the viewport. */
+  /** Embedded in a fixed-height container (landing demo) — fill parent, don't pin to viewport. */
   embedded?: boolean;
   /** Signed-out demo persona for the profile block (landing page). */
   demoUser?: { name: string; email: string; image: string | null };
-  /** Portal target for the mobile sheet — keeps it inside the landing demo box
-   *  instead of escaping to <body>. */
+  /** Portal target for the mobile sheet — keeps it inside the landing demo box, not <body>. */
   container?: React.ComponentProps<typeof SheetContent>["container"];
 }) {
   const { hiddenNav } = useSettings();
@@ -237,8 +231,8 @@ export function AppSidebar({
   const navigate = useNavigate();
   const pathname = useLocation({ select: (location) => location.pathname });
 
-  // On mobile the sidebar is an off-canvas sheet — dismiss it after any action
-  // that takes you elsewhere (picking a folder, composing, opening settings).
+  // Mobile sidebar is an off-canvas sheet — dismiss it after any navigating
+  // action (pick folder, compose, open settings).
   const closeMobile = () => setOpenMobile(false);
   const after =
     <T extends unknown[]>(fn: (...args: T) => void) =>
@@ -296,10 +290,9 @@ export function AppSidebar({
               {INTEGRATIONS.map((integration) => {
                 const children = integration.children.filter(childVisible);
                 if (children.length === 0) return null;
-                // Open a real section by default only when it has a live child.
+                // Default-open only when the section has a live child.
                 const hasLive = children.some((child) => !child.soon);
-                // A "soon" integration (e.g. Linear) is a dimmed placeholder —
-                // not expandable.
+                // A "soon" integration (e.g. Linear) is a dimmed, non-expandable placeholder.
                 if (integration.soon) {
                   return (
                     <SidebarMenuItem key={integration.id}>
@@ -405,10 +398,9 @@ export function AppSidebar({
       </SidebarContent>
 
       <SidebarFooter className="gap-1 border-t pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-        {/* Account scope is a global view control ("which inboxes feed the
-            board"), so it's pinned here — route-independent, never reflows when
-            you switch integrations. Manage accounts in Settings; toggle which
-            are in view here. Collapses to a one-liner when viewing all. */}
+        {/* Account scope ("which inboxes feed the board") is pinned here:
+            route-independent, never reflows on integration switch. Manage
+            accounts in Settings; toggle in-view here. Collapses when viewing all. */}
         {loading ? (
           <div className="flex h-7 items-center gap-2 px-2">
             <span className="size-4 shrink-0 animate-pulse rounded bg-muted" />
@@ -456,9 +448,8 @@ export function AppSidebar({
 
   return (
     <>
-      {/* Desktop: a persistent column. Hidden on mobile, where the off-canvas
-          sheet below takes over (toggled by the mobile top bar's hamburger).
-          The landing demo (embedded) fills its box instead of pinning to svh. */}
+      {/* Desktop: persistent column. Hidden on mobile (the sheet below takes
+          over). Embedded landing demo fills its box instead of pinning to svh. */}
       <Sidebar
         collapsible="none"
         className={cn(
@@ -468,8 +459,8 @@ export function AppSidebar({
       >
         {inner}
       </Sidebar>
-      {/* Mobile: the same sidebar, slid in from the left as a sheet. In the
-          landing demo, container keeps it inside the scaled box. */}
+      {/* Mobile: the same sidebar as a left-slide sheet; container keeps it
+          inside the scaled landing-demo box. */}
       <Sheet open={openMobile} onOpenChange={setOpenMobile}>
         <SheetContent
           side="left"

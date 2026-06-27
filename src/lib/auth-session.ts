@@ -4,11 +4,10 @@ import { getRequest } from "@tanstack/react-start/server";
 import { auth } from "@/lib/auth";
 
 /**
- * Server-resolved session for route guards. Called from the _app route's
- * beforeLoad so SSR already knows whether the visitor is signed in — the
- * authenticated shell never flashes before the landing page (and vice versa).
- * On the client it runs as an RPC; useSession() then takes over for live
- * updates (sign-out, account linking).
+ * Server-resolved session for route guards. Called from _app's beforeLoad so SSR
+ * knows sign-in state — the authenticated shell never flashes before the landing
+ * page (or vice versa). On the client it's an RPC; useSession() then takes over
+ * for live updates (sign-out, account linking).
  */
 export const fetchSession = createServerFn({ method: "GET" }).handler(
   async () => {
@@ -21,9 +20,9 @@ export const fetchSession = createServerFn({ method: "GET" }).handler(
 export type ServerSession = Awaited<ReturnType<typeof fetchSession>>;
 
 /**
- * Whether Google OAuth is configured. A fresh self-host instance has no
- * GOOGLE_CLIENT_ID/SECRET yet, so the sign-in page checks this to show setup
- * guidance instead of a button that throws an opaque 500 mid-flow.
+ * Whether Google OAuth is configured. A fresh self-host has no GOOGLE_CLIENT_ID/
+ * SECRET yet, so the sign-in page checks this to show setup guidance instead of a
+ * button that throws an opaque 500 mid-flow.
  */
 export const fetchGoogleConfigured = createServerFn({ method: "GET" }).handler(
   () =>

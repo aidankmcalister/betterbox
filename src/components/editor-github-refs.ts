@@ -3,13 +3,9 @@ import type { MarkType } from "@tiptap/pm/model";
 
 /**
  * Auto-link fully-qualified GitHub references (Composer Phase 1 — BOX-21).
- *
- * `owner/repo#123` → issue/PR, `owner/repo@<sha>` → commit. Bare `#123` and bare
- * SHAs are ambiguous without a repo context, so we only linkify the qualified
- * forms. They resolve to ordinary `<a>` tags → fully email-safe.
- *
- * Works on live typing (the rule fires on the boundary space after the ref) and
- * on paste (copying a ref out of GitHub).
+ * `owner/repo#123` → issue/PR, `owner/repo@<sha>` → commit. Bare `#123`/SHAs are
+ * ambiguous without repo context, so only qualified forms linkify; they resolve
+ * to ordinary email-safe `<a>` tags. Fires on typing (boundary space) and paste.
  */
 // Bounded segments (GitHub caps names at 39/100) so the per-keystroke input rule
 // can't backtrack quadratically over a long token.
@@ -60,8 +56,8 @@ export const GithubRefs = Extension.create({
   addPasteRules() {
     const link = this.editor.schema.marks.link as MarkType | undefined;
     if (!link) return [];
-    // markPasteRule's MarkType comes from @tiptap/core — the same runtime
-    // object, only the cross-package TS declarations differ.
+    // markPasteRule's MarkType is the same runtime object; only the cross-package
+    // TS declarations differ.
     return [
       markPasteRule({
         find: new RegExp(ISSUE_SRC, "g"),

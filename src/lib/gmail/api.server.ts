@@ -91,13 +91,9 @@ export async function getEmailAddress(accessToken: string): Promise<string> {
   return emailAddress ?? "";
 }
 
-/**
- * The account's native Gmail signature HTML (the one set in Gmail Settings,
- * images and all). Gmail doesn't auto-append it to API sends, so we read it via
- * the sendAs settings and append it ourselves. Prefers the send-as identity
- * matching `email`, else the default/primary one. Empty string when unset.
- * Needs the gmail.settings.basic scope.
- */
+/** The account's native Gmail signature HTML (from sendAs settings; Gmail doesn't
+ *  auto-append it to API sends). Prefers the identity matching `email`, else
+ *  default/primary. Empty when unset. Needs gmail.settings.basic scope. */
 export async function getGmailSignature(
   accessToken: string,
   email?: string,
@@ -242,7 +238,7 @@ async function fetchEmail(accessToken: string, id: string): Promise<Email> {
     `/messages/${id}?format=metadata&${headers}`,
   );
   if (!res.ok) {
-    // Couldn't load this row even after retries; mark it so it's not a silent
+    // Couldn't load even after retries; mark it so it's not a silent
     // "(no subject)" masquerading as a real, empty email.
     return {
       id,
@@ -257,9 +253,8 @@ async function fetchEmail(accessToken: string, id: string): Promise<Email> {
     labelIds?: string[];
     payload?: { headers?: { name: string; value: string }[] };
   };
-  // Gmail returns headers in their original (sender-chosen) casing, so match
-  // case-insensitively — otherwise some messages come back with empty
-  // Subject/From and render as "(no subject)" with no sender.
+  // Gmail keeps headers in sender-chosen casing, so match case-insensitively —
+  // else some messages render as "(no subject)" with no sender.
   const header = (name: string) =>
     message.payload?.headers?.find(
       (h) => h.name.toLowerCase() === name.toLowerCase(),
@@ -286,8 +281,8 @@ export type FullEmail = Email & {
   starred: boolean;
   labelIds: string[];
   hasAttachment: boolean;
-  /** cid (Content-ID, sans angle brackets) → attachment, for rendering inline
-   *  images referenced as <img src="cid:…">. */
+  /** cid (Content-ID, sans angle brackets) → attachment, for inline
+   *  <img src="cid:…"> images. */
   inlineAttachments: Record<string, InlineAttachment>;
   /** Named, downloadable attachments (excludes inline cid: images). */
   attachments: AttachmentMeta[];
@@ -355,8 +350,8 @@ function hasAttachmentPart(part: MessagePart): boolean {
   return (part.parts ?? []).some(hasAttachmentPart);
 }
 
-/** Walk the MIME tree collecting parts that carry a Content-ID and a fetchable
- *  attachmentId — these back <img src="cid:…"> inline images. */
+/** Walk the MIME tree for parts with a Content-ID + fetchable attachmentId —
+ *  these back <img src="cid:…"> inline images. */
 function collectInline(
   part: MessagePart,
   out: Record<string, InlineAttachment> = {},
@@ -375,9 +370,9 @@ function collectInline(
   return out;
 }
 
-/** Walk the MIME tree collecting named, downloadable attachments — parts with a
- *  filename and a fetchable attachmentId. Skips inline images (those carry a
- *  Content-ID and are rendered in the body, not listed as attachments). */
+/** Walk the MIME tree for named downloadable attachments (filename + fetchable
+ *  attachmentId). Skips inline images (those carry a Content-ID, rendered in the
+ *  body rather than listed). */
 function collectAttachments(
   part: MessagePart,
   out: AttachmentMeta[] = [],
@@ -473,9 +468,9 @@ function stripHtml(html: string): string {
       .replace(/&gt;/g, ">")
       .replace(/&quot;/g, '"')
       .replace(/&#39;/g, "'")
-      // Table-heavy HTML leaves heavy indentation and blank runs — collapse the
-      // inline whitespace, trim each line, then squeeze blank lines so exports
-      // aren't mostly empty space.
+      // Table-heavy HTML leaves heavy indentation and blank runs — collapse
+      // inline whitespace, trim lines, squeeze blank lines so exports aren't
+      // mostly empty space.
       .split("\n")
       .map((line) => line.replace(/[ \t]+/g, " ").trim())
       .join("\n")
@@ -484,9 +479,8 @@ function stripHtml(html: string): string {
   );
 }
 
-/** Decode the HTML entities Gmail leaves in `snippet` (e.g. `&amp;`, `&#39;`,
- *  `&quot;`). Regex-based so it works on server + client: numeric refs first,
- *  then named, with `&amp;` last to avoid double-decoding. */
+/** Decode HTML entities Gmail leaves in `snippet`. Regex-based (server + client):
+ *  numeric refs first, then named, with `&amp;` last to avoid double-decoding. */
 function decodeEntities(text: string): string {
   return text
     .replace(/&#x([0-9a-fA-F]+);/g, (m, h) => {
@@ -515,9 +509,8 @@ export async function getRawEmail(
   return Buffer.from(raw, "base64url").toString("utf8");
 }
 
-/** Send a message from the token's own address (messages.send). Pass `html`
- *  for rich text (sent as multipart/alternative with a plain-text fallback);
- *  pass inReplyTo/references/threadId to thread it as a real reply. */
+/** Outgoing message. `html` → multipart/alternative with plain-text fallback;
+ *  inReplyTo/references/threadId thread it as a real reply. */
 type OutgoingMessage = {
   to: string;
   cc?: string;
@@ -540,8 +533,8 @@ async function buildRawMessage(
   if (!from) throw new Error("Could not resolve sender address");
 
   // Strip CR/LF so a value can't inject extra headers (e.g. a hidden Bcc).
-  // Matters most for In-Reply-To/References, which are copied from the
-  // replied-to message's headers — attacker-controlled if they sent it.
+  // Matters most for In-Reply-To/References, copied from the replied-to
+  // message — attacker-controlled if they sent it.
   const headerSafe = (value: string) => value.replace(/[\r\n]+/g, " ").trim();
 
   const headerLines = [
@@ -553,12 +546,10 @@ async function buildRawMessage(
   // Cc is visible to every recipient (unlike Bcc); reply-all carries it over.
   if (options.cc?.trim())
     headerLines.splice(2, 0, `Cc: ${headerSafe(options.cc)}`);
-  // Bcc: Gmail delivers to these recipients then strips the header from the
-  // sent message, so they stay hidden from To/Cc.
+  // Bcc: Gmail delivers then strips the header, keeping them hidden from To/Cc.
   if (options.bcc?.trim())
     headerLines.splice(2, 0, `Bcc: ${headerSafe(options.bcc)}`);
-  // Threading headers make Gmail (and every other client) nest the reply
-  // under the original conversation instead of starting a new one.
+  // Threading headers nest the reply under the original conversation.
   if (options.inReplyTo)
     headerLines.push(`In-Reply-To: ${headerSafe(options.inReplyTo)}`);
   if (options.references)
@@ -570,9 +561,8 @@ async function buildRawMessage(
       .toString("base64")
       .replace(/(.{76})/g, "$1\r\n");
 
-  // The message body, as a single MIME part: text/plain alone, or a
-  // multipart/alternative (plain + html). `bodyType` is its Content-Type header
-  // value; `bodyRest` is everything after that header.
+  // Body as a single MIME part: text/plain, or multipart/alternative (plain +
+  // html). `bodyType` is its Content-Type value; `bodyRest` is everything after.
   let bodyType: string;
   let bodyRest: string[];
   if (options.html?.trim()) {
@@ -616,8 +606,8 @@ async function buildRawMessage(
       ...bodyRest,
     ];
     for (const att of attachments) {
-      // Strip CR/LF/quotes from the filename so it can't break out of the
-      // header; keep only valid base64 chars, then wrap at 76 columns.
+      // Strip CR/LF/quotes from filename so it can't break out of the header;
+      // keep only valid base64 chars, then wrap at 76 columns.
       const name = att.filename.replace(/[\r\n"]+/g, "_");
       const data = att.contentBase64
         .replace(/[^A-Za-z0-9+/=]/g, "")
@@ -654,9 +644,8 @@ export async function sendEmail(
   if (!res.ok) throw new Error(`Gmail send failed (${res.status})`);
 }
 
-/** Create or update a Gmail draft (drafts.create / drafts.update). Returns the
- *  draft + message ids so later autosaves UPDATE the same draft, and so the
- *  composer can trash it by message id when the draft is sent or discarded. */
+/** Create or update a Gmail draft. Returns draft + message ids so later autosaves
+ *  UPDATE the same draft and the composer can trash it by message id. */
 export async function saveGmailDraft(
   accessToken: string,
   options: OutgoingMessage & { draftId?: string },
@@ -758,8 +747,8 @@ function gmailFetch(accessToken: string, path: string, init?: RequestInit) {
   });
 }
 
-/** gmailFetch that retries 429 / 5xx with backoff — the burst rate-limit
- *  failures that otherwise make list rows come back with no sender/subject. */
+/** gmailFetch that retries 429 / 5xx with backoff — burst rate-limit failures
+ *  otherwise make list rows come back with no sender/subject. */
 async function gmailFetchOk(
   accessToken: string,
   path: string,

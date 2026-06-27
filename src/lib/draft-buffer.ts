@@ -1,12 +1,10 @@
 /**
- * Belt-and-suspenders local buffer for in-progress composer content. Gmail-draft
- * autosave is the primary "don't lose work" (cross-device, debounced); this is
- * the offline/failure backstop — if autosave can't reach Gmail and the tab dies,
- * the latest content survives here and is offered back on the next compose.
+ * Local backstop for in-progress composer content. Gmail-draft autosave is the
+ * primary "don't lose work" (cross-device, debounced); this covers offline/failure
+ * — if autosave can't reach Gmail and the tab dies, content survives here.
  *
- * The buffer is cleared the moment a Gmail draft save succeeds (Gmail now holds
- * it), on send, and on discard — so a leftover buffer means "the last session
- * never committed," which is exactly when we prompt to restore.
+ * Cleared on successful Gmail save, send, and discard — so a leftover buffer means
+ * the last session never committed, which is exactly when we prompt to restore.
  */
 
 export type BufferedDraft = {
@@ -55,8 +53,8 @@ async function withStore<T>(
       tx.oncomplete = () => db.close();
     });
   } catch {
-    // IndexedDB blocked (private mode, quota) — the Gmail autosave still covers
-    // the common case, so degrade silently.
+    // IndexedDB blocked (private mode, quota) — Gmail autosave covers the common
+    // case, so degrade silently.
     return null;
   }
 }

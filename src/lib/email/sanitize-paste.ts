@@ -1,17 +1,14 @@
 /**
  * Paste sanitizer (Composer Phase 0 — BOX-20).
  *
- * Google Docs / Word / Outlook pastes carry a thick layer of cruft: `mso-` style
- * declarations, `<o:p>` and other Office-namespace tags, MS conditional
- * comments, MsoNormal-style foreign classes, and embedded `<style>` blocks. This
- * runs as TipTap's `transformPastedHTML` hook — before ProseMirror parses the
- * clipboard HTML into the document — so only clean markup reaches the editor's
- * allowed node set.
+ * Google Docs / Word / Outlook pastes carry cruft: `mso-` declarations,
+ * `<o:p>` and other Office-namespace tags, MS conditional comments, MsoNormal
+ * classes, embedded `<style>`. Runs as TipTap's `transformPastedHTML` hook
+ * (before ProseMirror parses) so only clean markup reaches the allowed node set.
  *
- * It deliberately keeps the formatting the schema understands (`font-weight` /
- * `font-style` inline styles, `<b>`/`<strong>`/`<a href>`/`<ul>`…) and strips
- * only the junk. Node-level filtering (dropping tables, images, etc.) is left to
- * ProseMirror's schema, which already discards nodes it doesn't recognize.
+ * Keeps schema-understood formatting (`font-weight`/`font-style`, `<b>`/`<strong>`/
+ * `<a href>`/`<ul>`…) and strips only junk. Node-level filtering (tables, images)
+ * is left to ProseMirror's schema, which discards what it doesn't recognize.
  */
 
 /** Drop any `mso-*` declarations from a style attribute body, keep the rest. */
@@ -31,8 +28,8 @@ export function sanitizePastedHtml(html: string): string {
   if (!html) return html;
   let out = html;
 
-  // 1. MS conditional comments: <!--[if gte mso 9]> … <![endif]--> and the
-  //    "downlevel-revealed" bare forms <![if !supportLists]> … <![endif]>.
+  // 1. MS conditional comments: <!--[if gte mso 9]>…<![endif]--> and the bare
+  //    "downlevel-revealed" forms <![if !supportLists]>…<![endif]>.
   out = out.replace(/<!--\[if[\s\S]*?<!\[endif\]-->/gi, "");
   out = out.replace(/<!\[if[\s\S]*?\]>/gi, "").replace(/<!\[endif\]>/gi, "");
 

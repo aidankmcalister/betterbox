@@ -1,6 +1,5 @@
 import type { ThreadRowEmail } from "@/components/thread-row";
 import { toFolder, type Folder } from "@/lib/folders";
-// Demo mail content lives in JSON to keep this module focused on logic.
 import demoMail from "@/data/demo-mail.json";
 
 // Dev-only dummy accounts; panes detect this prefix and render generated mail instead of calling /api/emails.
@@ -10,10 +9,8 @@ export function isTestAccount(accountId: string): boolean {
   return accountId.startsWith(TEST_ACCOUNT_PREFIX);
 }
 
-// ── Session-only mutable state for test/demo accounts ──
-// Test mail is otherwise regenerated identically on every query, so marking
-// read or tagging never "stuck". This tiny in-memory store lets the demo behave
-// like a real inbox — no backend, resets on reload.
+// Test mail regenerates identically per query, so read/tag state wouldn't stick.
+// This in-memory store gives the demo real-inbox behavior; resets on reload.
 const testReadIds = new Set<string>();
 const testReadAccounts = new Set<string>();
 const testEmailLabels = new Map<string, Set<string>>(); // `acct::emailId` -> labelIds
@@ -88,8 +85,8 @@ function testRowById(
   );
 }
 
-/** Pre-tag a handful of inbox messages per account so the Labeled view starts
- *  populated (mirrors the seeded `VIP`/`Receipts`/`Follow up` labels). */
+/** Pre-tag a few inbox messages per account so the Labeled view starts populated
+ *  (mirrors the seeded `VIP`/`Receipts`/`Follow up` labels). */
 function seedTestLabels(accountId: string): void {
   if (seededLabelAccounts.has(accountId)) return;
   seededLabelAccounts.add(accountId);
@@ -169,9 +166,8 @@ function testAccountDrafts(accountId: string): ThreadRowEmail[] {
     }));
 }
 
-/** Friendly per-account address shown in the demo and in the reader's To/From,
- *  so a recording never surfaces a `test-N@example.dev` artifact. Falls back to
- *  a generic alias for any account beyond the seeded demo pair. */
+/** Friendly per-account address for the demo/reader, so recordings never surface
+ *  a `test-N@example.dev` artifact. Generic alias beyond the seeded demo pair. */
 const DEMO_EMAIL_BY_INDEX: Record<number, string> = {
   1: "personal@example.com",
   2: "work@example.com",
@@ -230,9 +226,8 @@ export function makeTestFullEmail(accountId: string, emailId: string) {
   const row = makeTestEmails(accountId, folder).find(
     (email) => email.id === emailId,
   );
-  // Drafts open in the composer — give them just their own text and an empty
-  // recipient to fill in. Everything else renders the message's own body (the
-  // 4th demo-mail field), falling back to the snippet when one isn't written.
+  // Drafts open in the composer: just their own text + empty recipient. Others
+  // render the message body (4th demo-mail field), falling back to snippet.
   const isDraft = folder === "drafts";
   const body = testMailEntry(accountId, emailId)?.[3] ?? row?.snippet ?? "";
   return {
@@ -281,7 +276,7 @@ const FOLDER_MAIL: Record<
   { mail: readonly Mail[]; count: number; self?: boolean; allRead?: boolean }
 > = {
   inbox: { mail: demoMail.senders as unknown as Mail[], count: 120 },
-  labeled: { mail: demoMail.senders as unknown as Mail[], count: 8 }, // accordion view; entry satisfies Record<Folder> shape
+  labeled: { mail: demoMail.senders as unknown as Mail[], count: 8 }, // accordion view; satisfies Record<Folder>
   archived: {
     mail: demoMail.archived as unknown as Mail[],
     count: 16,
@@ -310,9 +305,8 @@ function folderFromId(accountId: string, emailId: string): Folder {
   return toFolder(rest.split("-")[0]);
 }
 
-/** Recover the source demo-mail tuple for a seeded message id, mirroring the
- *  index math in makeTestEmails, so the reader can render the same row's body.
- *  Returns undefined for composer-authored drafts (no seeded tuple). */
+/** Recover the source demo-mail tuple for a seeded id (mirrors makeTestEmails'
+ *  index math) so the reader renders the same body. Undefined for composer drafts. */
 function testMailEntry(accountId: string, emailId: string): Mail | undefined {
   const folder = folderFromId(accountId, emailId);
   const rest = emailId.startsWith(`${accountId}-`)
@@ -359,8 +353,8 @@ export function makeTestEmails(
     };
   });
 
-  // Merge composer-authored drafts ahead of the seeded ones, and drop anything
-  // the user deleted, so the demo's Drafts folder reflects their edits.
+  // Merge composer-authored drafts ahead of seeded ones and drop deleted ids,
+  // so the demo's Drafts folder reflects the user's edits.
   const merged =
     folder === "drafts" ? [...testAccountDrafts(accountId), ...rows] : rows;
   return merged

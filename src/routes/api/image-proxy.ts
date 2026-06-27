@@ -3,16 +3,13 @@ import { isIP } from "node:net";
 import { lookup } from "node:dns/promises";
 
 /**
- * Stream remote email images through our origin (what Gmail's image proxy
- * does). Tracker blockers kill direct requests to sender CDNs — LinkedIn's
- * licdn.com is on the standard block lists — and proxying also keeps the
- * reader's IP and referer out of tracking pixels.
+ * Stream remote email images through our origin (like Gmail's image proxy):
+ * bypasses tracker blockers on sender CDNs (e.g. LinkedIn's licdn.com) and
+ * keeps the reader's IP/referer out of tracking pixels.
  *
- * SSRF hardening: the URL is attacker-controlled (it comes straight from an
- * email's <img src>, which the reader auto-loads), so before fetching we
- * resolve the host and reject any that maps to a private/internal/metadata IP,
- * we allow https only, we follow redirects manually and re-validate every hop,
- * and we cap the response time and size.
+ * SSRF hardening — the URL is attacker-controlled (an email's auto-loaded <img
+ * src>): resolve the host and reject private/internal/metadata IPs, https only,
+ * re-validate every redirect hop, and cap response time and size.
  */
 
 const MAX_BYTES = 10 * 1024 * 1024; // 10 MB — generous for an email image.
@@ -51,9 +48,8 @@ function isPrivateIp(raw: string): boolean {
   );
 }
 
-/** Resolve a hostname and return true if it is a literal private IP, fails to
- *  resolve, or resolves to ANY private address. Refusing on lookup failure is
- *  deliberate (fail closed). */
+/** True if the host is a literal private IP, fails to resolve, or resolves to
+ *  ANY private address. Lookup failure fails closed, deliberately. */
 async function resolvesToPrivate(hostname: string): Promise<boolean> {
   const host = hostname.replace(/^\[|\]$/g, ""); // strip IPv6 brackets
   if (isIP(host)) return isPrivateIp(host);
@@ -73,10 +69,9 @@ async function safeTarget(raw: string): Promise<URL | null> {
   } catch {
     return null;
   }
-  // Upgrade http to https instead of rejecting. Marketing emails (e.g. SendGrid's
-  // image CDN) still ship http <img> srcs, and those hosts serve the same asset
-  // over https. We always fetch over https; the private-IP guard below — not the
-  // scheme — is what prevents SSRF.
+  // Upgrade http to https rather than reject: marketing emails (e.g. SendGrid)
+  // ship http <img> srcs that serve the same asset over https. SSRF is stopped
+  // by the private-IP guard below, not the scheme.
   if (url.protocol === "http:") {
     url.protocol = "https:";
     if (url.port === "80") url.port = "";
@@ -97,13 +92,11 @@ export const Route = createFileRoute("/api/image-proxy")({
   server: {
     handlers: {
       GET: async ({ request }: { request: Request }) => {
-        // No session gate: the reader renders email <img> inside a sandboxed
-        // srcdoc iframe whose subresource requests don't reliably carry the
-        // session cookie, so requiring auth here broke every proxied image.
-        // The route is already SSRF-hardened (https-only, private-IP rejection
-        // on every redirect hop, size/time caps). To still refuse use as an
-        // open relay from other sites, drop only blatant cross-site requests —
-        // the reader's same-origin iframe loads are unaffected.
+        // No session gate: the reader's sandboxed srcdoc iframe doesn't
+        // reliably send the session cookie, so requiring auth broke every
+        // proxied image. The route is already SSRF-hardened; to avoid being an
+        // open relay we drop only blatant cross-site requests (same-origin
+        // iframe loads are unaffected).
         if (request.headers.get("sec-fetch-site") === "cross-site") {
           return new Response("Forbidden", { status: 403 });
         }
@@ -167,8 +160,8 @@ export const Route = createFileRoute("/api/image-proxy")({
   },
 });
 
-/** Pass a stream through, erroring if it exceeds `max` bytes (defends against
- *  a CDN that omits content-length and streams unbounded data). */
+/** Pass a stream through, erroring past `max` bytes (guards a CDN that omits
+ *  content-length and streams unbounded data). */
 function capBytes(
   body: ReadableStream<Uint8Array>,
   max: number,

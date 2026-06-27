@@ -1,17 +1,12 @@
 /**
  * Email-safe HTML serializer (Composer Phase 0 — BOX-20).
  *
- * The composer edits in TipTap, but TipTap assumes a browser and email is not a
- * browser. Piping `editor.getHTML()` straight to the Gmail API is a latent
- * Outlook bug: flexbox/grid, `border-radius`, `float`/`position` and `<div>`
- * borders all render unpredictably in Word's engine. This layer takes the
- * editor's *document model* (ProseMirror/TipTap JSON) and rebuilds it into the
- * narrow set of primitives that render the same everywhere: inline-styled spans,
- * `<a>` tags, and table-based layout with inline CSS.
- *
- * It is a real transform to the email-safe node set, NOT a pass-through of
- * editor HTML — every rich composer feature is expected to serialize through
- * here, which is why it's the foundation the rest of the overhaul builds on.
+ * `editor.getHTML()` straight to Gmail is a latent Outlook bug: flexbox/grid,
+ * `border-radius`, `float`/`position`, `<div>` borders all render unpredictably
+ * in Word's engine. This rebuilds the editor's document model (ProseMirror/TipTap
+ * JSON) into primitives that render the same everywhere: inline-styled spans,
+ * `<a>` tags, table-based layout with inline CSS. A real transform to the
+ * email-safe node set, NOT a pass-through — every rich feature serializes here.
  */
 
 import { common, createLowlight } from "lowlight";
@@ -68,10 +63,8 @@ function escapeAttr(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
-/**
- * Only http(s) and mailto links survive — `javascript:`/`data:` are dropped so a
- * crafted link can't ride along. A bare domain is promoted to https.
- */
+/** Only http(s)/mailto survive — `javascript:`/`data:` dropped so a crafted link
+ *  can't ride along. A bare domain is promoted to https. */
 export function safeHref(href: unknown): string | null {
   if (typeof href !== "string") return null;
   const trimmed = href.trim();
@@ -144,10 +137,8 @@ function renderListItem(node: EmailNode): string {
     .join("");
 }
 
-/**
- * Blockquote as a 2-cell table: a 3px colored left cell is the "border" Outlook
- * will actually paint (a `border-left` on a `<div>`/`<blockquote>` is not).
- */
+/** Blockquote as a 2-cell table: a 3px colored left cell is the "border" Outlook
+ *  actually paints (a `border-left` on a `<div>`/`<blockquote>` is not). */
 function renderBlockquote(node: EmailNode): string {
   const inner = (node.content ?? [])
     .map((child) =>
@@ -164,13 +155,12 @@ function renderBlockquote(node: EmailNode): string {
   );
 }
 
-// Syntax highlighting runs at serialize time: lowlight tokenizes the code, then
-// we emit inline-colored <span>s — no classes or <style>, both of which Gmail
-// strips. `common` is highlight.js's ~37 common languages.
+// Highlighting at serialize time: lowlight tokenizes, we emit inline-colored
+// <span>s — no classes/<style> (Gmail strips both). `common` = hljs's ~37 langs.
 const lowlight = createLowlight(common);
 
-// hljs token class → inline color (a compact GitHub-light palette). Tokens we
-// don't map inherit the base code color.
+// hljs token class → inline color (compact GitHub-light palette). Unmapped
+// tokens inherit the base code color.
 const TOKEN_COLORS: Record<string, string> = {
   "hljs-keyword": "#cf222e",
   "hljs-built_in": "#cf222e",
@@ -231,11 +221,9 @@ function highlightCode(code: string, language: string): string {
   }
 }
 
-/**
- * Code block as a `bgcolor` table wrapping a `<pre>` — both Gmail and Outlook
- * respect `<pre>` for whitespace, and `white-space:pre-wrap` lets long lines
- * wrap instead of overflowing. Highlighting is inline-colored spans only.
- */
+/** Code block as a `bgcolor` table wrapping a `<pre>` — Gmail + Outlook respect
+ *  `<pre>` for whitespace, `white-space:pre-wrap` wraps long lines instead of
+ *  overflowing. Highlighting is inline-colored spans only. */
 function renderCodeBlock(node: EmailNode): string {
   const code = (node.content ?? []).map((child) => child.text ?? "").join("");
   const language =
@@ -264,16 +252,16 @@ function renderNode(node: EmailNode): string {
     case "hardBreak":
       return "<br>";
     case "fillField":
-      // An unfilled snippet tab-stop — emit the humanized label as plain text so
-      // it's readable (a Phase 3 guardrail warns before sending one).
+      // Unfilled snippet tab-stop — emit humanized label as plain text
+      // (a Phase 3 guardrail warns before sending one).
       return escapeHtml(
         humanizeFillLabel(
           typeof node.attrs?.label === "string" ? node.attrs.label : "",
         ),
       );
     case "dateField": {
-      // A {{date}} field — emit the picked date as a friendly long date. Send is
-      // blocked while it's empty, so an unpicked one shouldn't reach here.
+      // A {{date}} field — emit the picked date as a long date. Send is blocked
+      // while empty, so an unpicked one shouldn't reach here.
       const iso = typeof node.attrs?.value === "string" ? node.attrs.value : "";
       return escapeHtml(formatDateLong(iso) || "(date)");
     }
@@ -300,17 +288,14 @@ function renderNode(node: EmailNode): string {
     case "doc":
       return renderInline(node);
     default:
-      // Unknown node (an extension we don't email-map yet): keep the text, drop
-      // the unknown wrapper — degrade, never crash or emit unsafe markup.
+      // Unknown node (unmapped extension): keep the text, drop the wrapper —
+      // degrade, never crash or emit unsafe markup.
       return renderInline(node);
   }
 }
 
-/**
- * Serialize a TipTap/ProseMirror document to a self-contained, email-safe HTML
- * fragment: the content wrapped in a single base-font table cell. This is the
- * string that should be sent to the Gmail API — never `editor.getHTML()`.
- */
+/** Serialize a TipTap/ProseMirror doc to a self-contained email-safe HTML fragment
+ *  (content in a single base-font table cell). Send THIS to Gmail, never `getHTML()`. */
 export function serializeEmailHtml(doc: EmailNode): string {
   const body = renderNode(doc);
   return (

@@ -30,9 +30,8 @@ import type { Folder } from "@/lib/folders";
 import { makeDemoAccounts, markTestAccountRead } from "@/lib/test-account";
 import { cn } from "@/lib/utils";
 
-/** Demo walkthrough video for mobile/tablet, where the live multi-pane demo
- *  isn't meaningful. Empty → show the "coming soon" placeholder. The README
- *  video slot references this same constant by name so the two stay in sync. */
+/** Demo walkthrough video for mobile/tablet (live multi-pane demo isn't meaningful
+ *  there). Empty → "coming soon" placeholder. Kept in sync with the README video slot. */
 const DEMO_VIDEO_URL: string = "/betterbox-demo.mp4";
 
 const isYouTube = (url: string) =>
@@ -44,17 +43,17 @@ function youTubeEmbedUrl(url: string): string {
   return id ? `https://www.youtube.com/embed/${id}` : url;
 }
 
-// Layout effect on the client (avoids the post-paint flash), plain effect on
-// the server (where useLayoutEffect would warn).
+// Layout effect on the client (avoids post-paint flash), plain effect on the
+// server (where useLayoutEffect would warn).
 const useIsoLayoutEffect =
   typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
-/** Landing follows the OS color scheme (system), independent of the in-app
- *  theme setting — returns the `dark`/`light` class to scope onto the page. */
+/** Landing follows the OS color scheme, independent of the in-app theme — returns
+ *  the `dark`/`light` class to scope onto the page. */
 function useSystemTheme(): "dark" | "light" {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
-  // Layout effect so the correct scheme is applied before the browser paints —
-  // otherwise a light-mode visitor sees a dark frame first.
+  // Layout effect so the scheme applies before paint — else a light-mode visitor
+  // sees a dark frame first.
   useIsoLayoutEffect(() => {
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const apply = () => setTheme(mq.matches ? "dark" : "light");
@@ -65,13 +64,9 @@ function useSystemTheme(): "dark" | "light" {
   return theme;
 }
 
-/**
- * Signed-out landing page — the "BetterBox Landing v6" marketing layout, styled
- * with the app's standard shadcn tokens (background/card/border/foreground/
- * muted-foreground) and the default type scale. Follows the OS color scheme
- * (system), independent of the in-app theme. The only bespoke flourish is the
- * animated "live" pulse dot.
- */
+/** Signed-out landing page — the "BetterBox Landing v6" marketing layout, on the
+ *  app's standard shadcn tokens and type scale. Follows the OS color scheme,
+ *  independent of the in-app theme. Only bespoke flourish: the animated pulse dot. */
 
 const COL = "mx-auto max-w-6xl px-5 sm:px-8 md:px-10";
 
@@ -107,9 +102,8 @@ function Wordmark({ small }: { small?: boolean }) {
 
 const WL_KEY = "betterbox-waitlist-email";
 
-/** Smooth-scroll to the plan section (hosted column / waitlist). The landing is
- *  its own `overflow-y-auto` container, not the window — so scrollIntoView (which
- *  scrolls the real scroll ancestor) is used instead of window.scrollTo. */
+/** Smooth-scroll to the plan section. The landing is its own `overflow-y-auto`
+ *  container, not the window — hence scrollIntoView, not window.scrollTo. */
 function scrollToPlan() {
   document
     .getElementById("v6-plan")
@@ -117,9 +111,8 @@ function scrollToPlan() {
 }
 
 /** Waitlist capture: idle → open (email field) → done. Submits to /api/waitlist
- *  (tagged with `source` so we can see which placement converts) and also
- *  mirrors the email to localStorage so every instance shows the success state
- *  on reload. */
+ *  (tagged with `source` to track which placement converts) and mirrors the email
+ *  to localStorage so every instance shows the success state on reload. */
 function Waitlist({ big = false, source }: { big?: boolean; source: string }) {
   const stored = (() => {
     try {
@@ -163,7 +156,7 @@ function Waitlist({ big = false, source }: { big?: boolean; source: string }) {
         return;
       }
       // ok or already_registered → same success state. Mirror to localStorage
-      // (belt and suspenders) so the success state survives a reload.
+      // so it survives a reload.
       try {
         localStorage.setItem(WL_KEY, email);
       } catch {
@@ -224,8 +217,8 @@ function Waitlist({ big = false, source }: { big?: boolean; source: string }) {
             aria-busy={submitting}
             className={cn("relative shrink-0", height, big && "px-6 text-base")}
           >
-            {/* Keep the label in the DOM (invisible) so the button width
-                doesn't jump when it swaps to the spinner. */}
+            {/* Keep the label in the DOM (invisible) so width doesn't jump
+                when it swaps to the spinner. */}
             <span className={cn(submitting && "invisible")}>Notify me</span>
             {submitting && (
               <span className="absolute inset-0 flex items-center justify-center">
@@ -367,16 +360,14 @@ function Demo() {
         <PulseDot />
         live demo · sample data
       </div>
-      {/* Desktop: the full live app, in a box. */}
       <div className="hidden rounded-2xl border border-border bg-card p-2.5 md:block">
         <div className="relative h-[680px] overflow-hidden rounded-lg bg-background">
           <LandingDemo />
         </div>
       </div>
-      {/* Mobile/tablet: the live multi-pane app isn't meaningful at phone
-          widths — the walkthrough video goes here instead. Driven by
-          DEMO_VIDEO_URL (kept in sync with the README video slot); falls back
-          to a placeholder until a URL is set. */}
+      {/* Mobile/tablet: live multi-pane app isn't meaningful at phone widths —
+          walkthrough video goes here instead, driven by DEMO_VIDEO_URL; falls
+          back to a placeholder until a URL is set. */}
       <div className="rounded-2xl border border-border bg-card p-2.5 md:hidden">
         {DEMO_VIDEO_URL ? (
           isYouTube(DEMO_VIDEO_URL) ? (
@@ -418,12 +409,10 @@ function Demo() {
 const DEMO_USER = { name: "You", email: "personal@example.com", image: null };
 const noop = () => {};
 
-/** The demo slot: a fully self-contained copy of the real app — sidebar,
- *  folders, the ⌘K palette and compose — on two seeded test accounts. A sealed
- *  sandbox: everything stays inside this box (overlays portal here via the
- *  `transform` containing block, not to <body>), nothing hits the network,
- *  nothing sends, and settings are disabled. Client-only; theme follows the
- *  page (system). */
+/** The demo slot: a self-contained copy of the real app (sidebar, folders, ⌘K
+ *  palette, compose) on two seeded test accounts. Sealed sandbox — overlays
+ *  portal here via the `transform` containing block (not <body>), nothing hits
+ *  the network or sends, settings disabled. Client-only; theme follows the page. */
 function LandingDemo() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -433,8 +422,8 @@ function LandingDemo() {
   const activeRef = useRef(false);
   const queryClient = useQueryClient();
 
-  // Bumped after a read-state change so the demo accounts (and their unread
-  // counts) are recomputed from the test store.
+  // Bumped after a read-state change to recompute demo accounts + unread counts
+  // from the test store.
   const [readVersion, setReadVersion] = useState(0);
   // biome-ignore lint/correctness/useExhaustiveDependencies: rebuild the demo accounts whenever readVersion is bumped (after a sandbox read-state change).
   const accounts = useMemo(() => makeDemoAccounts(), [readVersion]);
@@ -451,7 +440,7 @@ function LandingDemo() {
   // Which surface fills the demo: the mailbox or a developer page (PRs).
   const [devView, setDevView] = useState<"pull_requests" | null>(null);
 
-  // Picking a mailbox folder leaves any dev page; opening a dev page enters it.
+  // Picking a folder leaves any dev page; opening a dev page enters it.
   const selectFolder = useCallback((next: Folder) => {
     setDevView(null);
     setFolder(next);
@@ -539,8 +528,8 @@ function LandingDemo() {
     setFolder("inbox");
   }, [toggle]);
 
-  // "Mark all read" in the demo: update the test store, refresh the lists, and
-  // recompute the unread counts. Nothing leaves the sandbox.
+  // "Mark all read" in the demo: update the test store, refresh lists, recompute
+  // unread counts. Nothing leaves the sandbox.
   const markAccountRead = useCallback(
     (accountId: string) => {
       markTestAccountRead(accountId);
@@ -552,8 +541,8 @@ function LandingDemo() {
     [accounts, queryClient],
   );
 
-  // ⌘K toggles the palette — but only when the demo is the focus, so it never
-  // hijacks the rest of the marketing page.
+  // ⌘K toggles the palette only when the demo is focused, so it never hijacks
+  // the rest of the marketing page.
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.key !== "k" || !(e.metaKey || e.ctrlKey)) return;
@@ -570,10 +559,9 @@ function LandingDemo() {
   if (!mounted) return <DemoLoading />;
 
   return (
-    // Scaled to 80% so the full app fits the demo box comfortably; the inner is
-    // sized to 125% so it still fills the frame after scaling. The `transform`
-    // also makes this the containing block for the `fixed` overlays (compose,
-    // ⌘K palette), keeping them inside the demo instead of escaping to the page.
+    // Scaled to 80% (inner sized 125% to still fill the frame). The `transform`
+    // also makes this the containing block for the `fixed` overlays (compose, ⌘K
+    // palette), keeping them inside the demo instead of escaping to the page.
     // biome-ignore lint/a11y/noStaticElementInteractions: hover only gates the demo's ⌘K shortcut; it's a non-essential enhancement with no keyboard equivalent needed.
     <div
       ref={boxRef}
@@ -581,8 +569,8 @@ function LandingDemo() {
       onMouseLeave={() => (activeRef.current = false)}
       className="absolute top-0 left-0 flex h-[125%] w-[125%] origin-top-left scale-[0.8] bg-background text-left text-foreground"
     >
-      {/* Rendered inside the scaled box so its fixed positioning is contained
-          here (transform → containing block) instead of escaping to the page. */}
+      {/* Inside the scaled box so its fixed positioning is contained here
+          (transform → containing block) instead of escaping to the page. */}
       <Toaster position="bottom-right" />
       <CommandMenu
         open={cmdOpen}
@@ -720,7 +708,6 @@ function Plans() {
     <Wrap id="v6-plan" label="plan" caption="two plans">
       <div className="overflow-hidden rounded-2xl border border-border bg-card">
         <div className="-m-px grid grid-cols-1 md:grid-cols-2">
-          {/* Free — self-host */}
           <div className="flex flex-col items-center justify-center border-t border-l border-border px-8 py-10 text-center">
             <span className="text-4xl font-semibold tracking-tight text-foreground">
               Free
@@ -742,7 +729,6 @@ function Plans() {
             </a>
           </div>
 
-          {/* Hosted — $5/month, waitlist while it's built */}
           <div className="flex flex-col items-center justify-center border-t border-l border-border px-8 py-10 text-center">
             <span className="text-4xl font-semibold tracking-tight text-foreground">
               $5
@@ -839,10 +825,9 @@ function Footer() {
   );
 }
 
-/** Shown when Better Auth bounces a blocked sign-in back to the landing with
- *  `?error=UNKNOWN` (or FORBIDDEN) — the ALLOWED_EMAILS hook rejecting an
- *  account that isn't on the access list. Dismissible (and clears the param)
- *  so it never blocks the page after it's read. */
+/** Shown when Better Auth bounces a blocked sign-in back with `?error=UNKNOWN`
+ *  (or FORBIDDEN) — the ALLOWED_EMAILS hook rejecting an off-list account.
+ *  Dismissible (clears the param) so it never blocks the page after it's read. */
 function AccessErrorBanner() {
   const [show, setShow] = useState(false);
 
@@ -890,10 +875,9 @@ function AccessErrorBanner() {
 export function LandingPage() {
   const theme = useSystemTheme();
 
-  // Mirror the system theme onto <html> while the landing is mounted. Overlays
-  // (compose From menu, tag picker, tooltips) portal to <body>, so they read
-  // the root class — without this they'd inherit the stored in-app theme and
-  // render light inside a dark demo. Restored to the app's theme on unmount.
+  // Mirror the system theme onto <html> while mounted. Overlays portal to <body>
+  // and read the root class — without this they'd inherit the stored in-app theme
+  // and render light inside a dark demo. Restored to the app's theme on unmount.
   useIsoLayoutEffect(() => {
     const root = document.documentElement;
     const had = {
