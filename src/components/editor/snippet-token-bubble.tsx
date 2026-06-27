@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ComponentType } from "react";
 import type { Editor } from "@tiptap/react";
+import { NodeSelection } from "@tiptap/pm/state";
 import {
   CalendarIcon,
   ChevronDownIcon,
@@ -23,8 +24,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { VARIABLE_KEYS } from "@/lib/snippet-tokens";
 import { humanizeFillLabel } from "@/lib/email/serialize";
+import { tokenNode } from "@/components/editor/editor-fill-fields";
 import { suggestVariable, type VariableSuggestion } from "@/lib/variable-detect";
-import { tokenAt } from "@/components/editor/editor-token-chips";
 
 type Bubble =
   | { mode: "convert"; left: number; top: number; from: number; to: number; suggestion: VariableSuggestion }
@@ -34,27 +35,27 @@ type Option = {
   kind: string;
   label: string;
   icon: ComponentType<{ className?: string }>;
-  /** Token to insert, or null for "Custom fill-in…" which prompts for a name. */
-  token: string | null;
+  /** Token name, or null for "Custom fill-in…" which prompts for one. */
+  name: string | null;
 };
 
 const OPTIONS: Option[] = [
-  { kind: "first_name", label: "First name", icon: CircleUserRound, token: "{{first_name}}" },
-  { kind: "last_name", label: "Last name", icon: CircleUserRound, token: "{{last_name}}" },
-  { kind: "name", label: "Full name", icon: CircleUserRound, token: "{{name}}" },
-  { kind: "email", label: "Email", icon: MailIcon, token: "{{email}}" },
-  { kind: "date", label: "Date", icon: CalendarIcon, token: "{{date}}" },
-  { kind: "custom", label: "Custom fill-in field…", icon: Pencil, token: null },
+  { kind: "first_name", label: "First name", icon: CircleUserRound, name: "first_name" },
+  { kind: "last_name", label: "Last name", icon: CircleUserRound, name: "last_name" },
+  { kind: "name", label: "Full name", icon: CircleUserRound, name: "name" },
+  { kind: "email", label: "Email", icon: MailIcon, name: "email" },
+  { kind: "date", label: "Date", icon: CalendarIcon, name: "date" },
+  { kind: "custom", label: "Custom fill-in field…", icon: Pencil, name: null },
 ];
 
-function promptCustom(fallback: string): string | null {
-  const name = window.prompt("Fill-in field name", fallback);
-  const slug = name?.trim().toLowerCase().replace(/\s+/g, "_");
-  return slug ? `{{${slug}}}` : null;
+function promptName(fallback: string): string | null {
+  const input = window.prompt("Fill-in field name", fallback);
+  const slug = input?.trim().toLowerCase().replace(/\s+/g, "_");
+  return slug || null;
 }
 
 /** Floating menu over the snippet editor's selection: convert a text run into a
- *  token, or edit an existing `{{token}}` chip. Settings-modal only. */
+ *  token chip, or edit an existing chip. Settings-modal only. */
 export function SnippetTokenBubble({ editor }: { editor: Editor }) {
   const [bubble, setBubble] = useState<Bubble | null>(null);
   const menuOpenRef = useRef(false);
@@ -68,26 +69,26 @@ export function SnippetTokenBubble({ editor }: { editor: Editor }) {
         ?.getBoundingClientRect();
       const ox = box?.left ?? 0;
       const oy = box?.top ?? 0;
-      const { from, to, empty } = editor.state.selection;
+      const sel = editor.state.selection;
 
-      const hit = tokenAt(editor.state.doc, from);
-      if (hit && from >= hit.from && to <= hit.to) {
-        const a = editor.view.coordsAtPos(hit.from);
-        const b = editor.view.coordsAtPos(hit.to);
+      if (sel instanceof NodeSelection && sel.node.type.name === "fillField") {
+        const a = editor.view.coordsAtPos(sel.from);
+        const b = editor.view.coordsAtPos(sel.to);
         return setBubble({
           mode: "token",
           left: (a.left + b.right) / 2 - ox,
           top: a.top - oy,
-          from: hit.from,
-          to: hit.to,
-          token: hit.token,
+          from: sel.from,
+          to: sel.to,
+          token: String(sel.node.attrs.label ?? "").toLowerCase(),
         });
       }
 
+      const { from, to, empty } = sel;
       if (empty) return setBubble(null);
-      const sel = window.getSelection();
-      if (!sel || sel.isCollapsed || !sel.rangeCount) return setBubble(null);
-      const r = sel.getRangeAt(0).getBoundingClientRect();
+      const dom = window.getSelection();
+      if (!dom || dom.isCollapsed || !dom.rangeCount) return setBubble(null);
+      const r = dom.getRangeAt(0).getBoundingClientRect();
       if (r.width < 1 && r.height < 1) return setBubble(null);
       const text = editor.state.doc.textBetween(from, to, " ").trim();
       if (!text) return setBubble(null);
@@ -113,13 +114,13 @@ export function SnippetTokenBubble({ editor }: { editor: Editor }) {
 
   if (!bubble) return null;
 
-  const replace = (token: string | null, fallback: string) => {
-    const t = token ?? promptCustom(fallback);
-    if (!t) return;
+  const insert = (o: Option, fallback: string) => {
+    const name = o.name ?? promptName(fallback);
+    if (!name) return;
     editor
       .chain()
       .focus()
-      .insertContentAt({ from: bubble.from, to: bubble.to }, t)
+      .insertContentAt({ from: bubble.from, to: bubble.to }, tokenNode(name))
       .run();
     setBubble(null);
   };
@@ -139,13 +140,13 @@ export function SnippetTokenBubble({ editor }: { editor: Editor }) {
         <ConvertMenu
           suggestion={bubble.suggestion}
           onOpenChange={onOpenChange}
-          onPick={(o) => replace(o.token, bubble.suggestion.slug)}
+          onPick={(o) => insert(o, bubble.suggestion.slug)}
         />
       ) : (
         <TokenMenu
           token={bubble.token}
           onOpenChange={onOpenChange}
-          onPick={(o) => replace(o.token, bubble.token)}
+          onPick={(o) => insert(o, bubble.token)}
           onUnwrap={() => {
             editor
               .chain()
@@ -229,17 +230,13 @@ function TokenMenu({
 }) {
   const header = VARIABLE_KEYS.has(token)
     ? "Auto-fills from the recipient."
-    : token === "date"
-      ? "Inserts a date when the email is sent."
-      : "Fill-in field you Tab through.";
+    : "Fill-in field you Tab through.";
   return (
     <DropdownMenu onOpenChange={onOpenChange}>
       <DropdownMenuTrigger
-        render={
-          <Button variant="outline" size="sm" className="h-7 gap-1.5 font-mono shadow-xl" />
-        }
+        render={<Button variant="outline" size="sm" className="h-7 gap-1.5 shadow-xl" />}
       >
-        {`{{${token}}}`}
+        {humanizeFillLabel(token)}
         <ChevronDownIcon className="text-muted-foreground/60" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="center" className="w-56">

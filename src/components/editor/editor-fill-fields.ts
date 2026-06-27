@@ -61,7 +61,7 @@ export const FillField = Node.create({
       "span",
       mergeAttributes(HTMLAttributes, {
         "data-fill-field": "",
-        class: "fill-field",
+        class: isVar ? "fill-field fill-field--var" : "fill-field",
         "data-tip": isVar
           ? "Needs manual entry. This normally auto-fills from the recipient's name — there isn't one yet, so add them to the To: line (and it fills itself) or type it here."
           : "Needs manual entry before you can send. Type your value, then Tab to the next field.",
@@ -229,4 +229,38 @@ export function insertSnippet(
     .deleteRange(range)
     .insertContent([...content, { type: "text", text: " " }])
     .run();
+}
+
+const FIELD_TOKEN_RE = /\{\{([a-zA-Z0-9_]+)\}\}/g;
+
+/** The editor node a `{{token}}` becomes (cursor stays literal text). */
+export function tokenNode(token: string): JSONContent | string {
+  const key = token.toLowerCase();
+  if (key === "cursor") return "{{cursor}}";
+  if (key === "date") return { type: "dateField", attrs: { value: "" } };
+  return { type: "fillField", attrs: { label: key } };
+}
+
+/** Stored `{{token}}` text → chip-node HTML, for loading a snippet into the
+ *  editor. The reverse of fieldHtmlToTokens; cursor stays text. */
+export function tokensToFieldHtml(html: string): string {
+  return html.replace(FIELD_TOKEN_RE, (m, raw: string) => {
+    const key = raw.toLowerCase();
+    if (key === "cursor") return m;
+    if (key === "date") return '<span data-date-field data-value=""></span>';
+    return `<span data-fill-field data-label="${escapeHtml(key)}"></span>`;
+  });
+}
+
+/** The editor's chip-node HTML → `{{token}}` text, for saving the snippet. */
+export function fieldHtmlToTokens(html: string): string {
+  if (typeof window === "undefined") return html;
+  const doc = new DOMParser().parseFromString(`<body>${html}</body>`, "text/html");
+  for (const el of doc.querySelectorAll("[data-fill-field]")) {
+    el.replaceWith(`{{${el.getAttribute("data-label") ?? ""}}}`);
+  }
+  for (const el of doc.querySelectorAll("[data-date-field]")) {
+    el.replaceWith("{{date}}");
+  }
+  return doc.body.innerHTML;
 }

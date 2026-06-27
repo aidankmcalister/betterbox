@@ -118,6 +118,7 @@ export function RichTextEditor({
       attributes: {
         class: cn(
           "tiptap prose-email max-w-none text-foreground outline-none",
+          tokenChips && "tiptap--snippet",
           compact
             ? "px-3 py-2 text-[12.5px] leading-[1.55]"
             : "px-3.5 py-3 text-[13px] leading-[1.6]",

@@ -81,6 +81,11 @@ import { escapeHtml } from "@/lib/email/serialize";
 import { VARIABLE_KEYS, PREVIEW_CONTACT } from "@/lib/snippet-tokens";
 import { SnippetTokenBubble } from "@/components/editor/snippet-token-bubble";
 import {
+  tokensToFieldHtml,
+  fieldHtmlToTokens,
+  tokenNode,
+} from "@/components/editor/editor-fill-fields";
+import {
   activeSnippetsQueryKey,
   saveSnippet,
   deleteSnippet,
@@ -1356,6 +1361,8 @@ function SnippetEditor({
   taken: string[];
 }) {
   const [editor, setEditor] = useState<Editor | null>(null);
+  // Editor works in chip nodes; the snippet stays stored as {{token}} text.
+  const [chipHtml, setChipHtml] = useState(() => tokensToFieldHtml(draft.text));
   const triggerError = validateTrigger(draft.trigger, taken);
   const bodyEmpty =
     draft.text
@@ -1391,8 +1398,11 @@ function SnippetEditor({
         )}
       </div>
       <RichTextEditor
-        value={draft.text}
-        onChange={(text) => onChange({ text })}
+        value={chipHtml}
+        onChange={(html) => {
+          setChipHtml(html);
+          onChange({ text: fieldHtmlToTokens(html) });
+        }}
         onEditorReady={setEditor}
         placeholder="Write the reply — insert a field for fill-ins…"
         minHeight={84}
@@ -1400,7 +1410,14 @@ function SnippetEditor({
         tokenChips
         toolbarEnd={
           <InsertFieldMenu
-            onInsert={(t) => editor?.chain().focus().insertContent(t).run()}
+            onInsert={(t) => {
+              const m = t.match(/\{\{([a-zA-Z0-9_]+)\}\}/);
+              editor
+                ?.chain()
+                .focus()
+                .insertContent(m ? tokenNode(m[1]) : t)
+                .run();
+            }}
           />
         }
       />
