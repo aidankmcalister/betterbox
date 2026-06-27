@@ -41,7 +41,7 @@ import { RichTextEditor } from "@/components/rich-text-editor";
 import { serializeEmailHtml, type EmailNode } from "@/lib/email/serialize";
 import { checkGuardrails } from "@/lib/email/guardrails";
 import { countFillFields } from "@/components/editor-fill-fields";
-import { useSnippetMap, snippetsQueryKey } from "@/hooks/use-snippets";
+import { useSnippetMap, openSnippetDraft } from "@/hooks/use-snippets";
 import { DOMSerializer } from "@tiptap/pm/model";
 import type { Editor } from "@tiptap/react";
 import { BookmarkPlusIcon } from "lucide-react";
@@ -426,8 +426,9 @@ export function Composer({
     void clearDraftBuffer();
   };
 
-  // Save the highlighted passage as a reusable snippet. Captures the selection's
-  // HTML (formatting preserved) before the prompt steals focus.
+  // Save the highlighted passage as a reusable snippet: capture the selection's
+  // HTML (formatting preserved) and hand it to Settings → Snippets, which opens
+  // a new snippet pre-filled with it — the trigger gets set in the real editor.
   const saveAsSnippet = () => {
     const ed = editorInstance;
     if (!ed) return;
@@ -439,35 +440,8 @@ export function Composer({
         ed.state.selection.content().content,
       ),
     );
-    const html = tmp.innerHTML;
     setSnipRect(null);
-    if (from && isTestAccount(from.accountId)) {
-      toast("Saved to snippets", {
-        description: "This is a demo — nothing was written.",
-      });
-      return;
-    }
-    const raw = window.prompt("Snippet trigger (e.g. /intro)");
-    const trigger = raw?.trim();
-    if (!trigger) return;
-    void fetch("/api/snippets", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        op: "create",
-        trigger: trigger.startsWith("/") ? trigger : `/${trigger}`,
-        text: html,
-      }),
-    })
-      .then((r) => r.json().catch(() => ({})))
-      .then((d: { error?: string }) => {
-        if (d.error) {
-          toast.error(d.error);
-        } else {
-          toast.success("Saved to snippets");
-          queryClient.invalidateQueries({ queryKey: snippetsQueryKey });
-        }
-      });
+    openSnippetDraft(tmp.innerHTML);
   };
 
   // Require at least one well-formed address (comma-separated allowed) before

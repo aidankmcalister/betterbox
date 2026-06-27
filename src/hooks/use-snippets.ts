@@ -6,6 +6,20 @@ export type Snippet = { id: string; trigger: string; text: string };
 
 export const snippetsQueryKey = ["snippets"] as const;
 
+/** Dispatched by the composer's "Save as snippet" — opens Settings → Snippets
+ *  with a new snippet pre-filled with the selected body, so the trigger is set
+ *  in the real editor instead of a bare browser prompt. */
+export const OPEN_SNIPPET_DRAFT_EVENT = "bm:open-snippet-draft";
+export type OpenSnippetDraftDetail = { text: string };
+
+export function openSnippetDraft(text: string): void {
+  window.dispatchEvent(
+    new CustomEvent<OpenSnippetDraftDetail>(OPEN_SNIPPET_DRAFT_EVENT, {
+      detail: { text },
+    }),
+  );
+}
+
 /** Seeded snippets for demo mode so the composer never surfaces the real user's
  *  saved snippets during a recording. */
 const DEMO_SNIPPETS: Snippet[] = [

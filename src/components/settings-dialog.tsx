@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -154,13 +154,24 @@ export function SettingsDialog({
   open,
   onOpenChange,
   accounts,
+  snippetDraft,
+  onSnippetDraftConsumed,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   accounts: Account[];
+  /** Composer "Save as snippet" handoff — forces the Snippets page open with a
+   *  new snippet pre-filled. */
+  snippetDraft?: string | null;
+  onSnippetDraftConsumed?: () => void;
 }) {
   const [page, setPage] = useState<PageId>("accounts");
   const navigate = useNavigate();
+
+  // Land on Snippets when the composer hands off a "Save as snippet" body.
+  useEffect(() => {
+    if (snippetDraft) setPage("snippets");
+  }, [snippetDraft]);
   const { data: session } = useSession();
   const isOwner = session?.user.role === "OWNER";
   const nav = isOwner ? [...NAV, OWNER_NAV] : NAV;
@@ -284,7 +295,12 @@ export function SettingsDialog({
           {page === "accounts" && <AccountsPage accounts={accounts} />}
           {page === "appearance" && <AppearancePage />}
           {page === "inbox" && <InboxPage />}
-          {page === "snippets" && <SnippetsPage />}
+          {page === "snippets" && (
+            <SnippetsPage
+              prefill={snippetDraft}
+              onPrefillConsumed={onSnippetDraftConsumed}
+            />
+          )}
           {page === "signatures" && <SignaturesPage accounts={accounts} />}
           {page === "developer" && <DeveloperPage />}
           {page === "keyboard" && <KeyboardPage />}
@@ -1453,13 +1469,30 @@ function RowSkeleton({ rows = 3 }: { rows?: number }) {
 
 const NEW_SNIPPET = "__new__";
 
-function SnippetsPage() {
+function SnippetsPage({
+  prefill,
+  onPrefillConsumed,
+}: {
+  /** Body HTML handed in from the composer's "Save as snippet" — opens a new
+   *  snippet editor pre-filled with it. */
+  prefill?: string | null;
+  onPrefillConsumed?: () => void;
+}) {
   const queryClient = useQueryClient();
   const { data: snippets = [], isLoading } = useSnippetsQuery(true);
   const [q, setQ] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
   const [draft, setDraft] = useState<SnippetDraft>({ trigger: "", text: "" });
   const [error, setError] = useState<string | null>(null);
+
+  // A captured selection from the composer → open the new-snippet editor with it.
+  useEffect(() => {
+    if (!prefill) return;
+    setOpenId(NEW_SNIPPET);
+    setDraft({ trigger: "/", text: prefill });
+    setError(null);
+    onPrefillConsumed?.();
+  }, [prefill, onPrefillConsumed]);
 
   const close = () => {
     setOpenId(null);

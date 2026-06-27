@@ -37,6 +37,10 @@ import {
 import { InboxTiles, panelPaneId, type Reading } from "@/components/inbox-tiles";
 import { LandingPage } from "@/components/landing";
 import { SettingsDialog } from "@/components/settings-dialog";
+import {
+  OPEN_SNIPPET_DRAFT_EVENT,
+  type OpenSnippetDraftDetail,
+} from "@/hooks/use-snippets";
 import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -157,6 +161,19 @@ function AppShell() {
       ? { accountId: search.account, emailId: emailMatch.id }
       : null;
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // Composer "Save as snippet" hands a captured body here → open Settings on the
+  // Snippets page with it pre-filled.
+  const [snippetDraft, setSnippetDraft] = useState<string | null>(null);
+  useEffect(() => {
+    const onDraft = (event: Event) => {
+      const detail = (event as CustomEvent<OpenSnippetDraftDetail>).detail;
+      if (!detail?.text) return;
+      setSnippetDraft(detail.text);
+      setSettingsOpen(true);
+    };
+    window.addEventListener(OPEN_SNIPPET_DRAFT_EVENT, onDraft);
+    return () => window.removeEventListener(OPEN_SNIPPET_DRAFT_EVENT, onDraft);
+  }, []);
   // Integration panels (GitHub PRs, …) the user has dropped onto the board.
   const [openPanels, setOpenPanels] = useState<string[]>([]);
   const togglePanel = useCallback(
@@ -365,6 +382,8 @@ function AppShell() {
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
         accounts={allAccounts ?? []}
+        snippetDraft={snippetDraft}
+        onSnippetDraftConsumed={() => setSnippetDraft(null)}
       />
       {/* Pane mode docks the composer in the board (below). But the board isn't
           mounted on dev pages, and the mobile board has no room for a compose
