@@ -230,7 +230,7 @@ export function SettingsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className="flex h-[88vh] max-h-[88vh] flex-col gap-0 overflow-hidden p-0 sm:h-[560px] sm:max-h-[85vh] sm:max-w-3xl sm:flex-row"
+        className="flex h-[88vh] max-h-[88vh] flex-col gap-0 overflow-hidden border border-input p-0 sm:h-[560px] sm:max-h-[85vh] sm:max-w-3xl sm:flex-row"
       >
         <DialogHeader className="sr-only">
           <DialogTitle>Settings</DialogTitle>
@@ -1125,7 +1125,7 @@ function snippetPreviewHtml(html: string): string {
     if (k === "cursor")
       return '<span class="ml-px inline-block h-[1.05em] w-px translate-y-[2px] rounded-sm bg-primary align-baseline"></span>';
     if (VARIABLE_KEYS.has(k)) return escapeHtml(PREVIEW_CONTACT[k] ?? k);
-    return `<span class="rounded border border-primary/35 bg-primary/[0.13] px-1 font-mono text-[0.85em] text-primary">${escapeHtml(k)}</span>`;
+    return `<span class="inline-block rounded border border-primary/35 bg-primary/[0.13] px-1 font-mono text-[0.85em] leading-[1.45] text-primary align-middle">${escapeHtml(k)}</span>`;
   });
 }
 
@@ -1144,7 +1144,7 @@ function rowPreviewHtml(html: string): string {
     const cls = VARIABLE_KEYS.has(k)
       ? "border-label-blue/25 bg-label-blue/[0.08] text-label-blue/80"
       : "border-primary/25 bg-primary/[0.08] text-primary/80";
-    return `<span class="rounded border ${cls} px-1 py-px font-mono text-[0.85em]">${escapeHtml(raw)}</span>`;
+    return `<span class="inline-block rounded border ${cls} px-1 font-mono text-[0.85em] leading-[1.45] align-middle">${escapeHtml(raw)}</span>`;
   });
 }
 

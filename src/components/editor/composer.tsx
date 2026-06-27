@@ -1066,7 +1066,7 @@ export function Composer({
           <Kbd>↵</Kbd>
         </KbdGroup>
 
-        <div className="no-scrollbar flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
           {!preview && visibleNotices.length > 0 ? (
             visibleNotices.map((n) => (
               <NoticeChip key={n.text} tone={n.tone}>
