@@ -67,6 +67,11 @@ const shortName = (email: string) => email.split("@")[0] || email;
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// Feathers all four edges of the blur halo by 30px (intersected) so it fades out
+// instead of ending on a hard rectangle.
+const HALO_FEATHER =
+  "linear-gradient(to right, transparent, #000 30px, #000 calc(100% - 30px), transparent), linear-gradient(to bottom, transparent, #000 30px, #000 calc(100% - 30px), transparent)";
+
 /** Threading headers that nest a sent message under an existing conversation
  *  (set by reply / reply-all; null for a fresh compose). */
 export type ReplyContext = {
@@ -192,6 +197,9 @@ export function Composer({
   const [snipRect, setSnipRect] = useState<{ left: number; top: number } | null>(
     null,
   );
+  // The popout's measured rect → drives a feathered blur halo behind it.
+  const sectionRef = useRef<HTMLElement>(null);
+  const [haloRect, setHaloRect] = useState<DOMRect | null>(null);
   // Undo-send: the dispatch is delayed by a cancel window; this holds the timer.
   const sendTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Guardrails gate the first Send click; a second click ("Send anyway") sends.
@@ -403,6 +411,25 @@ export function Composer({
       ed.off("blur", clear);
     };
   }, [editorInstance]);
+
+  // Measure the popout so a feathered blur halo can sit just behind its edges.
+  // Skipped in pane mode and for the full-screen mobile composer (no halo there).
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (inPane || !el) return;
+    const measure = () => {
+      const r = el.getBoundingClientRect();
+      setHaloRect(r.width >= window.innerWidth - 8 ? null : r);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    window.addEventListener("resize", measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [inPane, open]);
 
   if (!open) return null;
 
@@ -695,15 +722,39 @@ export function Composer({
   );
 
   return (
-    <section
-      aria-label="New message"
-      onKeyDown={(event) => {
-        if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
-          event.preventDefault();
-          void send();
-        }
-        if (event.key === "Escape" && !sending) close();
-      }}
+    <>
+      {haloRect && (
+        // A feathered backdrop-blur halo hugging the popout's edges and fading
+        // out — softens the hard edge so the card lifts off the inbox. A sibling
+        // (not a child) so it isn't clipped by the section's overflow + rounding.
+        <div
+          aria-hidden="true"
+          className="pointer-events-none fixed z-30 hidden sm:block"
+          style={{
+            left: haloRect.left - 26,
+            top: haloRect.top - 26,
+            width: haloRect.width + 52,
+            height: haloRect.height + 52,
+            borderRadius: 28,
+            backdropFilter: "blur(14px) saturate(1.2)",
+            WebkitBackdropFilter: "blur(14px) saturate(1.2)",
+            maskImage: HALO_FEATHER,
+            WebkitMaskImage: HALO_FEATHER,
+            maskComposite: "intersect",
+            WebkitMaskComposite: "source-in",
+          }}
+        />
+      )}
+      <section
+        ref={sectionRef}
+        aria-label="New message"
+        onKeyDown={(event) => {
+          if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+            event.preventDefault();
+            void send();
+          }
+          if (event.key === "Escape" && !sending) close();
+        }}
       className={cn(
         // `relative` (not a filter/transform) so fixed children — the slash menu,
         // popovers, the snippet bubble — still anchor to the viewport. The frost
@@ -1094,7 +1145,8 @@ export function Composer({
           </button>
         </div>
       )}
-    </section>
+      </section>
+    </>
   );
 }
 
