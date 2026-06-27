@@ -29,7 +29,7 @@ const DEMO_SNIPPET_SEED: Snippet[] = [
   {
     id: "demo-intro",
     trigger: "/intro",
-    text: "<p>Hi {{first_name}},</p><p>Thanks for reaching out about {{topic}}. {{cursor}}</p><p>Best,<br>Aidan</p>",
+    text: "<p>Hi {{first_name}},</p><p>Thanks for reaching out about {{topic}}. {{cursor}}</p><p>Best,<br>Jordan</p>",
   },
   {
     id: "demo-ty",

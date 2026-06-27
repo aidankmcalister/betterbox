@@ -20,7 +20,7 @@ export function activeSignaturesQueryKey() {
 
 /** In-memory demo store mutated by the demo-aware helpers; never touches the real DB. Resets on reload. */
 const DEMO_SIGNATURE_SEED: SignaturesData = {
-  signatures: [{ id: "demo-sig", name: "Default", body: "Best,\nAidan" }],
+  signatures: [{ id: "demo-sig", name: "Default", body: "Best,\nJordan Lee" }],
   assignments: { "test-1": "demo-sig", "test-2": "demo-sig" },
 };
 let demoSignatures: SignaturesData = {
