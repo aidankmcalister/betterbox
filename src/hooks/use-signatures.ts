@@ -71,31 +71,27 @@ function signatureToHtml(text: string): string {
   return `<p>${lines}</p>`;
 }
 
-/** Append a signature to message HTML with exactly one blank line above it:
- *  trailing empty paragraphs in the message are trimmed first, then a single
- *  empty paragraph + the signature are added. An empty message yields just the
- *  signature (no leading blank). */
-export function appendSignature(bodyHtml: string, sigText: string): string {
-  const trimmed = bodyHtml.replace(
-    /(?:<p>(?:\s|&nbsp;|<br\s*\/?>)*<\/p>\s*)+$/gi,
-    "",
-  );
-  const sig = signatureToHtml(sigText);
-  return trimmed.trim() === "" ? sig : `${trimmed}<p></p>${sig}`;
+// Bounded so a pathological run of empty <p>s can't blow up the backtracker.
+const TRAILING_EMPTY_PARAGRAPHS =
+  /(?:<p>(?:\s|&nbsp;|<br\s*\/?>){0,200}<\/p>\s*){1,50}$/gi;
+
+/** Append a signature to message HTML with exactly one blank line above it.
+ *  Trailing empty paragraphs in the message are trimmed first; an empty message
+ *  yields just the signature (no leading blank). */
+function joinWithSignature(bodyHtml: string, sigHtml: string): string {
+  if (!sigHtml) return bodyHtml.replace(TRAILING_EMPTY_PARAGRAPHS, "");
+  const trimmed = bodyHtml.replace(TRAILING_EMPTY_PARAGRAPHS, "");
+  return trimmed.trim() === "" ? sigHtml : `${trimmed}<p></p>${sigHtml}`;
 }
 
-/** Append an already-HTML signature (e.g. the native Gmail one) with exactly one
- *  blank line above it. The signature HTML is Gmail-authored, so it's email-safe
- *  as-is — no escaping or serializing. Trailing empty paragraphs are trimmed
- *  first; an empty message yields just the signature. */
+export function appendSignature(bodyHtml: string, sigText: string): string {
+  return joinWithSignature(bodyHtml, signatureToHtml(sigText));
+}
+
+/** Append an already-HTML signature (e.g. the native Gmail one). It's
+ *  Gmail-authored, so it's email-safe as-is — no escaping or serializing. */
 export function appendSignatureHtml(bodyHtml: string, sigHtml: string): string {
-  const sig = sigHtml.trim();
-  const trimmed = bodyHtml.replace(
-    /(?:<p>(?:\s|&nbsp;|<br\s*\/?>)*<\/p>\s*)+$/gi,
-    "",
-  );
-  if (!sig) return trimmed;
-  return trimmed.trim() === "" ? sig : `${trimmed}<p></p>${sig}`;
+  return joinWithSignature(bodyHtml, sigHtml.trim());
 }
 
 /** The Signature assigned to an account, or null if none. */

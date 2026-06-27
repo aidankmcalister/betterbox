@@ -77,6 +77,7 @@ import { RichTextEditor } from "@/components/rich-text-editor";
 import type { Editor } from "@tiptap/react";
 import DOMPurify from "dompurify";
 import { escapeHtml } from "@/lib/email/serialize";
+import { VARIABLE_KEYS, PREVIEW_CONTACT } from "@/lib/snippet-tokens";
 import {
   snippetsQueryKey,
   useSnippetsQuery,
@@ -260,7 +261,7 @@ export function SettingsDialog({
           </div>
           {nav.map((group) => (
             <div key={group.section} className="flex flex-col gap-px">
-              <span className="px-1.5 pt-2 pb-1 font-mono text-[10.5px] font-medium tracking-[0.5px] text-muted-foreground/70 uppercase">
+              <span className="px-1.5 pt-2 pb-1 font-mono text-[10px] font-medium tracking-[0.5px] text-muted-foreground/70 uppercase">
                 {group.section}
               </span>
               {group.pages.map((item) => (
@@ -1095,21 +1096,6 @@ function KeyboardPage() {
 
 // ── Snippets (Direction A — inline accordion) ───────────────────────────────
 
-// Sample recipient used to preview how a snippet expands.
-const PREVIEW_CONTACT: Record<string, string> = {
-  first_name: "Maya",
-  last_name: "Chen",
-  name: "Maya Chen",
-  full_name: "Maya Chen",
-  email: "maya@acme.com",
-};
-const AUTO_KEYS = new Set([
-  "first_name",
-  "last_name",
-  "name",
-  "full_name",
-  "email",
-]);
 const TOKEN_RE = /\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g;
 
 /** Resolve tokens for the live preview: variables → the sample value, fill
@@ -1119,7 +1105,7 @@ function snippetPreviewHtml(html: string): string {
     const k = raw.toLowerCase();
     if (k === "cursor")
       return '<span class="ml-px inline-block h-[1.05em] w-px translate-y-[2px] rounded-sm bg-primary align-baseline"></span>';
-    if (AUTO_KEYS.has(k)) return escapeHtml(PREVIEW_CONTACT[k] ?? k);
+    if (VARIABLE_KEYS.has(k)) return escapeHtml(PREVIEW_CONTACT[k] ?? k);
     return `<span class="rounded border border-primary/35 bg-primary/[0.13] px-1 font-mono text-[0.85em] text-primary">${escapeHtml(k)}</span>`;
   });
 }
@@ -1924,7 +1910,7 @@ function SignaturesPage({ accounts }: { accounts: Account[] }) {
           ) : (
             <>
               <div className="flex items-center justify-between">
-                <span className="font-mono text-[10.5px] font-medium tracking-[0.5px] text-muted-foreground/60 uppercase">
+                <span className="font-mono text-[10px] font-medium tracking-[0.5px] text-muted-foreground/60 uppercase">
                   Your signatures
                 </span>
                 <Button size="sm" className="gap-1.5" onClick={openNew}>
@@ -1990,7 +1976,7 @@ function SignaturesPage({ accounts }: { accounts: Account[] }) {
         </div>
 
         <div className="flex flex-col gap-2">
-          <span className="font-mono text-[10.5px] font-medium tracking-[0.5px] text-muted-foreground/60 uppercase">
+          <span className="font-mono text-[10px] font-medium tracking-[0.5px] text-muted-foreground/60 uppercase">
             Assigned per account
           </span>
           {accounts.length === 0 ? (

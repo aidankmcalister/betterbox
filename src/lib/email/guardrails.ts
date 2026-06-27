@@ -24,7 +24,9 @@ const FREE_PROVIDERS = new Set([
 ]);
 
 const ATTACH_RE = /\b(attach(ed|ment|ments|ing)?|enclosed|enclosure)\b/i;
-const EMAIL_RE = /[^\s,;<>"]+@[^\s,;<>"]+\.[^\s,;<>"]+/g;
+// Bounded segments (RFC caps a part at 254) so a long no-match paste can't
+// backtrack quadratically — this runs on every recipient keystroke.
+const EMAIL_RE = /[^\s,;<>"]{1,256}@[^\s,;<>"]{1,256}\.[^\s,;<>"]{1,256}/g;
 
 /** Pull the email addresses out of a comma/semicolon recipient string. */
 function emails(value: string): string[] {

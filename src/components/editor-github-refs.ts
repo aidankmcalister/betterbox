@@ -11,7 +11,9 @@ import type { MarkType } from "@tiptap/pm/model";
  * Works on live typing (the rule fires on the boundary space after the ref) and
  * on paste (copying a ref out of GitHub).
  */
-const REPO = "[A-Za-z0-9][\\w.-]*\\/[A-Za-z0-9][\\w.-]*";
+// Bounded segments (GitHub caps names at 39/100) so the per-keystroke input rule
+// can't backtrack quadratically over a long token.
+const REPO = "[A-Za-z0-9][\\w.-]{0,99}\\/[A-Za-z0-9][\\w.-]{0,99}";
 const ISSUE_SRC = `(${REPO})#(\\d+)`;
 const COMMIT_SRC = `(${REPO})@([0-9a-f]{7,40})`;
 

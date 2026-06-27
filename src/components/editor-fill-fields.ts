@@ -6,16 +6,7 @@ import {
   humanizeFillLabel,
   type EmailNode,
 } from "@/lib/email/serialize";
-
-/** Tokens that auto-fill from the To: recipient (the composer resolves these).
- *  An unresolved one renders as a blue "auto-fill" chip, not a manual fill-in. */
-const VARIABLE_KEYS = new Set([
-  "first_name",
-  "last_name",
-  "name",
-  "full_name",
-  "email",
-]);
+import { VARIABLE_KEYS } from "@/lib/snippet-tokens";
 
 /** Count unfilled fill-field tab-stops remaining in a document (for the send
  *  guardrail). A `dateField` counts only while it has no date picked. Pure walk

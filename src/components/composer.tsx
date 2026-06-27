@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CheckIcon,
   ChevronDownIcon,
@@ -66,6 +66,11 @@ import {
 const shortName = (email: string) => email.split("@")[0] || email;
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Shared chrome for the To/Cc/Bcc rows (Cc/Bcc add a leading `group` for their
+// hover-to-reveal remove button).
+const RECIPIENT_ROW =
+  "flex min-h-10 items-center gap-2.5 border-b px-4 py-1.5";
 
 // Feathers all four edges of the blur halo by 30px (intersected) so it fades out
 // instead of ending on a hard rectangle.
@@ -207,6 +212,17 @@ export function Composer({
   // Autosave: the Gmail draft created/updated this session (fresh composes), and
   // a status for the footer indicator.
   const autosaveRef = useRef<{ draftId: string; messageId: string } | null>(null);
+  // Coalesce overlapping autosaves into one in-flight save (see flushAutosave).
+  const savingRef = useRef(false);
+  const pendingAutosaveRef = useRef(false);
+  const autosavePayloadRef = useRef<{
+    accountId: string;
+    to: string;
+    cc?: string;
+    bcc?: string;
+    subject: string;
+    html: string;
+  } | null>(null);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">(
     "idle",
   );
@@ -284,6 +300,7 @@ export function Composer({
   const useGmailSig = gmailSig.length > 0;
 
   const [signatureSkipped, setSignatureSkipped] = useState(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-arm the signature when the sending account changes, not on every render.
   useEffect(() => setSignatureSkipped(false), [from?.accountId]);
   const showSignature = (useGmailSig || dbSig !== null) && !signatureSkipped;
 
@@ -303,38 +320,61 @@ export function Composer({
   const emailSafeBody = bodyDoc ? serializeEmailHtml(bodyDoc) : body;
   const emailSafeHtml = showSignature ? appendSig(emailSafeBody) : emailSafeBody;
 
-  // Debounced autosave to Gmail Drafts. Fresh composes only — editing an
-  // existing draft is skipped (we don't resolve its Gmail draft id, so a save
-  // would create a duplicate). draftId tracks the created draft so later saves
-  // UPDATE it instead of piling up.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: from is captured via accountId; queryClient/saveDraft are stable.
-  useEffect(() => {
-    const has =
-      to.trim().length > 0 || subject.trim().length > 0 || body.length > 0;
-    if (!open || !from || draft || !has) return;
-    const accountId = from.accountId;
-    const timer = setTimeout(() => {
-      setSaveStatus("saving");
-      void saveDraft({
-        accountId,
-        draftId: autosaveRef.current?.draftId,
-        to: to.trim(),
-        cc: cc.trim() || undefined,
-        bcc: bcc.trim() || undefined,
-        subject,
-        html: outgoingHtml,
-      }).then((res) => {
+  // Save the latest payload to Gmail Drafts, one in flight at a time. A save
+  // requested while one is running is coalesced into a single flush afterward
+  // (using the newest payload), so overlapping debounced saves can't each issue
+  // a drafts.create and duplicate the draft.
+  const flushAutosave = useCallback(() => {
+    const payload = autosavePayloadRef.current;
+    if (!payload) return;
+    if (savingRef.current) {
+      pendingAutosaveRef.current = true;
+      return;
+    }
+    savingRef.current = true;
+    setSaveStatus("saving");
+    void saveDraft({ ...payload, draftId: autosaveRef.current?.draftId }).then(
+      (res) => {
+        savingRef.current = false;
         if (res) {
           autosaveRef.current = res;
           setSaveStatus("saved");
           // Gmail holds the draft now — drop the local backstop.
           void clearDraftBuffer();
-          queryClient.invalidateQueries({ queryKey: ["emails", accountId] });
+          queryClient.invalidateQueries({
+            queryKey: ["emails", payload.accountId],
+          });
         } else {
           setSaveStatus("idle");
         }
-      });
-    }, 2000);
+        if (pendingAutosaveRef.current) {
+          pendingAutosaveRef.current = false;
+          flushAutosave();
+        }
+      },
+    );
+  }, [queryClient]);
+
+  // Debounced autosave. Fresh composes only — editing an existing draft is
+  // skipped (we don't resolve its Gmail draft id, so a save would duplicate).
+  // Mirrors the latest payload into a ref so the coalesced flush sees it.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: deps are narrowed to accountId/emailId on purpose — re-arm on an account or draft switch, not on every `from`/`draft` object identity.
+  useEffect(() => {
+    const has =
+      to.trim().length > 0 || subject.trim().length > 0 || body.length > 0;
+    if (!open || !from || draft || !has) {
+      autosavePayloadRef.current = null;
+      return;
+    }
+    autosavePayloadRef.current = {
+      accountId: from.accountId,
+      to: to.trim(),
+      cc: cc.trim() || undefined,
+      bcc: bcc.trim() || undefined,
+      subject,
+      html: outgoingHtml,
+    };
+    const timer = setTimeout(flushAutosave, 2000);
     return () => clearTimeout(timer);
   }, [
     open,
@@ -346,6 +386,7 @@ export function Composer({
     subject,
     body,
     outgoingHtml,
+    flushAutosave,
   ]);
 
   // Offline backstop: mirror in-progress content to a local IndexedDB buffer,
@@ -366,7 +407,6 @@ export function Composer({
   // behind (i.e. it never committed to Gmail). Checked once per open.
   const [recovered, setRecovered] = useState<BufferedDraft | null>(null);
   const recoveryCheckedRef = useRef(false);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the field deps seed the one-shot empty check; the ref makes it run once per open.
   useEffect(() => {
     if (!open) {
       recoveryCheckedRef.current = false;
@@ -414,6 +454,7 @@ export function Composer({
 
   // Measure the popout so a feathered blur halo can sit just behind its edges.
   // Skipped in pane mode and for the full-screen mobile composer (no halo there).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-measure when the composer opens; inPane covers the only other trigger.
   useEffect(() => {
     const el = sectionRef.current;
     if (inPane || !el) return;
@@ -849,7 +890,7 @@ export function Composer({
         )}
       </div>
 
-      <div className="flex min-h-10 items-center gap-2.5 border-b px-4 py-1.5">
+      <div className={RECIPIENT_ROW}>
         <FieldLabel>To</FieldLabel>
         <RecipientField
           value={to}
@@ -881,7 +922,7 @@ export function Composer({
       </div>
 
       {showCc && (
-        <div className="group flex min-h-10 items-center gap-2.5 border-b px-4 py-1.5">
+        <div className={cn("group", RECIPIENT_ROW)}>
           <FieldLabel>Cc</FieldLabel>
           <RecipientField
             value={cc}
@@ -903,7 +944,7 @@ export function Composer({
       )}
 
       {showBcc && (
-        <div className="group flex min-h-10 items-center gap-2.5 border-b px-4 py-1.5">
+        <div className={cn("group", RECIPIENT_ROW)}>
           <FieldLabel>Bcc</FieldLabel>
           <RecipientField
             value={bcc}
@@ -1116,7 +1157,9 @@ export function Composer({
 
       {snipRect && !preview && (
         // Floating over a text selection. preventDefault on mousedown keeps the
-        // selection from collapsing before the click lands.
+        // selection from collapsing before the click lands — a positioning
+        // wrapper, not an interactive control (the button inside is).
+        // biome-ignore lint/a11y/noStaticElementInteractions: mousedown only guards the selection; the real action is the button.
         <div
           className="fixed z-[60] -translate-x-1/2 -translate-y-full"
           style={{ left: snipRect.left, top: snipRect.top - 10 }}

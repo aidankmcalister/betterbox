@@ -185,7 +185,7 @@ function filterCommands(
   );
 }
 
-// ── menu UI ────────────────────────────────────────────────────────────────
+// ── Menu UI ────────────────────────────────────────────────────────────────
 
 type SlashMenuRef = { onKeyDown: (props: SuggestionKeyDownProps) => boolean };
 
@@ -233,6 +233,7 @@ const SlashMenuList = forwardRef<
     if (next) setValue(next.id);
   };
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `move` closes over items/value, both already deps — listing it would rebuild the handle every render for no gain.
   useImperativeHandle(
     ref,
     () => ({
@@ -317,7 +318,7 @@ const SlashMenuList = forwardRef<
 });
 SlashMenuList.displayName = "SlashMenuList";
 
-// ── positioning + render glue ────────────────────────────────────────────────
+// ── Positioning + render glue ────────────────────────────────────────────────
 
 function positionMenu(
   el: HTMLElement,
