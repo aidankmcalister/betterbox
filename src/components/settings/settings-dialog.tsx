@@ -127,6 +127,10 @@ type NavGroup = {
 
 const NAV: NavGroup[] = [
   {
+    section: "Account",
+    pages: [{ id: "accounts", label: "Accounts", icon: CircleUserRound }],
+  },
+  {
     section: "General",
     pages: [
       { id: "appearance", label: "Appearance", icon: Palette },
@@ -141,10 +145,6 @@ const NAV: NavGroup[] = [
       { id: "snippets", label: "Snippets", icon: SquareSlashIcon },
       { id: "signatures", label: "Signatures", icon: SignatureIcon },
     ],
-  },
-  {
-    section: "Account",
-    pages: [{ id: "accounts", label: "Accounts", icon: CircleUserRound }],
   },
   {
     section: "Advanced",
@@ -210,7 +210,7 @@ export function SettingsDialog({
   snippetDraft?: string | null;
   onSnippetDraftConsumed?: () => void;
 }) {
-  const [page, setPage] = useState<PageId>("appearance");
+  const [page, setPage] = useState<PageId>("accounts");
   const navigate = useNavigate();
 
   // Land on Snippets when the composer hands off a "Save as snippet" body.
