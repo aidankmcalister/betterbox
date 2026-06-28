@@ -39,6 +39,7 @@ import {
 } from "@/lib/draft-buffer";
 import { AccountDot } from "@/components/shell/account-dot";
 import { RichTextEditor } from "@/components/editor/rich-text-editor";
+import { IconButton } from "@/components/shared/icon-button";
 import { serializeEmailHtml, type EmailNode } from "@/lib/email/serialize";
 import { checkGuardrails } from "@/lib/email/guardrails";
 import {
@@ -1434,25 +1435,18 @@ function FooterIcon({
   className?: string;
 }) {
   return (
-    <Hint label={title}>
-      {/* aria-disabled (not `disabled`) so hover + tooltip still fire; the click is guarded instead. */}
-      <button
-        type="button"
-        aria-disabled={disabled}
-        aria-pressed={active}
-        onClick={disabled ? undefined : onClick}
-        className={cn(
-          "inline-flex items-center justify-center rounded-md p-1.5 text-muted-foreground",
-          disabled
-            ? "cursor-default opacity-40"
-            : "cursor-pointer hover:bg-popover hover:text-foreground",
-          active && "bg-popover text-foreground",
-          className,
-        )}
-      >
-        <Icon className="size-[15px]" />
-      </button>
-    </Hint>
+    <IconButton
+      label={title}
+      active={active}
+      disabled={disabled}
+      onClick={onClick}
+      className={cn(
+        "hover:bg-popover data-[active=true]:bg-popover",
+        className,
+      )}
+    >
+      <Icon />
+    </IconButton>
   );
 }
 

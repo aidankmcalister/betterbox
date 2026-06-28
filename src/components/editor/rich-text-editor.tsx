@@ -18,8 +18,7 @@ import {
   Redo2Icon,
 } from "lucide-react";
 
-import { Hint } from "@/components/ui/tooltip";
-import { Kbd, KbdGroup } from "@/components/ui/kbd";
+import { IconButton } from "@/components/shared/icon-button";
 import { cn } from "@/lib/utils";
 import { SlashCommand } from "@/components/editor/editor-slash-commands";
 import { GithubRefs } from "@/components/editor/editor-github-refs";
@@ -332,35 +331,17 @@ function Btn({
   onClick: () => void;
   children: React.ReactNode;
 }) {
-  const hint = keys ? (
-    <>
-      {label}
-      <KbdGroup>
-        {keys.map((key) => (
-          <Kbd key={key}>{key}</Kbd>
-        ))}
-      </KbdGroup>
-    </>
-  ) : (
-    label
-  );
   return (
-    <Hint label={hint}>
-      <button
-        type="button"
-        aria-label={label}
-        aria-pressed={active}
-        disabled={disabled}
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={onClick}
-        className={cn(
-          "inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-35 [&_svg]:size-[15px]",
-          active && "bg-muted text-foreground",
-        )}
-      >
-        {children}
-      </button>
-    </Hint>
+    <IconButton
+      label={label}
+      keys={keys}
+      active={active}
+      disabled={disabled}
+      onClick={onClick}
+      keepFocus
+    >
+      {children}
+    </IconButton>
   );
 }
 
