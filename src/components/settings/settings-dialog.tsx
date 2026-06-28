@@ -40,7 +40,7 @@ import { DeveloperPage } from "./pages/developer";
 import { KeyboardPage } from "./pages/keyboard";
 import { OwnerPage } from "./pages/owner";
 
-type PageId =
+export type PageId =
   | "accounts"
   | "appearance"
   | "inbox"
@@ -141,6 +141,7 @@ export function SettingsDialog({
   accounts,
   snippetDraft,
   onSnippetDraftConsumed,
+  initialPage,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -148,6 +149,8 @@ export function SettingsDialog({
   /** Composer "Save as snippet" handoff — opens Snippets pre-filled. */
   snippetDraft?: string | null;
   onSnippetDraftConsumed?: () => void;
+  /** Deep-link from ⌘K — land on this page when the dialog opens. */
+  initialPage?: PageId;
 }) {
   const [page, setPage] = useState<PageId>("accounts");
   const navigate = useNavigate();
@@ -156,6 +159,10 @@ export function SettingsDialog({
   useEffect(() => {
     if (snippetDraft) setPage("snippets");
   }, [snippetDraft]);
+  // Deep-link from ⌘K (Manage snippets / signatures): jump to that page on open.
+  useEffect(() => {
+    if (open && initialPage) setPage(initialPage);
+  }, [open, initialPage]);
   const { data: session } = useSession();
   const isOwner = session?.user.role === "OWNER";
   const nav = isOwner ? [...NAV, OWNER_NAV] : NAV;

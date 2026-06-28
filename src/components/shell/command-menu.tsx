@@ -1,10 +1,14 @@
 import { Fragment, useState, type ComponentProps, type ReactNode } from "react";
 import {
   AlignLeft,
+  Braces,
+  CircleDot,
   CircleUserRound,
+  Clapperboard,
   Clock,
   Columns2,
   FlaskConical,
+  GitPullRequest,
   Inbox,
   Laptop,
   LayoutGrid,
@@ -15,6 +19,9 @@ import {
   Rows3,
   SaveIcon,
   Settings,
+  Signature,
+  SquarePen,
+  SquareSlash,
   Sun,
   Trash2,
   UserPlus,
@@ -35,6 +42,7 @@ import {
   type SearchInboxDetail,
 } from "@/lib/layout-tree";
 import { updateSettings, useSettings } from "@/hooks/use-settings";
+import type { PageId } from "@/components/settings/settings-dialog";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/components/shell/theme-provider";
 import {
@@ -68,17 +76,24 @@ export function CommandMenu({
   onCompose,
   onMarkAccountRead,
   onAddTestAccount,
+  onOpenPanel,
+  isOwner,
   accounts,
   searchAccounts,
   container,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onOpenSettings: () => void;
+  /** Optional page deep-links Settings (Manage snippets / signatures). */
+  onOpenSettings: (page?: PageId) => void;
   onGoInbox: () => void;
   onCompose: () => void;
   onMarkAccountRead: (accountId: string) => void;
   onAddTestAccount?: () => void;
+  /** Open an integration panel on the board (e.g. "pull-requests"). */
+  onOpenPanel?: (key: string) => void;
+  /** Owner-only entries (e.g. demo mode) show only when true. */
+  isOwner?: boolean;
   accounts: Account[];
   /** Accounts whose panes are on screen — the "Search in …" targets. */
   searchAccounts: Account[];
@@ -219,6 +234,25 @@ export function CommandMenu({
         },
       ],
     },
+    ...(onOpenPanel
+      ? [
+          {
+            heading: "Integrations",
+            entries: [
+              {
+                label: "Open GitHub pull requests",
+                icon: <GitPullRequest />,
+                action: () => onOpenPanel("pull-requests"),
+              },
+              {
+                label: "Open GitHub issues",
+                icon: <CircleDot />,
+                action: () => onOpenPanel("github-issues"),
+              },
+            ],
+          },
+        ]
+      : []),
     {
       heading: "Appearance",
       entries: [
@@ -234,7 +268,7 @@ export function CommandMenu({
         },
         {
           label: `Swap density to ${
-            settings.density === "compact" ? "comfortable" : "dense"
+            settings.density === "compact" ? "comfortable" : "compact"
           }`,
           icon: <Rows3 />,
           action: () =>
@@ -260,6 +294,49 @@ export function CommandMenu({
           icon: <AlignLeft />,
           action: () => updateSettings({ showPreview: !settings.showPreview }),
         },
+      ],
+    },
+    {
+      heading: "Settings",
+      entries: [
+        {
+          label: "Manage snippets",
+          icon: <SquareSlash />,
+          action: () => onOpenSettings("snippets"),
+        },
+        {
+          label: "Manage signatures",
+          icon: <Signature />,
+          action: () => onOpenSettings("signatures"),
+        },
+        {
+          label: `Swap composer to ${
+            settings.composerMode === "popout" ? "pane" : "popout"
+          }`,
+          icon: <SquarePen />,
+          action: () =>
+            updateSettings({
+              composerMode:
+                settings.composerMode === "popout" ? "pane" : "popout",
+            }),
+        },
+        {
+          label: `${settings.rawByDefault ? "Disable" : "Enable"} raw email by default`,
+          icon: <Braces />,
+          action: () =>
+            updateSettings({ rawByDefault: !settings.rawByDefault }),
+        },
+        ...(isOwner
+          ? [
+              {
+                label: `${settings.demoMode ? "Disable" : "Enable"} demo mode`,
+                icon: <Clapperboard />,
+                action: () => updateSettings({ demoMode: !settings.demoMode }),
+                shortcut: "OWNER",
+                shortcutClassName: "text-accent-2",
+              } satisfies CommandEntry,
+            ]
+          : []),
       ],
     },
     {

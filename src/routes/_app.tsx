@@ -34,9 +34,16 @@ import {
   type ComposerContent,
   type ReplyContext,
 } from "@/components/editor/composer";
-import { InboxTiles, panelPaneId, type Reading } from "@/components/mail/inbox-tiles";
+import {
+  InboxTiles,
+  panelPaneId,
+  type Reading,
+} from "@/components/mail/inbox-tiles";
 import { LandingPage } from "@/components/landing";
-import { SettingsDialog } from "@/components/settings/settings-dialog";
+import {
+  SettingsDialog,
+  type PageId,
+} from "@/components/settings/settings-dialog";
 import {
   OPEN_SNIPPET_DRAFT_EVENT,
   type OpenSnippetDraftDetail,
@@ -157,6 +164,10 @@ function AppShell() {
       ? { accountId: search.account, emailId: emailMatch.id }
       : null;
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // ⌘K can deep-link Settings to a specific page (Manage snippets / signatures).
+  const [settingsPage, setSettingsPage] = useState<PageId | undefined>(
+    undefined,
+  );
   // Composer "Save as snippet" hands a body here → open Settings/Snippets pre-filled.
   const [snippetDraft, setSnippetDraft] = useState<string | null>(null);
   useEffect(() => {
@@ -182,7 +193,9 @@ function AppShell() {
   );
   const closePanelPane = useCallback(
     (paneId: string) =>
-      setOpenPanels((panels) => panels.filter((k) => panelPaneId(k) !== paneId)),
+      setOpenPanels((panels) =>
+        panels.filter((k) => panelPaneId(k) !== paneId),
+      ),
     [],
   );
 
@@ -211,7 +224,18 @@ function AppShell() {
     (next: Folder) => navigate({ to: FOLDER_PATH[next] }),
     [navigate],
   );
-  const openSettings = useCallback(() => setSettingsOpen(true), []);
+  const openSettings = useCallback((page?: PageId) => {
+    setSettingsPage(page);
+    setSettingsOpen(true);
+  }, []);
+  // ⌘K "Open GitHub …" — add the panel to the board (no-op if already open).
+  const openPanel = useCallback(
+    (key: string) =>
+      setOpenPanels((panels) =>
+        panels.includes(key) ? panels : [...panels, key],
+      ),
+    [],
+  );
 
   const [composeOpen, setComposeOpen] = useState(false);
   /* Composer fields live here (not in Composer) so they survive remounts:
@@ -368,6 +392,8 @@ function AppShell() {
         onCompose={openCompose}
         onMarkAccountRead={markAccountRead}
         onAddTestAccount={onAddTestAccount}
+        onOpenPanel={openPanel}
+        isOwner={isOwner}
         accounts={allAccounts ?? []}
         searchAccounts={scopedAccounts}
       />
@@ -377,6 +403,7 @@ function AppShell() {
         accounts={allAccounts ?? []}
         snippetDraft={snippetDraft}
         onSnippetDraftConsumed={() => setSnippetDraft(null)}
+        initialPage={settingsPage}
       />
       {/* Pane mode docks the composer in the board (below), but the board isn't
           mounted on dev pages and mobile has no room — fall back to the popout. */}
