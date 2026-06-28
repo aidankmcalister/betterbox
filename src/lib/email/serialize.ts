@@ -70,7 +70,8 @@ export function safeHref(href: unknown): string | null {
   const trimmed = href.trim();
   if (!trimmed) return null;
   if (/^(https?:|mailto:)/i.test(trimmed)) return trimmed;
-  if (/^[\w.-]+\.[a-z]{2,}([/?#]|$)/i.test(trimmed)) return `https://${trimmed}`;
+  if (/^[\w.-]+\.[a-z]{2,}([/?#]|$)/i.test(trimmed))
+    return `https://${trimmed}`;
   return null;
 }
 

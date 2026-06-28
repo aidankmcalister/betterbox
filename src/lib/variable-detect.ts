@@ -1,9 +1,4 @@
-export type SuggestedKind =
-  | "first_name"
-  | "name"
-  | "email"
-  | "date"
-  | "custom";
+export type SuggestedKind = "first_name" | "name" | "email" | "date" | "custom";
 
 export type VariableSuggestion = { kind: SuggestedKind; slug: string };
 

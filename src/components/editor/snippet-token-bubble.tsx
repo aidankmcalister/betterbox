@@ -26,13 +26,30 @@ import { VARIABLE_KEYS } from "@/lib/snippet-tokens";
 import { humanizeFillLabel } from "@/lib/email/serialize";
 import { tokenNode } from "@/components/editor/editor-fill-fields";
 import { FieldNameDialog } from "@/components/editor/field-name-dialog";
-import { suggestVariable, type VariableSuggestion } from "@/lib/variable-detect";
+import {
+  suggestVariable,
+  type VariableSuggestion,
+} from "@/lib/variable-detect";
 
 type Range = { from: number; to: number };
 
 type Bubble =
-  | { mode: "convert"; left: number; top: number; from: number; to: number; suggestion: VariableSuggestion }
-  | { mode: "token"; left: number; top: number; from: number; to: number; token: string };
+  | {
+      mode: "convert";
+      left: number;
+      top: number;
+      from: number;
+      to: number;
+      suggestion: VariableSuggestion;
+    }
+  | {
+      mode: "token";
+      left: number;
+      top: number;
+      from: number;
+      to: number;
+      token: string;
+    };
 
 type Option = {
   kind: string;
@@ -43,7 +60,12 @@ type Option = {
 };
 
 const OPTIONS: Option[] = [
-  { kind: "first_name", label: "First name", icon: UserRound, name: "first_name" },
+  {
+    kind: "first_name",
+    label: "First name",
+    icon: UserRound,
+    name: "first_name",
+  },
   { kind: "last_name", label: "Last name", icon: UserRound, name: "last_name" },
   { kind: "name", label: "Full name", icon: UserRound, name: "name" },
   { kind: "email", label: "Email", icon: MailIcon, name: "email" },
@@ -189,12 +211,19 @@ function ConvertMenu({
   onOpenChange: (open: boolean) => void;
 }) {
   const suggested =
-    OPTIONS.find((o) => o.kind === suggestion.kind) ?? OPTIONS[OPTIONS.length - 1];
+    OPTIONS.find((o) => o.kind === suggestion.kind) ??
+    OPTIONS[OPTIONS.length - 1];
   const rest = OPTIONS.filter((o) => o !== suggested);
   return (
     <DropdownMenu onOpenChange={onOpenChange}>
       <DropdownMenuTrigger
-        render={<Button variant="outline" size="sm" className="h-8 gap-1.5 px-2.5 shadow-xl" />}
+        render={
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1.5 px-2.5 shadow-xl"
+          />
+        }
       >
         <SparklesIcon className="text-primary" />
         Convert to variable
@@ -241,7 +270,13 @@ function TokenMenu({
   return (
     <DropdownMenu onOpenChange={onOpenChange}>
       <DropdownMenuTrigger
-        render={<Button variant="outline" size="sm" className="h-8 gap-1.5 px-2.5 shadow-xl" />}
+        render={
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1.5 px-2.5 shadow-xl"
+          />
+        }
       >
         {humanizeFillLabel(token)}
         <ChevronDownIcon className="text-muted-foreground/60" />

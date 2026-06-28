@@ -43,5 +43,9 @@ const BASE =
 
 /** Shared chip styling for every token chip — snippet editor and composer. */
 export function tokenChipClass(key: string, selected?: boolean): string {
-  return cn(BASE, TONE_CLASS[tokenTone(key)], selected && "ring-2 ring-foreground/35");
+  return cn(
+    BASE,
+    TONE_CLASS[tokenTone(key)],
+    selected && "ring-2 ring-foreground/35",
+  );
 }

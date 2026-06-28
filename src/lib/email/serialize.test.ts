@@ -49,7 +49,7 @@ describe("safeHref", () => {
 
 describe("escapeHtml", () => {
   test("escapes the structural characters", () => {
-    expect(escapeHtml('a < b & c > d')).toBe("a &lt; b &amp; c &gt; d");
+    expect(escapeHtml("a < b & c > d")).toBe("a &lt; b &amp; c &gt; d");
   });
 });
 
@@ -58,7 +58,7 @@ describe("serializeEmailHtml — structure", () => {
     const html = serializeEmailHtml(doc(para(text("hi"))));
     expect(html).toStartWith('<table role="presentation"');
     expect(html).toContain("font-family:");
-    expect(html).toContain("<p style=\"margin:0 0 16px;\">hi</p>");
+    expect(html).toContain('<p style="margin:0 0 16px;">hi</p>');
   });
 
   test("an empty paragraph keeps its line with &nbsp;", () => {
@@ -68,7 +68,9 @@ describe("serializeEmailHtml — structure", () => {
   });
 
   test("escapes HTML in text content", () => {
-    const html = serializeEmailHtml(doc(para(text("<script>alert(1)</script>"))));
+    const html = serializeEmailHtml(
+      doc(para(text("<script>alert(1)</script>"))),
+    );
     expect(html).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
     expect(html).not.toContain("<script>");
   });
@@ -94,7 +96,9 @@ describe("serializeEmailHtml — marks", () => {
 
   test("link mark renders a safe anchor", () => {
     const html = serializeEmailHtml(
-      doc(para(text("here", [{ type: "link", attrs: { href: "example.com" } }]))),
+      doc(
+        para(text("here", [{ type: "link", attrs: { href: "example.com" } }])),
+      ),
     );
     expect(html).toContain('href="https://example.com"');
     expect(html).toContain('target="_blank"');
@@ -152,7 +156,7 @@ describe("serializeEmailHtml — blocks", () => {
     expect(ul).toContain("<ul");
     expect(ul).toContain('<li style="margin:0 0 4px;">one</li>');
     // No nested <p> inside the <li> (would add stray vertical gaps in clients).
-    expect(ul).not.toContain("<li style=\"margin:0 0 4px;\"><p");
+    expect(ul).not.toContain('<li style="margin:0 0 4px;"><p');
     expect(serializeEmailHtml(doc(list("orderedList")))).toContain("<ol");
   });
 
@@ -202,14 +206,19 @@ describe("serializeEmailHtml — blocks", () => {
       "border-top:1px solid",
     );
     expect(
-      serializeEmailHtml(doc(para(text("a"), { type: "hardBreak" }, text("b")))),
+      serializeEmailHtml(
+        doc(para(text("a"), { type: "hardBreak" }, text("b"))),
+      ),
     ).toContain("a<br>b");
   });
 
   test("an unfilled fill field serializes to its humanized label as text", () => {
     const html = serializeEmailHtml(
       doc(
-        para(text("Hi "), { type: "fillField", attrs: { label: "first_name" } }),
+        para(text("Hi "), {
+          type: "fillField",
+          attrs: { label: "first_name" },
+        }),
       ),
     );
     expect(html).toContain("Hi First name");
@@ -233,7 +242,9 @@ describe("serializeEmailHtml — email-safety invariants", () => {
       text("Hello "),
       text("world", [{ type: "bold" }]),
       text(" — see "),
-      text("the PR", [{ type: "link", attrs: { href: "github.com/o/r/pull/1" } }]),
+      text("the PR", [
+        { type: "link", attrs: { href: "github.com/o/r/pull/1" } },
+      ]),
     ),
     {
       type: "bulletList",

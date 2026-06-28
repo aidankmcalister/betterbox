@@ -21,8 +21,8 @@ export function NotFound() {
             Page not found
           </h1>
           <p className="max-w-[340px] text-[14px] leading-[1.6] text-ink-muted">
-            This page does not exist or has moved. Check the URL, or head back to
-            your inbox.
+            This page does not exist or has moved. Check the URL, or head back
+            to your inbox.
           </p>
         </div>
 

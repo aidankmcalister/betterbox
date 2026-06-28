@@ -26,7 +26,9 @@ export const Route = createFileRoute("/api/gmail-signature")({
         if (!accessToken) return json({ signature: "" });
 
         try {
-          return json({ signature: await getGmailSignature(accessToken, email) });
+          return json({
+            signature: await getGmailSignature(accessToken, email),
+          });
         } catch {
           return json({ signature: "" });
         }

@@ -3,7 +3,10 @@ import { MessageSquareIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { linkGithub } from "@/lib/auth/auth-client";
-import { useGithubIssuesQuery, type GithubIssue } from "@/lib/github/github-queries";
+import {
+  useGithubIssuesQuery,
+  type GithubIssue,
+} from "@/lib/github/github-queries";
 import { GithubMark } from "@/components/integrations/github-mark";
 import demoIssues from "@/data/demo-issues.json";
 import { cn } from "@/lib/utils";

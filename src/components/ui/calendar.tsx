@@ -91,7 +91,7 @@ export function Calendar({
                   "bg-primary text-primary-foreground hover:bg-primary",
                 sameDay(date, today) &&
                   !(selected && sameDay(date, selected)) &&
-                  "font-semibold text-foreground ring-1 ring-inset ring-border",
+                  "font-semibold text-foreground ring-1 ring-border ring-inset",
               )}
             >
               {date.getDate()}

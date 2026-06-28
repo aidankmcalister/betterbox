@@ -3,7 +3,14 @@ import { suggestVariable, slugifyField } from "@/lib/variable-detect";
 
 describe("suggestVariable", () => {
   test("dates", () => {
-    for (const t of ["Thursday, July 3", "July 3", "7/3", "7/3/2025", "next Tuesday", "tomorrow"]) {
+    for (const t of [
+      "Thursday, July 3",
+      "July 3",
+      "7/3",
+      "7/3/2025",
+      "next Tuesday",
+      "tomorrow",
+    ]) {
       expect(suggestVariable(t).kind).toBe("date");
     }
   });

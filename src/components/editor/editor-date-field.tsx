@@ -9,7 +9,11 @@ import { NodeSelection } from "@tiptap/pm/state";
 import { CalendarIcon } from "lucide-react";
 
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { formatDateShort, parseIsoDate, toIsoDate } from "@/lib/dates";
 import { tokenChipClass } from "@/components/editor/token-chip";
 

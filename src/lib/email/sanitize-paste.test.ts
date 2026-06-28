@@ -27,7 +27,9 @@ describe("sanitizePastedHtml", () => {
   });
 
   test("drops a style attribute that was only mso- junk", () => {
-    const out = sanitizePastedHtml('<p style="mso-pagination:widow-orphan">x</p>');
+    const out = sanitizePastedHtml(
+      '<p style="mso-pagination:widow-orphan">x</p>',
+    );
     expect(out).toBe("<p>x</p>");
   });
 
@@ -70,7 +72,7 @@ describe("sanitizePastedHtml", () => {
 
   test("cleans a realistic Word paste down to its content + bold", () => {
     const word =
-      '<!--[if gte mso 9]><xml><w:WordDocument/></xml><![endif]-->' +
+      "<!--[if gte mso 9]><xml><w:WordDocument/></xml><![endif]-->" +
       '<p class="MsoNormal" style="mso-margin-top-alt:auto;margin:0">' +
       'Shipped <b style="mso-bidi-font-weight:normal">the fix</b>' +
       "<o:p></o:p></p>";

@@ -51,7 +51,9 @@ describe("checkGuardrails", () => {
   });
 
   test("flags a large recipient count", () => {
-    const to = Array.from({ length: 9 }, (_, i) => `p${i}@gmail.com`).join(", ");
+    const to = Array.from({ length: 9 }, (_, i) => `p${i}@gmail.com`).join(
+      ", ",
+    );
     expect(ids({ ...base, to })).toContain("many-recipients");
     expect(ids({ ...base, to, manyRecipientsAt: 20 })).not.toContain(
       "many-recipients",

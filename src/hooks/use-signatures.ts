@@ -62,7 +62,9 @@ export async function saveSignature(input: {
       ...demoSignatures,
       signatures: input.id
         ? demoSignatures.signatures.map((s) =>
-            s.id === input.id ? { ...s, name: input.name, body: input.body } : s,
+            s.id === input.id
+              ? { ...s, name: input.name, body: input.body }
+              : s,
           )
         : [
             ...demoSignatures.signatures,

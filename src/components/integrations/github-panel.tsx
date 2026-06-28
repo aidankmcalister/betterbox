@@ -294,8 +294,12 @@ export function ConnectState({
         <span className="inline-flex size-12 items-center justify-center rounded-xl bg-muted">
           <GithubMark className="size-6 text-foreground" />
         </span>
-        <h2 className="text-xl font-semibold tracking-[-0.3px]">Connect GitHub</h2>
-        <p className="text-[13px] leading-relaxed text-muted-foreground">{blurb}</p>
+        <h2 className="text-xl font-semibold tracking-[-0.3px]">
+          Connect GitHub
+        </h2>
+        <p className="text-[13px] leading-relaxed text-muted-foreground">
+          {blurb}
+        </p>
         <Button onClick={onConnect} className="mt-1">
           <GithubMark className="size-4" />
           Connect GitHub

@@ -159,7 +159,10 @@ function buildSnippetCommands(
     id: `snippet:${trigger}`,
     title: trigger,
     // Rich snippets are HTML — show a plain-text preview, not tags.
-    subtitle: text.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+    subtitle: text
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim(),
     keywords: [trigger.replace(/^\//, "")],
     group: "Snippets",
     icon: TextIcon,

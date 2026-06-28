@@ -44,8 +44,8 @@ function Privacy() {
         <p className="mt-6 text-[15px] leading-[1.7] text-ink-muted">
           BetterBox is a faster, denser web client for your Google inboxes,
           built on the Gmail API, that can also bring your GitHub pull requests
-          and issues alongside your mail. It is operated by Aidan McAlister as an
-          individual developer (&ldquo;BetterBox,&rdquo; &ldquo;we,&rdquo;
+          and issues alongside your mail. It is operated by Aidan McAlister as
+          an individual developer (&ldquo;BetterBox,&rdquo; &ldquo;we,&rdquo;
           &ldquo;us&rdquo;). This policy explains what data we access, why, how
           long we keep it, and the choices you have. BetterBox is not affiliated
           with or endorsed by Google.

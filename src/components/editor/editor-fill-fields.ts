@@ -44,7 +44,8 @@ export const FillField = Node.create({
     return {
       label: {
         default: "",
-        parseHTML: (el) => el.getAttribute("data-label") ?? el.textContent ?? "",
+        parseHTML: (el) =>
+          el.getAttribute("data-label") ?? el.textContent ?? "",
         renderHTML: (attrs) => ({ "data-label": attrs.label }),
       },
     };
@@ -88,7 +89,10 @@ export const FillField = Node.create({
 
 /** A node still needing input before send: a fill-field, or a date-field with
  *  no date picked. Tab cycles through these. */
-function isUnfilledField(node: { type: { name: string }; attrs: { value?: unknown } }): boolean {
+function isUnfilledField(node: {
+  type: { name: string };
+  attrs: { value?: unknown };
+}): boolean {
   return (
     node.type.name === "fillField" ||
     (node.type.name === "dateField" && !node.attrs.value)
@@ -267,7 +271,10 @@ export function tokensToFieldHtml(html: string): string {
 /** The editor's chip-node HTML → `{{token}}` text, for saving the snippet. */
 export function fieldHtmlToTokens(html: string): string {
   if (typeof window === "undefined") return html;
-  const doc = new DOMParser().parseFromString(`<body>${html}</body>`, "text/html");
+  const doc = new DOMParser().parseFromString(
+    `<body>${html}</body>`,
+    "text/html",
+  );
   for (const el of doc.querySelectorAll("[data-fill-field]")) {
     el.replaceWith(`{{${el.getAttribute("data-label") ?? ""}}}`);
   }

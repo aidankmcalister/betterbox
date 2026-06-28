@@ -9,7 +9,10 @@ import {
 import { toast } from "sonner";
 
 import { linkGithub } from "@/lib/auth/auth-client";
-import { usePullRequestsQuery, type PullRequest } from "@/lib/github/github-queries";
+import {
+  usePullRequestsQuery,
+  type PullRequest,
+} from "@/lib/github/github-queries";
 import demoPullRequests from "@/data/demo-pull-requests.json";
 import { GithubMark } from "@/components/integrations/github-mark";
 import { Hint } from "@/components/ui/tooltip";

@@ -73,7 +73,11 @@ export async function saveSnippet(input: {
         )
       : [
           ...demoSnippets,
-          { id: `demo-${demoSnippetSeq++}`, trigger: input.trigger, text: input.text },
+          {
+            id: `demo-${demoSnippetSeq++}`,
+            trigger: input.trigger,
+            text: input.text,
+          },
         ];
     return;
   }

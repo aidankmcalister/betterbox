@@ -228,87 +228,87 @@ function Toolbar({
     <div
       className={cn(
         "flex flex-wrap items-center gap-0.5 border-b px-1.5 py-1",
-        compact && "px-1 py-0.5 [&_button>svg]:size-3.5 [&_button]:size-6",
+        compact && "px-1 py-0.5 [&_button]:size-6 [&_button>svg]:size-3.5",
       )}
     >
       <div className="flex min-w-0 flex-wrap items-center gap-0.5">
-      <Btn
-        label="Bold"
-        keys={["⌘", "B"]}
-        active={editor.isActive("bold")}
-        onClick={() => editor.chain().focus().toggleBold().run()}
-      >
-        <BoldIcon />
-      </Btn>
-      <Btn
-        label="Italic"
-        keys={["⌘", "I"]}
-        active={editor.isActive("italic")}
-        onClick={() => editor.chain().focus().toggleItalic().run()}
-      >
-        <ItalicIcon />
-      </Btn>
-      <Btn
-        label="Strikethrough"
-        keys={["⌘", "⇧", "S"]}
-        active={editor.isActive("strike")}
-        onClick={() => editor.chain().focus().toggleStrike().run()}
-      >
-        <StrikethroughIcon />
-      </Btn>
-      <Btn
-        label="Inline code"
-        keys={["⌘", "E"]}
-        active={editor.isActive("code")}
-        onClick={() => editor.chain().focus().toggleCode().run()}
-      >
-        <CodeIcon />
-      </Btn>
-      <Divider />
-      <Btn
-        label="Bullet list"
-        keys={["⌘", "⇧", "8"]}
-        active={editor.isActive("bulletList")}
-        onClick={() => editor.chain().focus().toggleBulletList().run()}
-      >
-        <ListIcon />
-      </Btn>
-      <Btn
-        label="Numbered list"
-        keys={["⌘", "⇧", "7"]}
-        active={editor.isActive("orderedList")}
-        onClick={() => editor.chain().focus().toggleOrderedList().run()}
-      >
-        <ListOrderedIcon />
-      </Btn>
-      <Btn
-        label="Quote"
-        keys={["⌘", "⇧", "B"]}
-        active={editor.isActive("blockquote")}
-        onClick={() => editor.chain().focus().toggleBlockquote().run()}
-      >
-        <QuoteIcon />
-      </Btn>
-      <Btn label="Link" active={editor.isActive("link")} onClick={setLink}>
-        <LinkIcon />
-      </Btn>
-      <Divider />
-      <Btn
-        label="Undo"
-        keys={["⌘", "Z"]}
-        disabled={!editor.can().undo()}
-        onClick={() => editor.chain().focus().undo().run()}
-      >
-        <Undo2Icon />
-      </Btn>
-      <Btn
-        label="Redo"
-        keys={["⌘", "⇧", "Z"]}
-        disabled={!editor.can().redo()}
-        onClick={() => editor.chain().focus().redo().run()}
-      >
-        <Redo2Icon />
-      </Btn>
+        <Btn
+          label="Bold"
+          keys={["⌘", "B"]}
+          active={editor.isActive("bold")}
+          onClick={() => editor.chain().focus().toggleBold().run()}
+        >
+          <BoldIcon />
+        </Btn>
+        <Btn
+          label="Italic"
+          keys={["⌘", "I"]}
+          active={editor.isActive("italic")}
+          onClick={() => editor.chain().focus().toggleItalic().run()}
+        >
+          <ItalicIcon />
+        </Btn>
+        <Btn
+          label="Strikethrough"
+          keys={["⌘", "⇧", "S"]}
+          active={editor.isActive("strike")}
+          onClick={() => editor.chain().focus().toggleStrike().run()}
+        >
+          <StrikethroughIcon />
+        </Btn>
+        <Btn
+          label="Inline code"
+          keys={["⌘", "E"]}
+          active={editor.isActive("code")}
+          onClick={() => editor.chain().focus().toggleCode().run()}
+        >
+          <CodeIcon />
+        </Btn>
+        <Divider />
+        <Btn
+          label="Bullet list"
+          keys={["⌘", "⇧", "8"]}
+          active={editor.isActive("bulletList")}
+          onClick={() => editor.chain().focus().toggleBulletList().run()}
+        >
+          <ListIcon />
+        </Btn>
+        <Btn
+          label="Numbered list"
+          keys={["⌘", "⇧", "7"]}
+          active={editor.isActive("orderedList")}
+          onClick={() => editor.chain().focus().toggleOrderedList().run()}
+        >
+          <ListOrderedIcon />
+        </Btn>
+        <Btn
+          label="Quote"
+          keys={["⌘", "⇧", "B"]}
+          active={editor.isActive("blockquote")}
+          onClick={() => editor.chain().focus().toggleBlockquote().run()}
+        >
+          <QuoteIcon />
+        </Btn>
+        <Btn label="Link" active={editor.isActive("link")} onClick={setLink}>
+          <LinkIcon />
+        </Btn>
+        <Divider />
+        <Btn
+          label="Undo"
+          keys={["⌘", "Z"]}
+          disabled={!editor.can().undo()}
+          onClick={() => editor.chain().focus().undo().run()}
+        >
+          <Undo2Icon />
+        </Btn>
+        <Btn
+          label="Redo"
+          keys={["⌘", "⇧", "Z"]}
+          disabled={!editor.can().redo()}
+          onClick={() => editor.chain().focus().redo().run()}
+        >
+          <Redo2Icon />
+        </Btn>
       </div>
       {end && <div className="ml-auto flex items-center pl-1">{end}</div>}
     </div>

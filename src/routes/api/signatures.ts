@@ -78,7 +78,11 @@ export const Route = createFileRoute("/api/signatures")({
               if (!owned) return json({ error: "Unknown signature" }, 400);
             }
             const result = await prisma.account.updateMany({
-              where: { userId, providerId: "google", accountId: payload.accountId },
+              where: {
+                userId,
+                providerId: "google",
+                accountId: payload.accountId,
+              },
               data: { signatureId },
             });
             if (result.count === 0) {
