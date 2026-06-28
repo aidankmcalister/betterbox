@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { DeveloperPage } from "@/components/settings/developer-page";
+import { SoonPage } from "@/components/shell/soon-page";
 
 export const Route = createFileRoute("/_app/api")({
   component: () => (
-    <DeveloperPage title="API">
+    <SoonPage title="API">
       <div className="max-w-lg space-y-6">
         <p className="text-sm leading-relaxed text-muted-foreground">
           You'll be able to query your inbox programmatically with a personal
@@ -35,6 +35,6 @@ export const Route = createFileRoute("/_app/api")({
           illustrative, not yet live
         </p>
       </div>
-    </DeveloperPage>
+    </SoonPage>
   ),
 });

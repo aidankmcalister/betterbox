@@ -1,11 +1,11 @@
 import type { ReactNode } from "react";
 
 /**
- * Bare scaffold for the "Soon" developer pages (Webhooks, API).
+ * Bare scaffold for the "Soon" route pages (Webhooks, Issues, API).
  * Each route drops its own description in as children — that's the whole point;
  * keep this layout thin so the content is what stands out.
  */
-export function DeveloperPage({
+export function SoonPage({
   title,
   children,
 }: {

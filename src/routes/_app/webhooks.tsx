@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { DeveloperPage } from "@/components/settings/developer-page";
+import { SoonPage } from "@/components/shell/soon-page";
 
 export const Route = createFileRoute("/_app/webhooks")({
   component: () => (
-    <DeveloperPage title="Webhooks">
+    <SoonPage title="Webhooks">
       <div className="max-w-lg space-y-6">
         <p className="text-sm leading-relaxed text-muted-foreground">
           Webhooks will pipe incoming emails into any system that accepts an
@@ -41,6 +41,6 @@ export const Route = createFileRoute("/_app/webhooks")({
           illustrative, not yet live
         </p>
       </div>
-    </DeveloperPage>
+    </SoonPage>
   ),
 });

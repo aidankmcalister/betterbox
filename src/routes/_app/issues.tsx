@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { DeveloperPage } from "@/components/settings/developer-page";
+import { SoonPage } from "@/components/shell/soon-page";
 
 export const Route = createFileRoute("/_app/issues")({
   component: () => (
-    <DeveloperPage title="Issues">
+    <SoonPage title="Issues">
       <div className="max-w-lg space-y-6">
         <p className="text-sm leading-relaxed text-muted-foreground">
           Connect Linear and your assigned issues show up here alongside your
@@ -25,6 +25,6 @@ export const Route = createFileRoute("/_app/issues")({
           </li>
         </ul>
       </div>
-    </DeveloperPage>
+    </SoonPage>
   ),
 });
