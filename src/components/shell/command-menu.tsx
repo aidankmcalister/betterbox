@@ -1,12 +1,14 @@
 import { Fragment, useState, type ComponentProps, type ReactNode } from "react";
 import {
   AlignLeft,
+  Archive,
   Braces,
   CircleDot,
   CircleUserRound,
   Clapperboard,
   Clock,
   Columns2,
+  FileText,
   FlaskConical,
   GitPullRequest,
   Inbox,
@@ -18,11 +20,14 @@ import {
   RotateCcw,
   Rows3,
   SaveIcon,
+  Send,
   Settings,
+  ShieldAlert,
   Signature,
   SquarePen,
   SquareSlash,
   Sun,
+  Tag,
   Trash2,
   UserPlus,
 } from "lucide-react";
@@ -43,6 +48,7 @@ import {
 } from "@/lib/layout-tree";
 import { updateSettings, useSettings } from "@/hooks/use-settings";
 import type { PageId } from "@/components/settings/settings-dialog";
+import type { Folder } from "@/lib/folders";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/components/shell/theme-provider";
 import {
@@ -72,7 +78,7 @@ export function CommandMenu({
   open,
   onOpenChange,
   onOpenSettings,
-  onGoInbox,
+  onGoFolder,
   onCompose,
   onMarkAccountRead,
   onAddTestAccount,
@@ -86,7 +92,8 @@ export function CommandMenu({
   onOpenChange: (open: boolean) => void;
   /** Optional page deep-links Settings (Manage snippets / signatures). */
   onOpenSettings: (page?: PageId) => void;
-  onGoInbox: () => void;
+  /** Navigate the active pane(s) to a folder (Inbox, Sent, Drafts, …). */
+  onGoFolder: (folder: Folder) => void;
   onCompose: () => void;
   onMarkAccountRead: (accountId: string) => void;
   onAddTestAccount?: () => void;
@@ -147,17 +154,6 @@ export function CommandMenu({
           action: onCompose,
           shortcut: "C",
         },
-        {
-          label: "Go to inbox",
-          icon: <Inbox />,
-          action: onGoInbox,
-          shortcut: "G I",
-        },
-        {
-          label: "Add account",
-          icon: <UserPlus />,
-          action: () => linkGoogle(),
-        },
         ...(onAddTestAccount
           ? [
               {
@@ -169,6 +165,39 @@ export function CommandMenu({
               },
             ]
           : []),
+      ],
+    },
+    {
+      heading: "Go to",
+      entries: [
+        {
+          label: "Inbox",
+          icon: <Inbox />,
+          action: () => onGoFolder("inbox"),
+          shortcut: "G I",
+        },
+        {
+          label: "Labeled",
+          icon: <Tag />,
+          action: () => onGoFolder("labeled"),
+        },
+        { label: "Sent", icon: <Send />, action: () => onGoFolder("sent") },
+        {
+          label: "Drafts",
+          icon: <FileText />,
+          action: () => onGoFolder("drafts"),
+        },
+        {
+          label: "Archived",
+          icon: <Archive />,
+          action: () => onGoFolder("archived"),
+        },
+        {
+          label: "Spam",
+          icon: <ShieldAlert />,
+          action: () => onGoFolder("spam"),
+        },
+        { label: "Trash", icon: <Trash2 />, action: () => onGoFolder("trash") },
       ],
     },
     {
@@ -300,6 +329,11 @@ export function CommandMenu({
       heading: "Settings",
       entries: [
         {
+          label: "Open settings",
+          icon: <Settings />,
+          action: () => onOpenSettings(),
+        },
+        {
           label: "Manage snippets",
           icon: <SquareSlash />,
           action: () => onOpenSettings("snippets"),
@@ -365,7 +399,11 @@ export function CommandMenu({
     {
       heading: "Account",
       entries: [
-        { label: "Open settings", icon: <Settings />, action: onOpenSettings },
+        {
+          label: "Add account",
+          icon: <UserPlus />,
+          action: () => linkGoogle(),
+        },
         { label: "Sign out", icon: <LogOut />, action: () => signOut() },
       ],
     },
@@ -379,7 +417,7 @@ export function CommandMenu({
     <CommandDialog open={open} onOpenChange={setOpen} container={container}>
       <Command shouldFilter={false}>
         <CommandInput
-          placeholder="Run a command, or type a query to search your inboxes…"
+          placeholder="Search or run a command…"
           value={search}
           onValueChange={setSearch}
         />

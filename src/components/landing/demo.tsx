@@ -257,7 +257,7 @@ export function LandingDemo() {
         open={cmdOpen}
         onOpenChange={setCmdOpen}
         onOpenSettings={noop}
-        onGoInbox={goInbox}
+        onGoFolder={goInbox}
         onCompose={openCompose}
         onMarkAccountRead={markAccountRead}
         accounts={accounts}

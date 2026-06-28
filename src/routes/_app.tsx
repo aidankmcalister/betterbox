@@ -225,7 +225,9 @@ function AppShell() {
     [navigate],
   );
   const openSettings = useCallback((page?: PageId) => {
-    setSettingsPage(page);
+    // Some callers wire this straight to a click handler (NavUser, sidebar via
+    // `after`), forwarding a DOM event — only honour a real page string.
+    setSettingsPage(typeof page === "string" ? page : undefined);
     setSettingsOpen(true);
   }, []);
   // ⌘K "Open GitHub …" — add the panel to the board (no-op if already open).
@@ -388,7 +390,7 @@ function AppShell() {
         open={cmdOpen}
         onOpenChange={setCmdOpen}
         onOpenSettings={openSettings}
-        onGoInbox={() => toggle("all")}
+        onGoFolder={openFolder}
         onCompose={openCompose}
         onMarkAccountRead={markAccountRead}
         onAddTestAccount={onAddTestAccount}
