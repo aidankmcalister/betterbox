@@ -678,8 +678,11 @@ export async function findGmailDraftId(
   accessToken: string,
   messageId: string,
 ): Promise<string | null> {
+  // Cap the scan: a miss would otherwise page through the entire Drafts folder
+  // on every composer-open. 10 pages × 100 = 1000 drafts; past that, give up
+  // (the caller treats null as "leave the draft untouched").
   let pageToken: string | undefined;
-  do {
+  for (let page = 0; page < 10; page++) {
     const params = new URLSearchParams({
       maxResults: "100",
       fields: "drafts(id,message/id),nextPageToken",
@@ -693,8 +696,9 @@ export async function findGmailDraftId(
     };
     const hit = data.drafts?.find((d) => d.message?.id === messageId);
     if (hit) return hit.id;
+    if (!data.nextPageToken) break;
     pageToken = data.nextPageToken;
-  } while (pageToken);
+  }
   return null;
 }
 
