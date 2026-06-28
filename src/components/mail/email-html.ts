@@ -1,4 +1,5 @@
 import type { FullEmail } from "@/lib/mail-queries";
+import { escapeHtml } from "@/lib/email/serialize";
 
 /** True for HTML with no visual styling (no images/tables/colors/links): renders
  *  natively in the dark reader instead of the sandboxed white iframe. */
@@ -61,9 +62,6 @@ export function splitAddresses(list: string): string[] {
   if (buf.trim()) parts.push(buf);
   return parts.map((part) => parseAddress(part).address).filter(Boolean);
 }
-
-export const escapeHtml = (text: string) =>
-  text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 /** Quoted-reply body (blank line, attribution, original in a blockquote) as HTML to seed the rich editor. */
 export function quotedReplyHtml(message: FullEmail): string {
