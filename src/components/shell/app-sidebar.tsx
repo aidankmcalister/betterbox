@@ -322,7 +322,7 @@ export function AppSidebar({
                       >
                         <integration.icon />
                         <span>{integration.label}</span>
-                        <ChevronRight className="ml-auto size-3.5 text-muted-foreground/60 transition-transform group-data-[panel-open]/collapsible:rotate-90" />
+                        <ChevronRight className="ml-auto size-3.5 text-muted-foreground/60 transition-transform group-data-panel-open/collapsible:rotate-90" />
                       </CollapsibleTrigger>
                       <CollapsibleContent>
                         <SidebarMenuSub className="mr-0 gap-px pr-0">
@@ -421,7 +421,7 @@ export function AppSidebar({
               <span className="ml-auto font-mono text-[11px] text-muted-foreground/70">
                 {allOn ? "All" : `${scopedCount} of ${accounts.length}`}
               </span>
-              <ChevronRight className="size-3.5 shrink-0 text-muted-foreground/60 transition-transform group-data-[panel-open]/acct:rotate-90" />
+              <ChevronRight className="size-3.5 shrink-0 text-muted-foreground/60 transition-transform group-data-panel-open/acct:rotate-90" />
             </CollapsibleTrigger>
             <CollapsibleContent>
               <div className="pt-0.5">

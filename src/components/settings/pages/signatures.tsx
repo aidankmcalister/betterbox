@@ -119,9 +119,9 @@ function SignatureRow({
   return (
     <AccordionItem
       value={signature.id}
-      className="group relative overflow-hidden rounded-lg border transition-colors last:border-b data-[panel-open]:border-input data-[panel-open]:bg-muted/20"
+      className="group relative overflow-hidden rounded-lg border transition-colors last:border-b data-panel-open:border-input data-panel-open:bg-muted/20"
     >
-      <AccordionTrigger className="h-10 gap-3 px-3.5 py-0 font-normal hover:bg-muted/40 data-[panel-open]:bg-transparent">
+      <AccordionTrigger className="h-10 gap-3 px-3.5 py-0 font-normal hover:bg-muted/40 data-panel-open:bg-transparent">
         <span className="shrink-0 text-[13px] font-medium text-foreground">
           {signature.name}
         </span>

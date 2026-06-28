@@ -230,7 +230,7 @@ export function RecipientField({
           "flex-1 bg-transparent font-mono text-[12.5px] outline-none placeholder:text-muted-foreground/60",
           // A wide chip + 120px-min input wraps to a 2nd line and grows the row; once there are chips the
           // input only needs room to keep typing, so it tucks in beside them.
-          chips.length ? "min-w-[3rem]" : "min-w-[120px]",
+          chips.length ? "min-w-12" : "min-w-[120px]",
         )}
       />
       {show && (

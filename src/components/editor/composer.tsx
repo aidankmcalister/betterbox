@@ -1141,7 +1141,7 @@ export function Composer({
           // before the click lands — a positioning wrapper, not an interactive control (the button inside is).
           // biome-ignore lint/a11y/noStaticElementInteractions: mousedown only guards the selection; the real action is the button.
           <div
-            className="fixed z-[60] -translate-x-1/2 -translate-y-full"
+            className="fixed z-60 -translate-x-1/2 -translate-y-full"
             style={{ left: snipRect.left, top: snipRect.top - 10 }}
             onMouseDown={(event) => event.preventDefault()}
           >

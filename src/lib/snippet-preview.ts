@@ -11,8 +11,8 @@ export function snippetTokenChips(plain: string): string {
     const k = raw.toLowerCase();
     if (k === "cursor") return "";
     const cls = VARIABLE_KEYS.has(k)
-      ? "border-label-blue/25 bg-label-blue/[0.08] text-label-blue/80"
-      : "border-primary/25 bg-primary/[0.08] text-primary/80";
+      ? "border-label-blue/25 bg-label-blue/8 text-label-blue/80"
+      : "border-primary/25 bg-primary/8 text-primary/80";
     return `<span class="inline-block rounded border ${cls} px-1 font-mono text-[0.85em] leading-[1.45] align-middle">${escapeHtml(raw)}</span>`;
   });
 }

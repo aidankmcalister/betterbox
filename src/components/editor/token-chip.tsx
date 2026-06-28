@@ -32,14 +32,14 @@ export function tokenIcon(key: string): LucideIcon {
 }
 
 const TONE_CLASS: Record<ChipTone, string> = {
-  auto: "border-label-blue/45 bg-label-blue/[0.12] text-label-blue hover:bg-label-blue/20",
-  fill: "border-primary/45 bg-primary/[0.12] text-primary hover:bg-primary/20",
+  auto: "border-label-blue/45 bg-label-blue/12 text-label-blue hover:bg-label-blue/20",
+  fill: "border-primary/45 bg-primary/12 text-primary hover:bg-primary/20",
   cursor:
-    "border-muted-foreground/45 bg-muted-foreground/[0.12] text-muted-foreground hover:bg-muted-foreground/20",
+    "border-muted-foreground/45 bg-muted-foreground/12 text-muted-foreground hover:bg-muted-foreground/20",
 };
 
 const BASE =
-  "relative mx-px inline-flex cursor-pointer items-center gap-0.5 rounded-[5px] border px-[0.4em] py-[0.02em] align-[-0.15em] text-[0.9em] leading-[1.45] whitespace-nowrap [font-family:inherit] transition-colors [&>svg]:size-[0.95em] [&>svg]:shrink-0";
+  "relative mx-px inline-flex cursor-pointer items-center gap-0.5 rounded-[5px] border px-[0.4em] py-[0.02em] align-[-0.15em] text-[0.9em] leading-[1.45] whitespace-nowrap font-[inherit] transition-colors [&>svg]:size-[0.95em] [&>svg]:shrink-0";
 
 /** Shared chip styling for every token chip — snippet editor and composer. */
 export function tokenChipClass(key: string, selected?: boolean): string {

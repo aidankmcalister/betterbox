@@ -25,7 +25,7 @@ export function PreviewBody({
   return (
     <div className="p-3" style={{ minHeight }}>
       <div
-        className="tiptap prose-email max-w-none rounded-lg border border-black/10 bg-white px-4 py-3.5 text-[13px] leading-[1.6] text-[#1a1a1a] [color-scheme:light]"
+        className="tiptap prose-email max-w-none rounded-lg border border-black/10 bg-white px-4 py-3.5 text-[13px] leading-[1.6] text-[#1a1a1a] scheme-light"
         // biome-ignore lint/security/noDangerouslySetInnerHtml: `clean` is DOMPurify-sanitized one line above; this renders the composer's own preview.
         dangerouslySetInnerHTML={{ __html: clean }}
       />

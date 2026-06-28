@@ -129,7 +129,7 @@ export function SnippetTokenBubble({ editor }: { editor: Editor }) {
       {bubble && (
         // biome-ignore lint/a11y/noStaticElementInteractions: mousedown only guards the selection; the menu inside is the control.
         <div
-          className="fixed z-[60] -translate-x-1/2 -translate-y-full"
+          className="fixed z-60 -translate-x-1/2 -translate-y-full"
           style={{ left: bubble.left, top: bubble.top - 10 }}
           onMouseDown={(e) => e.preventDefault()}
         >

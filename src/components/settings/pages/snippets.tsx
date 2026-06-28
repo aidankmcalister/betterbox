@@ -74,7 +74,7 @@ function snippetPreviewHtml(html: string): string {
     if (k === "cursor")
       return '<span class="ml-px inline-block h-[1.05em] w-px translate-y-[2px] rounded-sm bg-primary align-baseline"></span>';
     if (VARIABLE_KEYS.has(k)) return escapeHtml(PREVIEW_CONTACT[k] ?? k);
-    return `<span class="inline-block rounded border border-primary/35 bg-primary/[0.13] px-1 font-mono text-[0.85em] leading-[1.45] text-primary align-middle">${escapeHtml(k)}</span>`;
+    return `<span class="inline-block rounded border border-primary/35 bg-primary/13 px-1 font-mono text-[0.85em] leading-[1.45] text-primary align-middle">${escapeHtml(k)}</span>`;
   });
 }
 
@@ -90,8 +90,8 @@ function validateTrigger(value: string, taken: string[]): string | null {
 
 /** Lists only the {{tokens}} the composer actually resolves. */
 const VAR_CHIP = {
-  blue: "border-label-blue/35 bg-label-blue/[0.13] text-label-blue",
-  primary: "border-primary/35 bg-primary/[0.13] text-primary",
+  blue: "border-label-blue/35 bg-label-blue/13 text-label-blue",
+  primary: "border-primary/35 bg-primary/13 text-primary",
   muted: "border-border bg-muted text-muted-foreground/80",
 } as const;
 
@@ -374,9 +374,9 @@ function SnippetRow({
   return (
     <AccordionItem
       value={snippet.id}
-      className="group relative overflow-hidden rounded-lg border transition-colors last:border-b data-[panel-open]:border-input data-[panel-open]:bg-muted/20"
+      className="group relative overflow-hidden rounded-lg border transition-colors last:border-b data-panel-open:border-input data-panel-open:bg-muted/20"
     >
-      <AccordionTrigger className="h-10 gap-3 px-3.5 py-0 font-normal hover:bg-muted/40 data-[panel-open]:bg-transparent">
+      <AccordionTrigger className="h-10 gap-3 px-3.5 py-0 font-normal hover:bg-muted/40 data-panel-open:bg-transparent">
         <span className="shrink-0 font-mono text-[13px] font-medium text-foreground">
           {snippet.trigger}
         </span>
