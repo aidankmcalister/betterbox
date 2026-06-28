@@ -31,7 +31,7 @@ import { AccountDot } from "@/components/shell/account-dot";
 import { LabeledView } from "@/components/mail/labeled-view";
 import { Hint } from "@/components/ui/tooltip";
 import {
-  EmptyState,
+  FolderEmptyState,
   ErrorState,
   SkeletonRows,
 } from "@/components/mail/thread-list-states";
@@ -415,7 +415,7 @@ export function PaneBody({
             </p>
           </div>
         ) : (
-          <EmptyState folder={folder} />
+          <FolderEmptyState folder={folder} />
         )
       ) : (
         <>

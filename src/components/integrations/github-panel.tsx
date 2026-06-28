@@ -255,7 +255,7 @@ export function GithubFooter() {
   );
 }
 
-export function EmptyState({ label }: { label: string }) {
+export function PanelEmptyState({ label }: { label: string }) {
   return (
     <div className="px-4 py-12 text-center font-mono text-[12px] text-muted-foreground/70">
       {label}

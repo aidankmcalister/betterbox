@@ -17,6 +17,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/shared/empty-state";
 import { Hint } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -160,24 +161,17 @@ function SignatureRow({
 
 function SignatureEmptyState({ onNew }: { onNew: () => void }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 px-6 py-10 text-center">
-      <span className="inline-flex size-11 items-center justify-center rounded-xl border bg-muted text-muted-foreground">
-        <SignatureIcon className="size-5" />
-      </span>
-      <div className="max-w-[340px]">
-        <div className="text-[15px] font-semibold text-foreground">
-          No signatures yet
-        </div>
-        <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted-foreground">
-          A sign-off appended to your messages. Create one, then assign it to
-          any of your connected accounts below.
-        </p>
-      </div>
-      <Button size="sm" className="gap-1.5" onClick={onNew}>
-        <PlusIcon />
-        New signature
-      </Button>
-    </div>
+    <EmptyState
+      icon={SignatureIcon}
+      title="No signatures yet"
+      description="A sign-off appended to your messages. Create one, then assign it to any of your connected accounts below."
+      action={
+        <Button size="sm" className="gap-1.5" onClick={onNew}>
+          <PlusIcon />
+          New signature
+        </Button>
+      }
+    />
   );
 }
 

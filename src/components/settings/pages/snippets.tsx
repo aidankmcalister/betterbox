@@ -37,6 +37,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { EmptyState } from "@/components/shared/empty-state";
 import { RichTextEditor } from "@/components/editor/rich-text-editor";
 import type { Editor } from "@tiptap/react";
 import DOMPurify from "dompurify";
@@ -429,26 +430,24 @@ function SnippetEmptyState({
   seeding: boolean;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 px-6 py-10 text-center">
-      <span className="inline-flex size-11 items-center justify-center rounded-xl border bg-muted text-muted-foreground">
-        <SquareSlashIcon className="size-5" />
-      </span>
-      <div className="max-w-[340px]">
-        <div className="text-[15px] font-semibold text-foreground">
-          No snippets yet
-        </div>
-        <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted-foreground">
+    <EmptyState
+      icon={SquareSlashIcon}
+      title="No snippets yet"
+      description={
+        <>
           Save a reply once, expand it forever. Type a{" "}
           <span className="font-mono text-primary">/trigger</span> in the
           composer and it fills in — recipient names auto-resolve, the rest
           become Tab-through blanks.
-        </p>
-      </div>
-      <Button size="sm" disabled={seeding} onClick={onSeed}>
-        <SparklesIcon />
-        {seeding ? "Adding…" : "Add starter snippets"}
-      </Button>
-    </div>
+        </>
+      }
+      action={
+        <Button size="sm" disabled={seeding} onClick={onSeed}>
+          <SparklesIcon />
+          {seeding ? "Adding…" : "Add starter snippets"}
+        </Button>
+      }
+    />
   );
 }
 

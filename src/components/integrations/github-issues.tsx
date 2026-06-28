@@ -9,7 +9,7 @@ import demoIssues from "@/data/demo-issues.json";
 import { cn } from "@/lib/utils";
 import {
   ConnectState,
-  EmptyState,
+  PanelEmptyState,
   ErrorState,
   FilterSelect,
   GithubFooter,
@@ -216,7 +216,7 @@ export function GithubIssuesPage({
       />
       <div className="flex-1 overflow-y-auto">
         {rows.length === 0 ? (
-          <EmptyState label="No issues match this filter." />
+          <PanelEmptyState label="No issues match this filter." />
         ) : (
           <>
             {rows.map((issue) => (

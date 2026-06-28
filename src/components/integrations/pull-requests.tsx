@@ -16,7 +16,7 @@ import { Hint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import {
   ConnectState,
-  EmptyState,
+  PanelEmptyState,
   ErrorState,
   FilterSelect,
   GithubFooter,
@@ -295,7 +295,7 @@ export function PullRequestsPage({
       />
       <div className="flex-1 overflow-y-auto">
         {rows.length === 0 ? (
-          <EmptyState label="No pull requests match this filter." />
+          <PanelEmptyState label="No pull requests match this filter." />
         ) : (
           <>
             {rows.map((pr) => (

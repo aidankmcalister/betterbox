@@ -92,7 +92,7 @@ const FOLDER_EMPTY: Record<Folder, { title: string; sub: string }> = {
 };
 
 /** Empty: a successful fetch with zero results — distinct from error. */
-export function EmptyState({ folder = "inbox" }: { folder?: Folder }) {
+export function FolderEmptyState({ folder = "inbox" }: { folder?: Folder }) {
   const copy = FOLDER_EMPTY[folder];
   return (
     <div className="flex flex-col items-center gap-2 px-6 py-12 text-center">
