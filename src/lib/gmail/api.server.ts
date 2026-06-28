@@ -265,7 +265,9 @@ async function fetchEmail(accessToken: string, id: string): Promise<Email> {
     from: header("From"),
     subject: header("Subject"),
     date: header("Date"),
-    snippet: message.snippet ? decodeEntities(message.snippet) : message.snippet,
+    snippet: message.snippet
+      ? decodeEntities(message.snippet)
+      : message.snippet,
     unread: message.labelIds?.includes("UNREAD") ?? false,
     labelIds: message.labelIds ?? [],
   };
@@ -338,7 +340,9 @@ function parseMessage(message: RawMessage): FullEmail {
     hasAttachment: message.payload ? hasAttachmentPart(message.payload) : false,
     inlineAttachments: message.payload ? collectInline(message.payload) : {},
     attachments: message.payload ? collectAttachments(message.payload) : [],
-    snippet: message.snippet ? decodeEntities(message.snippet) : message.snippet,
+    snippet: message.snippet
+      ? decodeEntities(message.snippet)
+      : message.snippet,
     unread: message.labelIds?.includes("UNREAD") ?? false,
     ...extractBody(message.payload),
   };
@@ -664,6 +668,34 @@ export async function saveGmailDraft(
   if (!res.ok) throw new Error(`Gmail draft save failed (${res.status})`);
   const data = (await res.json()) as { id: string; message?: { id: string } };
   return { id: data.id, messageId: data.message?.id ?? "" };
+}
+
+/** Resolve the Gmail draft id whose current message is `messageId`. Drafts are
+ *  listed by message id, but updating one in place needs the draft id (a draft
+ *  update re-mints the message id, so the mapping is only stable via this list).
+ *  Null when no draft matches. */
+export async function findGmailDraftId(
+  accessToken: string,
+  messageId: string,
+): Promise<string | null> {
+  let pageToken: string | undefined;
+  do {
+    const params = new URLSearchParams({
+      maxResults: "100",
+      fields: "drafts(id,message/id),nextPageToken",
+    });
+    if (pageToken) params.set("pageToken", pageToken);
+    const res = await gmailFetch(accessToken, `/drafts?${params}`);
+    if (!res.ok) throw new Error(`Gmail drafts list failed (${res.status})`);
+    const data = (await res.json()) as {
+      drafts?: { id: string; message?: { id: string } }[];
+      nextPageToken?: string;
+    };
+    const hit = data.drafts?.find((d) => d.message?.id === messageId);
+    if (hit) return hit.id;
+    pageToken = data.nextPageToken;
+  } while (pageToken);
+  return null;
 }
 
 export type MessageAction = "archive" | "trash" | "star" | "unstar";

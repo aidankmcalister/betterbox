@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 import type { Account } from "@/lib/account";
 import {
   deleteDraft,
+  resolveDraftId,
   saveDraft,
   sendNewEmail,
   useContactsQuery,
@@ -188,6 +189,10 @@ export function Composer({
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">(
     "idle",
   );
+  // Editing an opened draft: once its Gmail draft id resolves (autosaveRef seeded),
+  // autosave UPDATEs it in place. Until then — or if no draft matches — the skip holds.
+  const [draftResolved, setDraftResolved] = useState(false);
+  const draftIdCheckedRef = useRef<string | null>(null);
 
   // From: explicit pick (fromId) wins, then default send-from, then primary inbox, then first sendable.
   const from =
@@ -266,10 +271,10 @@ export function Composer({
         ? appendSignature(html, dbSig.body)
         : html;
 
-  const outgoingHtml = showSignature ? appendSig(body) : body;
   // Send + preview go through the email-safe serializer (TipTap doc → table-based, inlined HTML).
-  // Drafts keep the raw editor HTML above (no table nodes to parse it back). Falls back to raw body
-  // only if the editor hasn't emitted a doc yet (never on a user-initiated send — emits on mount).
+  // Drafts save the raw editor body (round-trips back into TipTap; the signature is NOT baked in — it's
+  // re-applied on open and on send, so reopening a draft can't double it). Falls back to raw body only
+  // if the editor hasn't emitted a doc yet (never on a user-initiated send — emits on mount).
   const emailSafeBody = bodyDoc ? serializeEmailHtml(bodyDoc) : body;
   const emailSafeHtml = showSignature
     ? appendSig(emailSafeBody)
@@ -309,13 +314,13 @@ export function Composer({
     );
   }, [queryClient]);
 
-  // Debounced autosave. Fresh composes only — editing an existing draft is skipped (no resolved Gmail
-  // draft id → would duplicate). Mirrors the latest payload into a ref so the coalesced flush sees it.
+  // Debounced autosave. Fresh composes, plus opened drafts once their Gmail draft id resolves
+  // (autosaveRef seeded → flush UPDATEs in place). Mirrors the latest payload into a ref so the coalesced flush sees it.
   // biome-ignore lint/correctness/useExhaustiveDependencies: deps are narrowed to accountId/emailId on purpose — re-arm on an account or draft switch, not on every `from`/`draft` object identity.
   useEffect(() => {
     const has =
       to.trim().length > 0 || subject.trim().length > 0 || body.length > 0;
-    if (!open || !from || draft || !has) {
+    if (!open || !from || (draft && !draftResolved) || !has) {
       autosavePayloadRef.current = null;
       return;
     }
@@ -325,7 +330,7 @@ export function Composer({
       cc: cc.trim() || undefined,
       bcc: bcc.trim() || undefined,
       subject,
-      html: outgoingHtml,
+      html: body,
     };
     const timer = setTimeout(flushAutosave, 2000);
     return () => clearTimeout(timer);
@@ -333,14 +338,35 @@ export function Composer({
     open,
     from?.accountId,
     draft?.emailId,
+    draftResolved,
     to,
     cc,
     bcc,
     subject,
     body,
-    outgoingHtml,
     flushAutosave,
   ]);
+
+  // Opened an existing draft: resolve its Gmail draft id once, seed autosaveRef so autosave (and
+  // close) UPDATE it in place instead of duplicating. Test drafts key by message id. No match → skip holds.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-resolve on draft switch only, not on every `draft` identity.
+  useEffect(() => {
+    if (!open || !draft) {
+      draftIdCheckedRef.current = null;
+      setDraftResolved(false);
+      return;
+    }
+    if (draftIdCheckedRef.current === draft.emailId) return;
+    draftIdCheckedRef.current = draft.emailId;
+    setDraftResolved(false);
+    const { accountId, emailId } = draft;
+    void resolveDraftId(accountId, emailId).then((draftId) => {
+      if (draftId && draftIdCheckedRef.current === emailId) {
+        autosaveRef.current = { draftId, messageId: emailId };
+        setDraftResolved(true);
+      }
+    });
+  }, [open, draft?.accountId, draft?.emailId]);
 
   // Offline backstop: mirror in-progress content to a local IndexedDB buffer, faster than the 2s Gmail
   // autosave so the freshest content survives a crash/offline tab. Fresh composes only; skips demo accounts.
@@ -501,17 +527,21 @@ export function Composer({
       sendTimerRef.current = null;
     }
     autosaveRef.current = null;
+    draftIdCheckedRef.current = null;
+    setDraftResolved(false);
     setSaveStatus("idle");
     setSignatureSkipped(false);
     onOpenChange(false);
   };
 
-  // Closing tries to save the content as a draft (or update the edited one). Real Gmail draft
-  // persistence isn't wired yet, so saveDraft is a no-op for real accounts — only test accounts save here.
+  // Closing saves the content as a Gmail draft (fresh composes) or updates the opened one in place
+  // (via autosaveRef.draftId, once resolved). An opened draft whose id never resolved is left untouched.
   const close = () => {
-    // Editing an existing real draft is skipped (no Gmail draft id → would duplicate); fresh composes + test accounts persist.
     const skipExisting =
-      draft != null && from != null && !isTestAccount(from.accountId);
+      draft != null &&
+      !draftResolved &&
+      from != null &&
+      !isTestAccount(from.accountId);
     if (from && hasContent && !skipExisting) {
       void saveDraft({
         accountId: from.accountId,
@@ -521,29 +551,24 @@ export function Composer({
         cc: cc.trim() || undefined,
         bcc: bcc.trim() || undefined,
         subject,
-        html: outgoingHtml,
+        html: body,
       }).then(() => refreshDrafts(from.accountId));
       if (isTestAccount(from.accountId)) toast("Saved to drafts");
     }
     reset();
   };
 
-  // Discard throws the message away and removes the draft if we were editing one (so it doesn't linger).
+  // Discard throws the message away and trashes its draft so it doesn't linger. autosaveRef holds the
+  // current message id (a draft update re-mints it); fall back to the opened draft's id before any save.
   const discard = () => {
     if (from) {
-      // Remove the edited draft and/or the one autosave created this session.
-      if (draft) {
-        void deleteDraft(from.accountId, draft.emailId).then(() =>
-          refreshDrafts(from.accountId),
-        );
+      const messageId = autosaveRef.current?.messageId ?? draft?.emailId;
+      if (messageId) {
+        void deleteDraft(from.accountId, messageId)
+          .then(() => refreshDrafts(from.accountId))
+          .catch(() => {});
+        if (isTestAccount(from.accountId)) toast("Draft discarded");
       }
-      if (autosaveRef.current) {
-        void deleteDraft(from.accountId, autosaveRef.current.messageId).then(
-          () => refreshDrafts(from.accountId),
-        );
-      }
-      if ((draft || autosaveRef.current) && isTestAccount(from.accountId))
-        toast("Draft discarded");
     }
     void clearDraftBuffer();
     reset();
@@ -603,15 +628,10 @@ export function Composer({
           contentBase64: f.base64,
         })),
       });
-      if (draft) {
-        await deleteDraft(from.accountId, draft.emailId);
-        refreshDrafts(from.accountId);
-      }
-      // The draft autosave created is a copy of this now-sent message — trash it.
-      if (autosaveRef.current) {
-        await deleteDraft(from.accountId, autosaveRef.current.messageId).catch(
-          () => {},
-        );
+      // The draft (opened or autosave-created) is now a copy of this sent message — trash it.
+      const draftMessageId = autosaveRef.current?.messageId ?? draft?.emailId;
+      if (draftMessageId) {
+        await deleteDraft(from.accountId, draftMessageId).catch(() => {});
         autosaveRef.current = null;
         refreshDrafts(from.accountId);
       }

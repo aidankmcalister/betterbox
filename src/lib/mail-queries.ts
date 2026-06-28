@@ -466,6 +466,25 @@ export async function saveDraft(opts: {
   }
 }
 
+/** Resolve the Gmail draft id behind an opened draft's message id so edits
+ *  update it in place. Test accounts key drafts by message id directly. Null on
+ *  any failure — the caller falls back to leaving the draft untouched. */
+export async function resolveDraftId(
+  accountId: string,
+  messageId: string,
+): Promise<string | null> {
+  if (isTestAccount(accountId)) return messageId;
+  try {
+    const params = new URLSearchParams({ accountId, messageId });
+    const res = await fetchJson<{ draftId: string | null }>(
+      `/api/draft?${params}`,
+    );
+    return res.draftId;
+  } catch {
+    return null;
+  }
+}
+
 /** Delete a draft so it leaves Drafts. Demo: drop from store. Real: trash the
  *  message (we don't track the Gmail draft id yet, but trashing removes it). */
 export async function deleteDraft(accountId: string, emailId: string) {
